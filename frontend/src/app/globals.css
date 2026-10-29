@@ -3,13 +3,16 @@
 @tailwind utilities;
 
 :root {
-  --background: #080c14;
+  --background: #060911;
   --foreground: #f8fafc;
 }
 
 body {
   color: var(--foreground);
-  background: radial-gradient(circle at 50% 0%, #111a2e 0%, #080c14 70%);
+  background: 
+    radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 100% 100%, rgba(124, 58, 237, 0.1) 0%, transparent 40%),
+    #060911;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   overflow-x: hidden;
   min-height: 100vh;
@@ -21,174 +24,215 @@ body {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(10, 15, 26, 0.8);
+  background: rgba(6, 9, 17, 0.9);
 }
 ::-webkit-scrollbar-thumb {
   background: linear-gradient(180deg, #3b82f6 0%, #8b5cf6 100%);
   border-radius: 9999px;
 }
 
-/* UIVERSE STYLES & EFFECTS */
-
-/* 1. Uiverse Frosted Glass Card with Inner Bevel & Hover Elevation */
-.uiverse-card {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%), #0c111d;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 18px;
-  box-shadow: 
-    0 16px 36px -10px rgba(0, 0, 0, 0.7),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
-    inset 0 -1px 0 0 rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(20px);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+/* KEYFRAMES */
+@keyframes spin-border {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
-.uiverse-card:hover {
+@keyframes radar-ping {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+@keyframes float-gentle {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-4px); }
+}
+
+/* 1. CONIC SPINNING BORDER CONTAINER */
+.conic-glow-box {
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  padding: 2px;
+}
+
+.conic-glow-box::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0%,
+    #3b82f6 25%,
+    #8b5cf6 50%,
+    #ec4899 75%,
+    transparent 100%
+  );
+  animation: spin-border 5s linear infinite;
+}
+
+.conic-glow-inner {
+  position: relative;
+  background: #090e1a;
+  border-radius: 18px;
+  z-index: 1;
+}
+
+/* 2. 3D TACTILE PUSH BUTTON (PHYSICAL DEPTH) */
+.btn-3d {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  padding: 0;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  background: #1d4ed8;
+  box-shadow: 0 6px 0 #1e3a8a, 0 12px 20px rgba(0, 0, 0, 0.6);
+  transition: all 0.1s ease;
+  user-select: none;
+}
+
+.btn-3d-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 13px;
+  transform: translateY(-3px);
+  transition: transform 0.1s ease, background 0.1s ease;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.btn-3d:hover .btn-3d-top {
+  transform: translateY(-4px);
+  background: linear-gradient(180deg, #60a5fa 0%, #2563eb 100%);
+}
+
+.btn-3d:active {
+  box-shadow: 0 2px 0 #1e3a8a, 0 4px 8px rgba(0, 0, 0, 0.6);
+  transform: translateY(4px);
+}
+
+.btn-3d:active .btn-3d-top {
+  transform: translateY(0);
+}
+
+/* 3. 3D TACTILE SUCCESS BUTTON */
+.btn-3d-emerald {
+  background: #047857;
+  box-shadow: 0 6px 0 #064e3b, 0 12px 20px rgba(0, 0, 0, 0.6);
+}
+.btn-3d-emerald .btn-3d-top {
+  background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+}
+.btn-3d-emerald:hover .btn-3d-top {
+  background: linear-gradient(180deg, #34d399 0%, #059669 100%);
+}
+.btn-3d-emerald:active {
+  box-shadow: 0 2px 0 #064e3b, 0 4px 8px rgba(0, 0, 0, 0.6);
+}
+
+/* 4. 3D TACTILE PURPLE BUTTON */
+.btn-3d-purple {
+  background: #6d28d9;
+  box-shadow: 0 6px 0 #4c1d95, 0 12px 20px rgba(0, 0, 0, 0.6);
+}
+.btn-3d-purple .btn-3d-top {
+  background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%);
+}
+.btn-3d-purple:hover .btn-3d-top {
+  background: linear-gradient(180deg, #a78bfa 0%, #7c3aed 100%);
+}
+.btn-3d-purple:active {
+  box-shadow: 0 2px 0 #4c1d95, 0 4px 8px rgba(0, 0, 0, 0.6);
+}
+
+/* 5. ELEVATED 3D GLASS CARD WITH TACTILE DEPTH */
+.card-depth-3d {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%), #0a0f1d;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  box-shadow: 
+    0 20px 40px -15px rgba(0, 0, 0, 0.8),
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.2),
+    inset 0 -2px 0 0 rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(20px);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-depth-3d:hover {
+  transform: translateY(-3px);
   border-color: rgba(99, 102, 241, 0.4);
   box-shadow: 
-    0 24px 48px -12px rgba(59, 130, 246, 0.25),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.2),
-    inset 0 -1px 0 0 rgba(0, 0, 0, 0.4);
-  transform: translateY(-2px);
+    0 30px 60px -15px rgba(99, 102, 241, 0.25),
+    0 0 0 1px rgba(99, 102, 241, 0.3),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.3),
+    inset 0 -2px 0 0 rgba(0, 0, 0, 0.6);
 }
 
-/* 2. Uiverse Neon Gradient Button with Glowing Backlight */
-.uiverse-btn-primary {
+/* 6. UIVERSE HOLOGRAPHIC CITATION CARD */
+.holo-citation {
   position: relative;
-  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
-  font-weight: 600;
-  box-shadow: 
-    0 8px 24px -4px rgba(79, 70, 229, 0.5),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.35);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.9) 100%);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-left: 4px solid #6366f1;
+  border-radius: 14px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   overflow: hidden;
 }
 
-.uiverse-btn-primary::before {
+.holo-citation:hover {
+  transform: translateX(4px) translateY(-1px);
+  border-color: rgba(139, 92, 246, 0.6);
+  border-left-color: #ec4899;
+  box-shadow: 0 15px 30px -5px rgba(99, 102, 241, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* 7. NEON RADAR PULSE BADGE */
+.neon-pulse-ring {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: currentColor;
+}
+
+.neon-pulse-ring::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
-  transition: left 0.6s ease;
+  inset: -4px;
+  border-radius: 9999px;
+  background: currentColor;
+  opacity: 0.6;
+  animation: radar-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 
-.uiverse-btn-primary:hover::before {
-  left: 100%;
-}
-
-.uiverse-btn-primary:hover {
-  transform: translateY(-1px) scale(1.01);
-  box-shadow: 
-    0 12px 30px -4px rgba(99, 102, 241, 0.7),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.5);
-}
-
-.uiverse-btn-primary:active {
-  transform: translateY(1px) scale(0.99);
-}
-
-/* 3. Uiverse Tactile Secondary Button */
-.uiverse-btn-secondary {
-  background: linear-gradient(180deg, #161f33 0%, #0e1524 100%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #e2e8f0;
-  border-radius: 12px;
-  box-shadow: 
-    0 4px 12px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
-  transition: all 0.2s ease;
-}
-
-.uiverse-btn-secondary:hover {
-  background: linear-gradient(180deg, #1e2a45 0%, #121c30 100%);
-  border-color: rgba(255, 255, 255, 0.2);
+/* 8. GLOWING NEON INPUT */
+.neon-console-input {
+  background: #080c16;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.7);
   color: #ffffff;
-  transform: translateY(-1px);
-}
-
-/* 4. Uiverse Dropzone with Glowing Border Pulse */
-.uiverse-dropzone {
-  position: relative;
-  background: radial-gradient(circle at 50% 50%, rgba(37, 99, 235, 0.05) 0%, rgba(12, 17, 29, 0.8) 100%);
-  border: 2px dashed rgba(99, 102, 241, 0.35);
-  border-radius: 20px;
-  box-shadow: 
-    0 10px 30px -5px rgba(0, 0, 0, 0.6),
-    inset 0 0 25px rgba(59, 130, 246, 0.05);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.uiverse-dropzone:hover,
-.uiverse-dropzone.dragging {
-  border-color: #60a5fa;
-  background: radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.12) 0%, rgba(14, 21, 37, 0.9) 100%);
-  box-shadow: 
-    0 0 35px -5px rgba(59, 130, 246, 0.35),
-    inset 0 0 35px rgba(59, 130, 246, 0.15);
-  transform: scale(1.008);
-}
-
-/* 5. Uiverse Glowing Input Field */
-.uiverse-input {
-  background: #090d17;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
-  color: #f1f5f9;
   transition: all 0.25s ease;
 }
 
-.uiverse-input:focus {
+.neon-console-input:focus {
   outline: none;
   border-color: #6366f1;
-  background: #0c1220;
+  background: #0b1120;
   box-shadow: 
-    0 0 20px -2px rgba(99, 102, 241, 0.35),
-    inset 0 2px 4px rgba(0, 0, 0, 0.5);
-}
-
-/* 6. Uiverse Animated Live Indicator */
-.uiverse-live-indicator {
-  position: relative;
-  display: inline-flex;
-  width: 8px;
-  height: 8px;
-}
-
-.uiverse-live-indicator::after {
-  content: '';
-  position: absolute;
-  inset: -3px;
-  border-radius: 9999px;
-  background: inherit;
-  opacity: 0.6;
-  animation: uiverse-pulse 2s cubic-bezier(0, 0, 0.2, 1) infinite;
-}
-
-@keyframes uiverse-pulse {
-  0% { transform: scale(0.9); opacity: 0.8; }
-  50% { transform: scale(1.8); opacity: 0; }
-  100% { transform: scale(0.9); opacity: 0; }
-}
-
-/* 7. Holographic Citation Card */
-.uiverse-citation {
-  background: linear-gradient(135deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.8) 100%);
-  border: 1px solid rgba(99, 102, 241, 0.25);
-  border-left: 3px solid #6366f1;
-  box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.5);
-  transition: all 0.2s ease;
-}
-
-.uiverse-citation:hover {
-  border-color: rgba(99, 102, 241, 0.6);
-  border-left: 3px solid #818cf8;
-  transform: translateX(3px);
-  box-shadow: 0 8px 20px -3px rgba(99, 102, 241, 0.2);
+    0 0 25px -2px rgba(99, 102, 241, 0.4),
+    inset 0 2px 6px rgba(0, 0, 0, 0.6);
 }
