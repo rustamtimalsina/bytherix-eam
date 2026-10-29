@@ -19,6 +19,7 @@ import {
   ShieldAlert,
   FileCheck2,
   Layers,
+  ShieldCheck,
 } from "lucide-react";
 import { api, DocumentItem, ApiKeyItem, SourceCitation } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -241,39 +242,51 @@ export default function DashboardPage() {
 
   if (authLoading || !token) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#070b14]">
-        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-[#080c14]">
+        <div className="relative">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.5)] animate-pulse">
+            <Bot className="w-6 h-6 text-white" />
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#070b14] flex flex-col selection:bg-blue-600 selection:text-white">
-      {/* Top Navbar */}
-      <header className="h-16 border-b border-slate-800/80 bg-slate-900/40 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-40">
+    <div className="min-h-screen flex flex-col selection:bg-blue-600 selection:text-white">
+      {/* Top Navbar with Glassmorphism */}
+      <header className="h-16 border-b border-white/[0.08] bg-[#0c111d]/70 backdrop-blur-xl px-6 flex items-center justify-between sticky top-0 z-40 shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center shadow-[0_0_20px_rgba(99,102,241,0.5)] border border-white/20">
             <Bot className="w-5 h-5 text-white" />
           </div>
-          <span className="font-bold text-white tracking-tight">
-            Bytherix <span className="text-blue-400">EAM</span>
-          </span>
-          <div className="h-4 w-px bg-slate-800 mx-2" />
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-800/60 border border-slate-700/60 text-xs text-slate-300">
+          <div>
+            <span className="font-extrabold text-white tracking-tight text-base">
+              Bytherix <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400">EAM</span>
+            </span>
+          </div>
+
+          <div className="h-4 w-px bg-white/10 mx-2" />
+
+          {/* Org Pill with Live Dot */}
+          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#111726] border border-white/10 text-xs text-slate-300 shadow-inner">
             <Layers className="w-3.5 h-3.5 text-blue-400" />
-            <span className="font-mono text-slate-400">Org:</span>
-            <span className="font-semibold text-white truncate max-w-[140px]">
+            <span className="text-slate-400">Tenant:</span>
+            <span className="font-mono font-medium text-white">
               {organizationId ? `${organizationId.slice(0, 8)}...` : "Workspace"}
             </span>
           </div>
-          <span className="px-2 py-0.5 rounded text-[11px] font-semibold uppercase tracking-wider bg-emerald-950/60 border border-emerald-800/60 text-emerald-400">
-            {role || "member"}
-          </span>
+
+          {/* Role Pill */}
+          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wider bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.2)]">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+            <span>{role || "owner"}</span>
+          </div>
         </div>
 
         <div className="flex items-center gap-4">
           <div className="text-right hidden sm:block">
-            <p className="text-xs font-medium text-white">{user?.full_name}</p>
+            <p className="text-xs font-semibold text-white">{user?.full_name}</p>
             <p className="text-[11px] text-slate-400">{user?.email}</p>
           </div>
           <button
@@ -282,7 +295,7 @@ export default function DashboardPage() {
               router.push("/login");
             }}
             title="Sign out"
-            className="p-2 rounded-lg bg-slate-800/50 hover:bg-red-950/40 border border-slate-700/60 hover:border-red-800/60 text-slate-400 hover:text-red-300 transition-all"
+            className="p-2.5 rounded-xl bg-[#141b2d] hover:bg-red-500/10 border border-white/10 hover:border-red-500/40 text-slate-400 hover:text-red-400 transition-all duration-200 shadow-sm"
           >
             <LogOut className="w-4 h-4" />
           </button>
@@ -292,69 +305,77 @@ export default function DashboardPage() {
       {/* Main Body */}
       <div className="flex-1 flex max-w-7xl w-full mx-auto p-6 gap-6">
         {/* Sidebar Tabs */}
-        <aside className="w-64 shrink-0 flex flex-col gap-2">
+        <aside className="w-64 shrink-0 flex flex-col gap-2.5">
           <button
             onClick={() => setActiveTab("documents")}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
               activeTab === "documents"
-                ? "bg-blue-600/10 border border-blue-500/30 text-blue-400 shadow-sm"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/40"
+                ? "bg-gradient-to-r from-blue-600/20 to-indigo-600/10 border border-blue-500/40 text-white shadow-[0_0_20px_rgba(59,130,246,0.2)]"
+                : "text-slate-400 hover:text-white hover:bg-white/[0.04] border border-transparent"
             }`}
           >
-            <FileText className="w-4 h-4" />
+            <div className={`p-1.5 rounded-lg ${activeTab === "documents" ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400"}`}>
+              <FileText className="w-4 h-4" />
+            </div>
             <span>Documents Hub</span>
-            <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">
+            <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-white/10 text-slate-200 font-mono">
               {documents.length}
             </span>
           </button>
 
           <button
             onClick={() => setActiveTab("chat")}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
               activeTab === "chat"
-                ? "bg-blue-600/10 border border-blue-500/30 text-blue-400 shadow-sm"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/40"
+                ? "bg-gradient-to-r from-blue-600/20 to-indigo-600/10 border border-blue-500/40 text-white shadow-[0_0_20px_rgba(59,130,246,0.2)]"
+                : "text-slate-400 hover:text-white hover:bg-white/[0.04] border border-transparent"
             }`}
           >
-            <MessageSquare className="w-4 h-4" />
+            <div className={`p-1.5 rounded-lg ${activeTab === "chat" ? "bg-indigo-600 text-white" : "bg-slate-800 text-slate-400"}`}>
+              <MessageSquare className="w-4 h-4" />
+            </div>
             <span>RAG AI Assistant</span>
           </button>
 
           <button
             onClick={() => setActiveTab("apikeys")}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
               activeTab === "apikeys"
-                ? "bg-blue-600/10 border border-blue-500/30 text-blue-400 shadow-sm"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/40"
+                ? "bg-gradient-to-r from-blue-600/20 to-indigo-600/10 border border-blue-500/40 text-white shadow-[0_0_20px_rgba(59,130,246,0.2)]"
+                : "text-slate-400 hover:text-white hover:bg-white/[0.04] border border-transparent"
             }`}
           >
-            <Key className="w-4 h-4" />
+            <div className={`p-1.5 rounded-lg ${activeTab === "apikeys" ? "bg-purple-600 text-white" : "bg-slate-800 text-slate-400"}`}>
+              <Key className="w-4 h-4" />
+            </div>
             <span>API Keys</span>
-            <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">
+            <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-white/10 text-slate-200 font-mono">
               {apiKeys.length}
             </span>
           </button>
 
           <button
             onClick={() => setActiveTab("team")}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
               activeTab === "team"
-                ? "bg-blue-600/10 border border-blue-500/30 text-blue-400 shadow-sm"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/40"
+                ? "bg-gradient-to-r from-blue-600/20 to-indigo-600/10 border border-blue-500/40 text-white shadow-[0_0_20px_rgba(59,130,246,0.2)]"
+                : "text-slate-400 hover:text-white hover:bg-white/[0.04] border border-transparent"
             }`}
           >
-            <Users className="w-4 h-4" />
+            <div className={`p-1.5 rounded-lg ${activeTab === "team" ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-400"}`}>
+              <Users className="w-4 h-4" />
+            </div>
             <span>Team & Quotas</span>
           </button>
 
-          {/* Quick status card */}
-          <div className="mt-auto p-4 rounded-xl border border-slate-800 bg-slate-900/30 text-xs text-slate-400 space-y-2">
-            <div className="flex items-center gap-2 text-emerald-400 font-medium">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Backend API Live</span>
+          {/* Quick status card with glowing pulse */}
+          <div className="mt-auto uiverse-card p-4 space-y-2">
+            <div className="flex items-center gap-2 text-emerald-400 font-semibold text-xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Section 9.2 Hybrid RAG</span>
             </div>
-            <p className="text-[11px] text-slate-500">
-              Postgres vector similarity + Non-blocking background worker active.
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Lexical keyword weighting + Vector similarity search online.
             </p>
           </div>
         </aside>
@@ -367,25 +388,24 @@ export default function DashboardPage() {
               {/* Header */}
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-bold text-white tracking-tight">Documents & Knowledge Base</h2>
-                  <p className="text-sm text-slate-400">
+                  <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+                    <span>Documents & Knowledge Base</span>
+                    <Sparkles className="w-5 h-5 text-indigo-400" />
+                  </h2>
+                  <p className="text-sm text-slate-400 mt-1">
                     Upload enterprise PDFs to chunk, embed, and index into your private vector store.
                   </p>
                 </div>
               </div>
 
-              {/* Upload Dropzone */}
+              {/* Uiverse Dropzone with Holographic Pulse */}
               <div
                 onClick={() => fileInputRef.current?.click()}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
-                className={`relative border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all duration-200 ${
-                  isDragging
-                    ? "border-blue-400 bg-blue-500/15 ring-4 ring-blue-500/20 scale-[1.01]"
-                    : isUploading
-                    ? "border-blue-500 bg-blue-500/5 cursor-wait"
-                    : "border-slate-800 hover:border-blue-500/60 bg-slate-900/20 hover:bg-slate-900/40"
+                className={`uiverse-dropzone p-10 text-center cursor-pointer ${
+                  isDragging ? "dragging" : ""
                 }`}
               >
                 <input
@@ -396,28 +416,30 @@ export default function DashboardPage() {
                   className="hidden"
                 />
                 <div className="flex flex-col items-center">
-                  <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400 mb-3">
-                    <UploadCloud className="w-6 h-6" />
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600/20 to-purple-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 mb-4 shadow-[0_0_25px_rgba(59,130,246,0.3)]">
+                    <UploadCloud className="w-8 h-8" />
                   </div>
                   {isDragging ? (
                     <div className="space-y-1">
-                      <p className="text-sm font-semibold text-blue-400 animate-pulse">
+                      <p className="text-base font-bold text-blue-400 animate-pulse">
                         Release to drop and upload PDF
                       </p>
-                      <p className="text-xs text-blue-300/70">
-                        File will be validated and queued for chunking
+                      <p className="text-xs text-blue-300/80">
+                        File will be validated and queued for background chunking
                       </p>
                     </div>
                   ) : isUploading ? (
                     <div className="space-y-1">
-                      <p className="text-sm font-medium text-blue-400">Uploading and validating magic bytes...</p>
-                      <p className="text-xs text-slate-500">Background workers will chunk and embed vectors.</p>
+                      <p className="text-base font-bold text-blue-400">Uploading and validating magic bytes...</p>
+                      <p className="text-xs text-slate-400">Background workers will chunk and embed vectors.</p>
                     </div>
                   ) : (
                     <div className="space-y-1">
-                      <p className="text-sm font-medium text-white">Click or drag & drop PDF files here</p>
-                      <p className="text-xs text-slate-500">
-                        Strict %PDF- header validation with SHA-256 tenant deduplication.
+                      <p className="text-base font-semibold text-white">
+                        Click or drag & drop PDF files here
+                      </p>
+                      <p className="text-xs text-slate-400">
+                        Strict <span className="font-mono text-blue-400">%PDF-</span> header validation with SHA-256 tenant deduplication.
                       </p>
                     </div>
                   )}
@@ -425,19 +447,22 @@ export default function DashboardPage() {
               </div>
 
               {uploadError && (
-                <div className="p-3.5 rounded-xl bg-red-950/40 border border-red-800/60 text-red-300 text-sm flex items-center gap-2">
+                <div className="p-4 rounded-xl bg-red-950/40 border border-red-800/60 text-red-300 text-sm flex items-center gap-2.5 shadow-lg">
                   <ShieldAlert className="w-4 h-4 text-red-400 shrink-0" />
                   <span>{uploadError}</span>
                 </div>
               )}
 
               {/* Document List Table */}
-              <div className="rounded-2xl border border-slate-800/80 bg-slate-900/40 overflow-hidden shadow-xl">
-                <div className="p-4 border-b border-slate-800/80 flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-white">Ingested Documents ({documents.length})</h3>
+              <div className="uiverse-card overflow-hidden">
+                <div className="p-4 border-b border-white/[0.08] flex items-center justify-between bg-white/[0.02]">
+                  <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                    <FileCheck2 className="w-4 h-4 text-blue-400" />
+                    <span>Ingested Documents ({documents.length})</span>
+                  </h3>
                   <button
                     onClick={loadDocuments}
-                    className="text-xs text-blue-400 hover:text-blue-300 font-medium"
+                    className="text-xs text-blue-400 hover:text-blue-300 font-semibold transition-colors"
                   >
                     Refresh
                   </button>
@@ -445,31 +470,31 @@ export default function DashboardPage() {
 
                 {documents.length === 0 ? (
                   <div className="p-12 text-center text-slate-500 text-sm">
-                    No documents uploaded yet. Upload a PDF above to begin question answering.
+                    No documents uploaded yet. Drop a PDF above to begin question answering.
                   </div>
                 ) : (
-                  <div className="divide-y divide-slate-800/60">
+                  <div className="divide-y divide-white/[0.05]">
                     {documents.map((doc) => (
                       <div
                         key={doc.id}
-                        className="p-4 flex items-center justify-between hover:bg-slate-800/20 transition-colors"
+                        className="p-4 flex items-center justify-between hover:bg-white/[0.03] transition-colors"
                       >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-9 h-9 rounded-lg bg-blue-900/30 border border-blue-700/40 flex items-center justify-center text-blue-400 shrink-0">
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-900/40 to-indigo-900/40 border border-blue-700/40 flex items-center justify-center text-blue-400 shrink-0 shadow-inner">
                             <FileCheck2 className="w-5 h-5" />
                           </div>
                           <div className="min-w-0">
-                            <p className="text-sm font-medium text-white truncate max-w-md">
+                            <p className="text-sm font-semibold text-white truncate max-w-md">
                               {doc.title || doc.filename}
                             </p>
-                            <div className="flex items-center gap-3 text-xs text-slate-500 mt-0.5">
+                            <div className="flex items-center gap-3 text-xs text-slate-400 mt-0.5">
                               <span>{(doc.file_size_bytes / 1024).toFixed(1)} KB</span>
                               <span>•</span>
                               <span>{doc.page_count ? `${doc.page_count} pages` : "Pages queued"}</span>
                               {doc.checksum && (
                                 <>
                                   <span>•</span>
-                                  <span className="font-mono text-[11px] text-slate-600">
+                                  <span className="font-mono text-[11px] text-slate-500">
                                     SHA: {doc.checksum.slice(0, 8)}...
                                   </span>
                                 </>
@@ -480,21 +505,21 @@ export default function DashboardPage() {
 
                         <div className="flex items-center gap-4">
                           <span
-                            className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${
+                            className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${
                               doc.status === "indexed"
-                                ? "bg-emerald-950/60 border border-emerald-800/60 text-emerald-400"
+                                ? "bg-emerald-500/10 border border-emerald-500/40 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.2)]"
                                 : doc.status === "processing"
-                                ? "bg-amber-950/60 border border-amber-800/60 text-amber-400 animate-pulse"
-                                : "bg-blue-950/60 border border-blue-800/60 text-blue-400"
+                                ? "bg-amber-500/10 border border-amber-500/40 text-amber-400 animate-pulse shadow-[0_0_12px_rgba(245,158,11,0.2)]"
+                                : "bg-blue-500/10 border border-blue-500/40 text-blue-400"
                             }`}
                           >
-                            {doc.status}
+                            {doc.status === "indexed" ? "Ready" : doc.status}
                           </span>
 
                           <button
                             onClick={() => handleDeleteDocument(doc.id)}
                             title="Delete document"
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-950/40 transition-colors"
+                            className="p-2 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -509,44 +534,49 @@ export default function DashboardPage() {
 
           {/* TAB 2: AI CHAT (RAG) */}
           {activeTab === "chat" && (
-            <div className="flex-1 flex flex-col h-[calc(100vh-140px)] rounded-2xl border border-slate-800/80 bg-slate-900/40 overflow-hidden shadow-xl">
+            <div className="flex-1 flex flex-col h-[calc(100vh-140px)] uiverse-card overflow-hidden">
               {/* Chat Header */}
-              <div className="p-4 border-b border-slate-800/80 flex items-center justify-between bg-slate-900/60">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-blue-400" />
-                  <h3 className="text-sm font-semibold text-white">Grounded Knowledge QA</h3>
+              <div className="p-4 border-b border-white/[0.08] flex items-center justify-between bg-white/[0.02]">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-[0_0_15px_rgba(99,102,241,0.4)]">
+                    <Bot className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-white">Grounded Knowledge QA</h3>
+                    <p className="text-[11px] text-slate-400">Strict hybrid citation provenance</p>
+                  </div>
                 </div>
-                <span className="text-xs text-slate-400">
-                  Retriever: Top-3 Cosine Similarity
-                </span>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-[11px] text-blue-400 font-mono">
+                  <span>Hybrid Lexical + Vector</span>
+                </div>
               </div>
 
               {/* Chat Scroll Area */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <div className="flex-1 overflow-y-auto p-5 space-y-5">
                 {chatMessages.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-center p-8 space-y-4 text-slate-500">
-                    <div className="w-12 h-12 rounded-2xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-                      <Bot className="w-6 h-6" />
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600/20 to-purple-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 shadow-[0_0_30px_rgba(59,130,246,0.3)]">
+                      <Sparkles className="w-8 h-8" />
                     </div>
                     <div>
-                      <h4 className="text-sm font-semibold text-white">Ask your knowledge base</h4>
+                      <h4 className="text-base font-bold text-white">Ask your knowledge base</h4>
                       <p className="text-xs text-slate-400 max-w-sm mt-1">
-                        Queries are matched against chunk embeddings from your uploaded PDFs, returning strict verbatim citations.
+                        Queries are matched using Section 9.2 Hybrid Search, scoring keywords and chunk vectors for high precision.
                       </p>
                     </div>
 
-                    <div className="flex flex-wrap gap-2 justify-center max-w-md pt-2">
+                    <div className="flex flex-wrap gap-2.5 justify-center max-w-md pt-2">
                       <button
-                        onClick={() => setInputQuery("What are the key highlights of this document?")}
-                        className="text-xs px-3 py-1.5 rounded-full bg-slate-800/70 hover:bg-slate-800 border border-slate-700 text-slate-300 transition-colors"
+                        onClick={() => setInputQuery("What are the core technical requirements for Bytherix EAM?")}
+                        className="uiverse-btn-secondary text-xs px-3.5 py-2 font-medium"
                       >
-                        &quot;What are the key highlights?&quot;
+                        &quot;What are the core technical requirements for Bytherix EAM?&quot;
                       </button>
                       <button
-                        onClick={() => setInputQuery("Summarize the main requirements")}
-                        className="text-xs px-3 py-1.5 rounded-full bg-slate-800/70 hover:bg-slate-800 border border-slate-700 text-slate-300 transition-colors"
+                        onClick={() => setInputQuery("What are the subscription plans and quotas?")}
+                        className="uiverse-btn-secondary text-xs px-3.5 py-2 font-medium"
                       >
-                        &quot;Summarize the main requirements&quot;
+                        &quot;What are the subscription plans and quotas?&quot;
                       </button>
                     </div>
                   </div>
@@ -559,34 +589,34 @@ export default function DashboardPage() {
                       <div
                         className={`max-w-2xl rounded-2xl p-4 text-sm leading-relaxed ${
                           msg.sender === "user"
-                            ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
-                            : "bg-slate-800/60 border border-slate-700/60 text-slate-200"
+                            ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-[0_4px_20px_rgba(79,70,229,0.35)] border border-white/20"
+                            : "uiverse-card text-slate-200 border-white/10"
                         }`}
                       >
                         <p className="whitespace-pre-wrap">{msg.text}</p>
 
                         {/* Citations section */}
                         {msg.sources && msg.sources.length > 0 && (
-                          <div className="mt-4 pt-3 border-t border-slate-700/80 space-y-2">
-                            <span className="text-[11px] font-semibold uppercase tracking-wider text-blue-400 flex items-center gap-1">
-                              <FileText className="w-3.5 h-3.5" />
+                          <div className="mt-4 pt-3.5 border-t border-white/[0.08] space-y-2.5">
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
+                              <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />
                               Citations & Provenance ({msg.sources.length})
                             </span>
                             <div className="grid grid-cols-1 gap-2">
                               {msg.sources.map((src, sIdx) => (
                                 <div
                                   key={sIdx}
-                                  className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-700/40 text-xs text-slate-300"
+                                  className="uiverse-citation p-3 rounded-xl text-xs text-slate-300"
                                 >
                                   <div className="flex items-center justify-between font-medium text-slate-400 mb-1">
-                                    <span className="text-white truncate max-w-[200px]">
+                                    <span className="text-white font-semibold truncate max-w-[220px]">
                                       {src.document_title || "Document"}
                                     </span>
-                                    <span className="text-blue-400 font-mono text-[11px]">
-                                      Page {src.page_number} (Score: {src.similarity_score.toFixed(3)})
+                                    <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-mono text-[10px]">
+                                      Page {src.page_number} • Match: {(src.similarity_score * 100).toFixed(1)}%
                                     </span>
                                   </div>
-                                  <p className="text-slate-400 line-clamp-2 italic">
+                                  <p className="text-slate-400 line-clamp-2 italic text-[11px]">
                                     &ldquo;{src.snippet}&rdquo;
                                   </p>
                                 </div>
@@ -600,28 +630,28 @@ export default function DashboardPage() {
                 )}
 
                 {isQuerying && (
-                  <div className="flex items-center gap-2 text-xs text-blue-400">
-                    <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                    <span>Searching vector chunks & generating answer...</span>
+                  <div className="flex items-center gap-2.5 text-xs text-indigo-400 p-2">
+                    <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                    <span>Executing Section 9.2 hybrid search & generating answer...</span>
                   </div>
                 )}
                 <div ref={chatBottomRef} />
               </div>
 
-              {/* Input Form */}
-              <form onSubmit={handleSendChat} className="p-4 border-t border-slate-800/80 bg-slate-900/60">
+              {/* Input Form with Uiverse Glowing Input */}
+              <form onSubmit={handleSendChat} className="p-4 border-t border-white/[0.08] bg-white/[0.01]">
                 <div className="relative flex items-center">
                   <input
                     type="text"
                     value={inputQuery}
                     onChange={(e) => setInputQuery(e.target.value)}
-                    placeholder="Ask a question about your uploaded documents..."
-                    className="w-full pl-4 pr-12 py-3 rounded-xl bg-slate-950/80 border border-slate-800 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    placeholder="Ask anything about your documents (e.g. Bytherix EAM requirements)..."
+                    className="uiverse-input w-full pl-4 pr-12 py-3 text-sm placeholder-slate-500"
                   />
                   <button
                     type="submit"
                     disabled={isQuerying || !inputQuery.trim()}
-                    className="absolute right-2 p-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    className="uiverse-btn-primary absolute right-1.5 p-2 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <Send className="w-4 h-4" />
                   </button>
@@ -634,29 +664,32 @@ export default function DashboardPage() {
           {activeTab === "apikeys" && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-xl font-bold text-white tracking-tight">API Keys & Machine Access</h2>
-                <p className="text-sm text-slate-400">
+                <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+                  <span>API Keys & Machine Access</span>
+                  <Key className="w-5 h-5 text-purple-400" />
+                </h2>
+                <p className="text-sm text-slate-400 mt-1">
                   Generate scoped high-entropy API keys (`bx_live_...`) for CLI, pipelines, or integrations.
                 </p>
               </div>
 
               {/* Reveal newly created key modal */}
               {createdRawKey && (
-                <div className="p-5 rounded-2xl bg-amber-950/40 border border-amber-800/60 text-amber-200 space-y-3">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-amber-300">
-                    <ShieldAlert className="w-4 h-4" />
+                <div className="uiverse-card p-6 border-amber-500/40 bg-gradient-to-tr from-amber-950/30 to-black/60 shadow-[0_0_30px_rgba(245,158,11,0.2)] space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-bold text-amber-300">
+                    <ShieldAlert className="w-5 h-5" />
                     <span>Copy Your API Secret Key (Shown Only Once!)</span>
                   </div>
                   <p className="text-xs text-amber-200/80">
                     Make sure to store this key safely. You won&apos;t be able to view it again.
                   </p>
-                  <div className="flex items-center gap-2 bg-black/60 p-2.5 rounded-xl border border-amber-900/60">
+                  <div className="flex items-center gap-2 bg-black/70 p-3 rounded-xl border border-amber-500/30 shadow-inner">
                     <code className="text-xs font-mono text-white flex-1 break-all">
                       {createdRawKey}
                     </code>
                     <button
                       onClick={() => copyToClipboard(createdRawKey)}
-                      className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-[0_0_15px_rgba(245,158,11,0.3)]"
                     >
                       {copiedKey ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                       <span>{copiedKey ? "Copied" : "Copy"}</span>
@@ -674,7 +707,7 @@ export default function DashboardPage() {
               {/* Create Key Form */}
               <form
                 onSubmit={handleCreateApiKey}
-                className="p-5 rounded-2xl border border-slate-800/80 bg-slate-900/40 flex flex-col md:flex-row gap-4 items-end"
+                className="uiverse-card p-6 flex flex-col md:flex-row gap-4 items-end"
               >
                 <div className="flex-1 w-full">
                   <label className="block text-xs font-semibold text-slate-300 mb-1.5">
@@ -686,7 +719,7 @@ export default function DashboardPage() {
                     value={newKeyName}
                     onChange={(e) => setNewKeyName(e.target.value)}
                     placeholder="e.g. CI/CD Ingestion Pipeline"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-sm text-white focus:outline-none focus:border-blue-500"
+                    className="uiverse-input w-full px-3.5 py-2.5 text-sm"
                   />
                 </div>
 
@@ -698,14 +731,14 @@ export default function DashboardPage() {
                     type="text"
                     value={newKeyScopes}
                     onChange={(e) => setNewKeyScopes(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-sm text-white focus:outline-none focus:border-blue-500 font-mono text-xs"
+                    className="uiverse-input w-full px-3.5 py-2.5 text-xs font-mono"
                   />
                 </div>
 
                 <button
                   type="submit"
                   disabled={isCreatingKey}
-                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium flex items-center gap-2 whitespace-nowrap transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50"
+                  className="uiverse-btn-primary px-6 py-2.5 text-sm font-semibold flex items-center gap-2 whitespace-nowrap disabled:opacity-50"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Generate Key</span>
@@ -713,8 +746,8 @@ export default function DashboardPage() {
               </form>
 
               {/* Key List */}
-              <div className="rounded-2xl border border-slate-800/80 bg-slate-900/40 overflow-hidden">
-                <div className="divide-y divide-slate-800/60">
+              <div className="uiverse-card overflow-hidden">
+                <div className="divide-y divide-white/[0.05]">
                   {apiKeys.length === 0 ? (
                     <div className="p-8 text-center text-slate-500 text-sm">
                       No API keys generated yet.
@@ -723,12 +756,12 @@ export default function DashboardPage() {
                     apiKeys.map((k) => (
                       <div
                         key={k.id}
-                        className="p-4 flex items-center justify-between hover:bg-slate-800/20 transition-colors"
+                        className="p-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors"
                       >
                         <div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2.5">
                             <span className="text-sm font-semibold text-white">{k.name}</span>
-                            <span className="font-mono text-xs px-2 py-0.5 rounded bg-slate-800 text-blue-400">
+                            <span className="font-mono text-xs px-2.5 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-400">
                               {k.prefix}
                             </span>
                             {k.is_revoked && (
@@ -762,53 +795,56 @@ export default function DashboardPage() {
           {activeTab === "team" && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-xl font-bold text-white tracking-tight">Organization & Plan Quotas</h2>
-                <p className="text-sm text-slate-400">
+                <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+                  <span>Organization & Plan Quotas</span>
+                  <Users className="w-5 h-5 text-emerald-400" />
+                </h2>
+                <p className="text-sm text-slate-400 mt-1">
                   Multi-tenant workspace configuration and tier boundaries.
                 </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-5 rounded-2xl border border-slate-800/80 bg-slate-900/40 space-y-2">
+                <div className="uiverse-card p-6 space-y-2">
                   <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                     Subscription Tier
                   </span>
-                  <p className="text-2xl font-bold text-white">Starter Free</p>
-                  <p className="text-xs text-emerald-400">Active Tenant Plan</p>
+                  <p className="text-3xl font-extrabold text-white">Starter Free</p>
+                  <p className="text-xs text-emerald-400 font-medium">Active Tenant Plan</p>
                 </div>
 
-                <div className="p-5 rounded-2xl border border-slate-800/80 bg-slate-900/40 space-y-2">
+                <div className="uiverse-card p-6 space-y-2">
                   <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                     Document Limit
                   </span>
-                  <p className="text-2xl font-bold text-white">
+                  <p className="text-3xl font-extrabold text-white">
                     {documents.length} <span className="text-sm font-normal text-slate-500">/ 5 docs</span>
                   </p>
                   <p className="text-xs text-slate-400">PDF Magic Byte Protected</p>
                 </div>
 
-                <div className="p-5 rounded-2xl border border-slate-800/80 bg-slate-900/40 space-y-2">
+                <div className="uiverse-card p-6 space-y-2">
                   <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                     Token Allowance
                   </span>
-                  <p className="text-2xl font-bold text-white">100,000</p>
+                  <p className="text-3xl font-extrabold text-white">100,000</p>
                   <p className="text-xs text-slate-400">Monthly RAG Token Budget</p>
                 </div>
               </div>
 
               {/* Workspace details */}
-              <div className="p-6 rounded-2xl border border-slate-800/80 bg-slate-900/40 space-y-4">
+              <div className="uiverse-card p-6 space-y-4">
                 <h3 className="text-sm font-semibold text-white">Workspace Identifiers</h3>
-                <div className="space-y-2 font-mono text-xs">
-                  <div className="flex justify-between p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/60">
+                <div className="space-y-2.5 font-mono text-xs">
+                  <div className="flex justify-between p-3 rounded-xl bg-black/40 border border-white/[0.06]">
                     <span className="text-slate-500">Organization ID:</span>
                     <span className="text-slate-200">{organizationId}</span>
                   </div>
-                  <div className="flex justify-between p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/60">
+                  <div className="flex justify-between p-3 rounded-xl bg-black/40 border border-white/[0.06]">
                     <span className="text-slate-500">Your User ID:</span>
                     <span className="text-slate-200">{user?.id}</span>
                   </div>
-                  <div className="flex justify-between p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/60">
+                  <div className="flex justify-between p-3 rounded-xl bg-black/40 border border-white/[0.06]">
                     <span className="text-slate-500">Tenant Role:</span>
                     <span className="text-emerald-400 uppercase font-semibold">{role}</span>
                   </div>
