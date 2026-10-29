@@ -1,13 +1,44 @@
 import hashlib
 import io
+import socket
+import threading
 import uuid
 from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.db.models.document import Document
+from app.db.session import SessionLocal
 from app.integrations.object_storage.s3 import storage_service
 from app.services.retrieval_service import parse_and_index_document
 from app.workers.tasks.document_tasks import process_document_task
+
+
+def is_redis_available() -> bool:
+    """Fast check whether local Redis broker is running without blocking HTTP requests."""
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(0.1)
+        result = sock.connect_ex(("127.0.0.1", 6379))
+        sock.close()
+        return result == 0
+    except Exception:
+        return False
+
+
+def _run_indexing_thread(document_id: str):
+    """Run document chunking and embedding in an isolated background thread."""
+    def _worker():
+        bg_db = SessionLocal()
+        try:
+            parse_and_index_document(document_id, bg_db)
+        except Exception:
+            pass
+        finally:
+            bg_db.close()
+
+    thread = threading.Thread(target=_worker, daemon=True)
+    thread.start()
 
 
 def upload_document(
@@ -66,14 +97,15 @@ def upload_document(
     db.refresh(doc)
 
     # 6. Enqueue background processing job after commit (Prevents race condition!)
-    from app.core.config import settings
     if settings.APP_ENV == "test":
         parse_and_index_document(doc.id, db)
-    else:
+    elif is_redis_available():
         try:
             process_document_task.delay(doc.id)
         except Exception:
-            parse_and_index_document(doc.id, db)
+            _run_indexing_thread(doc.id)
+    else:
+        _run_indexing_thread(doc.id)
 
     db.refresh(doc)
     return doc
