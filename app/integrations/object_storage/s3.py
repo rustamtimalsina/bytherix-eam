@@ -21,21 +21,37 @@ class ObjectStorageService:
         if settings.APP_ENV == "test":
             return None
         if self._s3_client is None:
-            self._s3_client = boto3.client(
-                "s3",
-                endpoint_url=self.endpoint_url if self.endpoint_url else None,
-                aws_access_key_id=settings.S3_ACCESS_KEY,
-                aws_secret_access_key=settings.S3_SECRET_KEY,
-                region_name=settings.S3_REGION,
-                config=Config(
-                    signature_version="s3v4",
-                    connect_timeout=1,
-                    read_timeout=1,
-                    retries={"max_attempts": 1}
+            try:
+                s3 = boto3.client(
+                    "s3",
+                    endpoint_url=self.endpoint_url if self.endpoint_url else None,
+                    aws_access_key_id=settings.S3_ACCESS_KEY,
+                    aws_secret_access_key=settings.S3_SECRET_KEY,
+                    region_name=settings.S3_REGION,
+                    config=Config(
+                        signature_version="s3v4",
+                        connect_timeout=1,
+                        read_timeout=1,
+                        retries={"max_attempts": 1}
+                    )
                 )
-            )
-            self._ensure_bucket()
-        return self._s3_client
+                s3.list_buckets()
+                self._s3_client = s3
+                self._ensure_bucket()
+            except Exception:
+                self._s3_client = False
+        return self._s3_client if self._s3_client is not False else None
+
+    def _ensure_bucket(self):
+        if not self._s3_client or self._s3_client is False:
+            return
+        try:
+            self._s3_client.head_bucket(Bucket=self.bucket)
+        except Exception:
+            try:
+                self._s3_client.create_bucket(Bucket=self.bucket)
+            except Exception:
+                pass
 
     def upload_file(self, file_obj: BinaryIO, object_key: str, content_type: str = "application/pdf") -> str:
         """Upload a file stream to private S3-compatible storage or local storage."""
