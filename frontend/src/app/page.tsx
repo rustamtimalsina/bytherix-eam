@@ -220,7 +220,7 @@ export default function DashboardPage() {
             <Layers className="w-3.5 h-3.5 text-blue-400" />
             <span className="font-mono text-slate-400">Org:</span>
             <span className="font-semibold text-white truncate max-w-[140px]">
-              {organizationId?.slice(0, 8)}...
+              {organizationId ? `${organizationId.slice(0, 8)}...` : "Workspace"}
             </span>
           </div>
           <span className="px-2 py-0.5 rounded text-[11px] font-semibold uppercase tracking-wider bg-emerald-950/60 border border-emerald-800/60 text-emerald-400">
@@ -409,10 +409,14 @@ export default function DashboardPage() {
                               <span>{(doc.file_size_bytes / 1024).toFixed(1)} KB</span>
                               <span>•</span>
                               <span>{doc.page_count ? `${doc.page_count} pages` : "Pages queued"}</span>
-                              <span>•</span>
-                              <span className="font-mono text-[11px] text-slate-600">
-                                SHA: {doc.checksum.slice(0, 8)}...
-                              </span>
+                              {doc.checksum && (
+                                <>
+                                  <span>•</span>
+                                  <span className="font-mono text-[11px] text-slate-600">
+                                    SHA: {doc.checksum.slice(0, 8)}...
+                                  </span>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>

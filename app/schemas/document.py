@@ -10,6 +10,7 @@ class DocumentOut(BaseModel):
     filename: str
     file_size_bytes: int
     mime_type: str
+    checksum: Optional[str] = None
     status: str
     page_count: int
     error_message: Optional[str] = None
