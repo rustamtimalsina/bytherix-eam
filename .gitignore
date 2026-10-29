@@ -19,6 +19,9 @@ htmlcov/
 *.log
 uploads/
 storage/
+*.db
+*.sqlite
+*.sqlite3
 
 # IDE
 .idea/
