@@ -73,6 +73,21 @@ export default function DashboardPage() {
     }
   }, [token]);
 
+  // Auto-poll document status if any document is processing or queued
+  useEffect(() => {
+    const hasPendingDocs = documents.some(
+      (d) => d.status === "processing" || d.status === "queued"
+    );
+
+    if (!hasPendingDocs || !token) return;
+
+    const interval = setInterval(() => {
+      loadDocuments();
+    }, 2500);
+
+    return () => clearInterval(interval);
+  }, [documents, token]);
+
   // Scroll chat
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
