@@ -33,6 +33,7 @@ export default function DashboardPage() {
   // Documents state
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -95,10 +96,7 @@ export default function DashboardPage() {
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const processFile = async (file: File) => {
     if (!file.name.toLowerCase().endsWith(".pdf")) {
       setUploadError("Only authentic PDF documents are supported.");
       return;
@@ -115,6 +113,36 @@ export default function DashboardPage() {
       setUploadError((err as Error).message || "Failed to upload document");
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await processFile(file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      await processFile(file);
     }
   };
 
@@ -334,9 +362,14 @@ export default function DashboardPage() {
               {/* Upload Dropzone */}
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className={`relative border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all ${
-                  isUploading
-                    ? "border-blue-500 bg-blue-500/5"
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={`relative border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all duration-200 ${
+                  isDragging
+                    ? "border-blue-400 bg-blue-500/15 ring-4 ring-blue-500/20 scale-[1.01]"
+                    : isUploading
+                    ? "border-blue-500 bg-blue-500/5 cursor-wait"
                     : "border-slate-800 hover:border-blue-500/60 bg-slate-900/20 hover:bg-slate-900/40"
                 }`}
               >
@@ -351,7 +384,16 @@ export default function DashboardPage() {
                   <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400 mb-3">
                     <UploadCloud className="w-6 h-6" />
                   </div>
-                  {isUploading ? (
+                  {isDragging ? (
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-blue-400 animate-pulse">
+                        Release to drop and upload PDF
+                      </p>
+                      <p className="text-xs text-blue-300/70">
+                        File will be validated and queued for chunking
+                      </p>
+                    </div>
+                  ) : isUploading ? (
                     <div className="space-y-1">
                       <p className="text-sm font-medium text-blue-400">Uploading and validating magic bytes...</p>
                       <p className="text-xs text-slate-500">Background workers will chunk and embed vectors.</p>
