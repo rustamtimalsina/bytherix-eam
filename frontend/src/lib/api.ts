@@ -177,6 +177,81 @@ class ApiClient {
     });
   }
 
+  async chatQueryStream(
+    question: string,
+    topK: number = 3,
+    callbacks: {
+      onToken: (token: string) => void;
+      onCitations: (citations: SourceCitation[]) => void;
+      onDone: (metrics: { prompt_tokens: number; completion_tokens: number; total_tokens: number; model: string }) => void;
+      onError?: (error: string) => void;
+    }
+  ): Promise<void> {
+    const token = this.getToken();
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const res = await fetch(`${API_BASE_URL}/chat/stream`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ question, top_k: topK }),
+    });
+
+    if (!res.ok) {
+      let errorMsg = `Streaming request failed (${res.status})`;
+      try {
+        const errorData = await res.json();
+        errorMsg = errorData.error?.message || errorData.detail || errorMsg;
+      } catch {}
+      throw new Error(errorMsg);
+    }
+
+    if (!res.body) {
+      throw new Error("No response body received from server");
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() || "";
+
+        for (const part of parts) {
+          const trimmed = part.trim();
+          if (!trimmed.startsWith("data: ")) continue;
+          const jsonStr = trimmed.slice(6).trim();
+          try {
+            const parsed = JSON.parse(jsonStr);
+            if (parsed.type === "token") {
+              callbacks.onToken(parsed.token);
+            } else if (parsed.type === "citations") {
+              callbacks.onCitations(parsed.data);
+            } else if (parsed.type === "done") {
+              callbacks.onDone(parsed);
+            } else if (parsed.type === "error") {
+              if (callbacks.onError) callbacks.onError(parsed.error);
+            }
+          } catch (e) {
+            console.error("SSE parse error", e, jsonStr);
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  }
+
   // API Key endpoints
   async listApiKeys(): Promise<ApiKeyItem[]> {
     return this.request<ApiKeyItem[]>("/api-keys");

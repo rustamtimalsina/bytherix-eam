@@ -31,6 +31,67 @@ import { CustomRoleDropdown, ROLE_OPTIONS, INVITE_ROLE_OPTIONS } from "@/compone
 import { FloatingRocketDock, ActiveTab } from "@/components/FloatingRocketDock";
 import { OrbitalCore } from "@/components/OrbitalCore";
 
+function renderFormattedAnswer(text: string) {
+  const lines = text.split("\n");
+  return lines.map((line, lIdx) => {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      return <div key={lIdx} className="h-2" />;
+    }
+
+    const isBullet = trimmed.startsWith("•") || trimmed.startsWith("-") || trimmed.startsWith("* ");
+    const content = isBullet ? trimmed.replace(/^[•\-\*]\s*/, "") : trimmed;
+
+    const parts = content.split(/(\*\*[^*]+\*\*)/g);
+
+    const renderedParts = parts.map((part, pIdx) => {
+      if (part.startsWith("**") && part.endsWith("**")) {
+        return (
+          <strong key={pIdx} className="font-bold text-slate-900 dark:text-white">
+            {part.slice(2, -2)}
+          </strong>
+        );
+      }
+      if (part.includes("[Source:")) {
+        const subParts = part.split(/(\[Source:[^\]]+\])/g);
+        return (
+          <span key={pIdx}>
+            {subParts.map((sub, sIdx) => {
+              if (sub.startsWith("[Source:") && sub.endsWith("]")) {
+                return (
+                  <span
+                    key={sIdx}
+                    className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/20 mx-1"
+                  >
+                    {sub.slice(1, -1)}
+                  </span>
+                );
+              }
+              return sub;
+            })}
+          </span>
+        );
+      }
+      return <span key={pIdx}>{part}</span>;
+    });
+
+    if (isBullet) {
+      return (
+        <div key={lIdx} className="flex items-start gap-2 ml-1 my-0.5">
+          <span className="text-indigo-500 font-bold leading-5 select-none">•</span>
+          <span className="leading-relaxed flex-1">{renderedParts}</span>
+        </div>
+      );
+    }
+
+    return (
+      <p key={lIdx} className="leading-relaxed">
+        {renderedParts}
+      </p>
+    );
+  });
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const { user, token, organizationId, role, isLoading: authLoading, logout } = useAuth();
@@ -65,6 +126,7 @@ export default function DashboardPage() {
       text: string;
       sources?: SourceCitation[];
       model?: string;
+      isStreaming?: boolean;
     }>
   >([]);
   const [inputQuery, setInputQuery] = useState("");
@@ -280,29 +342,96 @@ export default function DashboardPage() {
 
     const query = inputQuery.trim();
     setInputQuery("");
-    setChatMessages((prev) => [...prev, { sender: "user", text: query }]);
+    
+    // Append user query and empty streaming assistant response
+    setChatMessages((prev) => [
+      ...prev,
+      { sender: "user", text: query },
+      { sender: "assistant", text: "", isStreaming: true }
+    ]);
     setIsQuerying(true);
 
     try {
-      const response = await api.chatQuery(query, 3);
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          sender: "assistant",
-          text: response.answer,
-          sources: response.sources,
-          model: response.model,
+      await api.chatQueryStream(query, 3, {
+        onToken: (token: string) => {
+          setChatMessages((prev) => {
+            const copy = [...prev];
+            const last = copy[copy.length - 1];
+            if (last && last.sender === "assistant") {
+              copy[copy.length - 1] = {
+                ...last,
+                text: last.text + token,
+                isStreaming: true,
+              };
+            }
+            return copy;
+          });
         },
-      ]);
+        onCitations: (citations: SourceCitation[]) => {
+          setChatMessages((prev) => {
+            const copy = [...prev];
+            const last = copy[copy.length - 1];
+            if (last && last.sender === "assistant") {
+              copy[copy.length - 1] = {
+                ...last,
+                sources: citations,
+              };
+            }
+            return copy;
+          });
+        },
+        onDone: (metrics) => {
+          setChatMessages((prev) => {
+            const copy = [...prev];
+            const last = copy[copy.length - 1];
+            if (last && last.sender === "assistant") {
+              copy[copy.length - 1] = {
+                ...last,
+                model: metrics.model,
+                isStreaming: false,
+              };
+            }
+            return copy;
+          });
+          setIsQuerying(false);
+          loadUsage(); // Live refresh token quota telemetry (Section 7.4)
+        },
+        onError: (errMsg: string) => {
+          setChatMessages((prev) => {
+            const copy = [...prev];
+            const last = copy[copy.length - 1];
+            if (last && last.sender === "assistant") {
+              copy[copy.length - 1] = {
+                ...last,
+                text: (last.text ? last.text + "\n\n" : "") + `⚠️ ${errMsg}`,
+                isStreaming: false,
+              };
+            }
+            return copy;
+          });
+          setIsQuerying(false);
+        }
+      });
     } catch (err: unknown) {
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          sender: "assistant",
-          text: `⚠️ Error retrieving knowledge: ${(err as Error).message || "Unknown error"}`,
-        },
-      ]);
-    } finally {
+      const errMsg = (err as Error).message || "Unknown error";
+      setChatMessages((prev) => {
+        const copy = [...prev];
+        const last = copy[copy.length - 1];
+        if (last && last.sender === "assistant") {
+          copy[copy.length - 1] = {
+            ...last,
+            text: (last.text ? last.text + "\n\n" : "") + `⚠️ ${errMsg}`,
+            isStreaming: false,
+          };
+        } else {
+          copy.push({
+            sender: "assistant",
+            text: `⚠️ ${errMsg}`,
+            isStreaming: false,
+          });
+        }
+        return copy;
+      });
       setIsQuerying(false);
     }
   };
@@ -633,32 +762,53 @@ export default function DashboardPage() {
                     className={`flex flex-col ${msg.sender === "user" ? "items-end" : "items-start"}`}
                   >
                     <div
-                      className={`max-w-2xl rounded-2xl p-4 text-xs leading-relaxed ${
+                      className={`max-w-2xl rounded-2xl p-4 sm:p-5 text-xs sm:text-sm leading-relaxed transition-all shadow-sm ${
                         msg.sender === "user"
-                          ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg border border-white/20"
-                          : "bg-slate-100 dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 text-slate-900 dark:text-slate-200"
+                          ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md border border-white/20"
+                          : "bg-white/90 dark:bg-white/[0.04] backdrop-blur-md border border-slate-200 dark:border-white/10 text-slate-900 dark:text-slate-200"
                       }`}
                     >
-                      <p className="whitespace-pre-wrap">{msg.text}</p>
+                      {msg.sender === "user" ? (
+                        <p className="whitespace-pre-wrap font-medium">{msg.text}</p>
+                      ) : msg.text ? (
+                        <div className="space-y-1.5 text-slate-800 dark:text-slate-200">
+                          {renderFormattedAnswer(msg.text)}
+                          {msg.isStreaming && (
+                            <span className="inline-block w-1.5 h-3.5 ml-1 bg-indigo-500 animate-pulse rounded-sm align-middle" />
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 py-1 text-xs text-indigo-600 dark:text-indigo-400">
+                          <div className="w-3.5 h-3.5 border-2 border-indigo-600 dark:border-indigo-400 border-t-transparent rounded-full animate-spin" />
+                          <span className="font-medium animate-pulse">Consulting vector index & streaming grounded answer...</span>
+                        </div>
+                      )}
 
                       {/* Citations section */}
                       {msg.sources && msg.sources.length > 0 && (
                         <div className="mt-4 pt-3 border-t border-slate-200 dark:border-white/[0.08] space-y-2">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
-                            <FileText className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
-                            Citations & Provenance ({msg.sources.length})
-                          </span>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
+                              <FileText className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                              Citations & Provenance ({msg.sources.length})
+                            </span>
+                            {msg.model && (
+                              <span className="text-[9px] font-mono text-slate-400 dark:text-slate-500">
+                                Model: {msg.model}
+                              </span>
+                            )}
+                          </div>
                           <div className="grid grid-cols-1 gap-2">
                             {msg.sources.map((src, sIdx) => (
                               <div
                                 key={sIdx}
-                                className="holo-citation p-2.5 rounded-xl text-[11px] text-slate-800 dark:text-slate-300"
+                                className="holo-citation p-2.5 rounded-xl text-[11px] text-slate-800 dark:text-slate-300 transition-all hover:border-indigo-500/30"
                               >
                                 <div className="flex items-center justify-between font-medium text-slate-600 dark:text-slate-400 mb-1">
-                                  <span className="font-bold text-slate-900 dark:text-white truncate max-w-[200px]">
+                                  <span className="font-bold text-slate-900 dark:text-white truncate max-w-[220px]">
                                     {src.document_title || "Document"}
                                   </span>
-                                  <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 font-mono text-[10px]">
+                                  <span className="px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 font-mono text-[10px] font-semibold border border-indigo-500/20">
                                     Page {src.page_number} • Match: {(src.similarity_score * 100).toFixed(1)}%
                                   </span>
                                 </div>
@@ -673,13 +823,6 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 ))
-              )}
-
-              {isQuerying && (
-                <div className="flex items-center gap-2 text-xs text-indigo-600 dark:text-indigo-400 p-2">
-                  <div className="w-3.5 h-3.5 border-2 border-indigo-600 dark:border-indigo-500 border-t-transparent rounded-full animate-spin" />
-                  <span>Executing Section 9.2 hybrid search & generating answer...</span>
-                </div>
               )}
               <div ref={chatBottomRef} />
             </div>

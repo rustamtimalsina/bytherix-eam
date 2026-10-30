@@ -260,3 +260,134 @@ def query_rag(
         prompt_tokens=prompt_toks,
         completion_tokens=comp_toks
     )
+
+
+def stream_query_rag(
+    organization_id: str,
+    question: str,
+    top_k: int,
+    document_ids: Optional[List[str]],
+    db: Session
+):
+    """
+    Real-time streaming RAG Question-Answering Pipeline (Section 8.2).
+    Yields ('citations', citations) first, then ('token', token_str),
+    and finally ('done', (prompt_tokens, completion_tokens, model)).
+    """
+    query_terms = extract_terms(question)
+    query_vector = embedding_provider.get_embedding(question)
+
+    query = db.query(DocumentChunk).filter(DocumentChunk.organization_id == organization_id)
+    if document_ids:
+        query = query.filter(DocumentChunk.document_id.in_(document_ids))
+    
+    chunks = query.all()
+    if not chunks:
+        yield ("citations", [])
+        yield ("token", "No documents found in your organization library to answer this question. Please upload a PDF first.")
+        yield ("done", (0, 0, embedding_provider.model))
+        return
+
+    doc_cache: Dict[str, Document] = {}
+    doc_text_cache: Dict[str, str] = {}
+    df: Dict[str, int] = {}
+    N = len(chunks)
+
+    for c in chunks:
+        if c.document_id not in doc_cache:
+            d = db.query(Document).filter(Document.id == c.document_id).first()
+            if d:
+                doc_cache[c.document_id] = d
+                doc_text_cache[c.document_id] = d.title.lower()
+
+        if c.document_id in doc_text_cache:
+            doc_text_cache[c.document_id] += " " + c.content.lower()
+
+        words = set(re.findall(r"\b[a-zA-Z0-9_\-]{2,}\b", c.content.lower()))
+        for w in words:
+            df[w] = df.get(w, 0) + 1
+
+    doc_affinity: Dict[str, float] = {}
+    for doc_id, full_text in doc_text_cache.items():
+        doc_obj = doc_cache.get(doc_id)
+        doc_title = doc_obj.title.lower() if doc_obj else ""
+        matched_distinct = sum(1 for t in query_terms if t in full_text or t in doc_title)
+        total_occurrences = sum(full_text.count(t) for t in query_terms)
+        title_matches = sum(1 for t in query_terms if t in doc_title)
+        affinity = (matched_distinct * 10.0) + min(total_occurrences, 20) + (title_matches * 15.0)
+        doc_affinity[doc_id] = affinity
+
+    best_doc_id = max(doc_affinity.keys(), key=lambda k: doc_affinity[k]) if doc_affinity else None
+
+    scored_chunks: List[Tuple[float, DocumentChunk, str]] = []
+    for c in chunks:
+        doc = doc_cache.get(c.document_id)
+        doc_title = doc.title if doc else "Document"
+        text_lower = c.content.lower()
+        title_lower = doc_title.lower()
+
+        lex_score = 0.0
+        for t in query_terms:
+            doc_freq = df.get(t, 1)
+            idf = math.log((N - doc_freq + 0.5) / (doc_freq + 0.5) + 1.0)
+            tf_count = text_lower.count(t)
+            if tf_count > 0:
+                tf = (tf_count * 2.2) / (tf_count + 1.2)
+                lex_score += idf * tf
+            if t in title_lower:
+                lex_score += idf * 2.0
+
+        for i in range(len(query_terms) - 1):
+            phrase = f"{query_terms[i]} {query_terms[i+1]}"
+            if phrase in text_lower:
+                lex_score += 4.0
+
+        if c.document_id == best_doc_id:
+            lex_score *= 2.0
+        else:
+            lex_score *= 0.35
+
+        emb = c.embedding
+        vec_score = cosine_similarity(query_vector, list(emb)) if emb is not None else 0.0
+
+        if query_terms:
+            raw_score = (lex_score * 0.75) + (vec_score * 0.25)
+            norm_score = min(0.96, max(0.20, (raw_score / 15.0)))
+        else:
+            norm_score = max(0.1, min(0.95, vec_score))
+
+        scored_chunks.append((norm_score, c, doc_title))
+
+    scored_chunks.sort(key=lambda x: x[0], reverse=True)
+    top_chunks = scored_chunks[:top_k]
+
+    citations = []
+    context_dicts = []
+    for score, chunk, doc_title in top_chunks:
+        citations.append(SourceCitation(
+            document_id=chunk.document_id,
+            document_title=doc_title,
+            page_number=chunk.page_number,
+            chunk_index=chunk.chunk_index,
+            snippet=chunk.content[:240].replace("\n", " ").strip() + "...",
+            similarity_score=round(float(score), 4)
+        ))
+        context_dicts.append({
+            "doc_title": doc_title,
+            "page_number": chunk.page_number,
+            "content": chunk.content
+        })
+
+    # 1. Yield citations first
+    yield ("citations", citations)
+
+    # 2. Stream tokens
+    for event_type, data in llm_provider.generate_grounded_answer_stream(
+        question=question,
+        context_chunks=context_dicts
+    ):
+        if event_type == "token":
+            yield ("token", data)
+        elif event_type == "done":
+            p_toks, c_toks = data
+            yield ("done", (p_toks, c_toks, llm_provider.model))

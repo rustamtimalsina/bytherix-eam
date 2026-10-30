@@ -1,4 +1,6 @@
+import json
 import re
+import time
 from typing import List, Dict, Tuple
 import httpx
 from app.core.config import settings
@@ -149,6 +151,80 @@ class LLMProvider:
             )
 
         return answer, len(user_prompt.split()), len(answer.split())
+
+    def generate_grounded_answer_stream(
+        self,
+        question: str,
+        context_chunks: List[Dict]
+    ):
+        """
+        Stream tokens of the grounded answer in real-time.
+        Yields ('token', token_str) during generation.
+        Finally yields ('done', (prompt_tokens, completion_tokens)).
+        """
+        # 1. If OpenAI streaming is enabled
+        if self.api_key and not self.api_key.startswith("your-"):
+            context_text = ""
+            for idx, chunk in enumerate(context_chunks):
+                doc_title = chunk.get("doc_title", "Document")
+                page = chunk.get("page_number", 1)
+                content = chunk.get("content", "").strip()
+                context_text += f"\n--- [Source {idx+1}: {doc_title}, Page {page}] ---\n{content}\n"
+
+            system_policy = (
+                "You are Bytherix Enterprise AI Assistant. You must answer questions using ONLY "
+                "the provided context sources below. Synthesize your answer in clear, professional, "
+                "and understandable language with bold key points and bullet lists where appropriate. "
+                "Always cite your sources using [Source: Document Name, Page Y]."
+            )
+            user_prompt = f"Context Information:\n{context_text}\n\nQuestion: {question}\n\nAnswer:"
+
+            try:
+                with httpx.Client(timeout=45.0) as client:
+                    with client.stream(
+                        "POST",
+                        "https://api.openai.com/v1/chat/completions",
+                        headers={"Authorization": f"Bearer {self.api_key}"},
+                        json={
+                            "model": self.model,
+                            "messages": [
+                                {"role": "system", "content": system_policy},
+                                {"role": "user", "content": user_prompt}
+                            ],
+                            "temperature": 0.1,
+                            "stream": True
+                        }
+                    ) as response:
+                        if response.status_code == 200:
+                            total_comp = 0
+                            for line in response.iter_lines():
+                                if line.startswith("data: "):
+                                    data_str = line[6:].strip()
+                                    if data_str == "[DONE]":
+                                        break
+                                    try:
+                                        chunk_json = json.loads(data_str)
+                                        delta = chunk_json["choices"][0]["delta"].get("content", "")
+                                        if delta:
+                                            total_comp += len(delta.split())
+                                            yield ("token", delta)
+                                    except Exception:
+                                        pass
+                            yield ("done", (len(user_prompt.split()), total_comp))
+                            return
+            except Exception:
+                pass
+
+        # 2. Offline real-time fluid streamer
+        full_answer, prompt_toks, comp_toks = self.generate_grounded_answer(question, context_chunks)
+        # Yield in natural token chunks with micro-delays for fluid animation
+        words = full_answer.split(" ")
+        for i, word in enumerate(words):
+            token = word if i == len(words) - 1 else word + " "
+            time.sleep(0.015)  # 15ms authentic streaming feel
+            yield ("token", token)
+
+        yield ("done", (prompt_toks, comp_toks))
 
 
 llm_provider = LLMProvider()
