@@ -27,6 +27,7 @@ import {
 import { api, DocumentItem, ApiKeyItem, SourceCitation, UsageSummary, MembershipItem } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { CosmicThemeToggle } from "@/components/CosmicThemeToggle";
+import { CustomRoleDropdown, ROLE_OPTIONS, INVITE_ROLE_OPTIONS } from "@/components/CustomRoleDropdown";
 import { FloatingRocketDock, ActiveTab } from "@/components/FloatingRocketDock";
 import { OrbitalCore } from "@/components/OrbitalCore";
 
@@ -104,9 +105,15 @@ export default function DashboardPage() {
 
     if (!hasPendingDocs || !token) return;
 
+    let attempts = 0;
     const interval = setInterval(() => {
+      attempts++;
+      if (attempts > 10) {
+        clearInterval(interval);
+        return;
+      }
       loadDocuments();
-    }, 2500);
+    }, 3000);
 
     return () => clearInterval(interval);
   }, [documents, token]);
@@ -1126,20 +1133,16 @@ export default function DashboardPage() {
                           {m.status}
                         </span>
 
-                        {/* Role Select Dropdown */}
-                        <select
-                          value={m.role}
-                          disabled={m.role === "organization_owner"}
-                          onChange={(e) => handleUpdateRole(m.id, e.target.value)}
-                          className="text-[11px] font-semibold py-1 px-2 rounded-lg bg-slate-100 dark:bg-white/[0.06] border border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-slate-200 disabled:opacity-60 focus:outline-none"
-                        >
-                          <option value="organization_owner">Owner</option>
-                          <option value="organization_administrator">Admin</option>
-                          <option value="developer">Developer</option>
-                          <option value="ai_ml_engineer">AI/ML Engineer</option>
-                          <option value="analyst">Analyst</option>
-                          <option value="viewer">Viewer</option>
-                        </select>
+                        {/* Custom Role Dropdown */}
+                        <div className="w-32">
+                          <CustomRoleDropdown
+                            value={m.role}
+                            disabled={m.role === "organization_owner"}
+                            onChange={(newRole) => handleUpdateRole(m.id, newRole)}
+                            options={ROLE_OPTIONS}
+                            compact
+                          />
+                        </div>
 
                         {/* Copy Invite Link if Invited */}
                         {m.status === "invited" && m.invitation_token && (
@@ -1251,17 +1254,11 @@ export default function DashboardPage() {
                         <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                           Tenant Role (Least Privilege)
                         </label>
-                        <select
+                        <CustomRoleDropdown
                           value={inviteRole}
-                          onChange={(e) => setInviteRole(e.target.value)}
-                          className="w-full px-3.5 py-2 rounded-xl text-xs bg-slate-100 dark:bg-black/40 border border-slate-300 dark:border-white/[0.08] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-                        >
-                          <option value="organization_administrator">Organization Administrator (Full Org Config)</option>
-                          <option value="developer">Developer (API Keys, Docs, RAG Ingestion)</option>
-                          <option value="ai_ml_engineer">AI/ML Engineer (Models, Inference & RAG)</option>
-                          <option value="analyst">Analyst (RAG Queries & Telemetry)</option>
-                          <option value="viewer">Viewer (Read-only)</option>
-                        </select>
+                          onChange={(val) => setInviteRole(val)}
+                          options={INVITE_ROLE_OPTIONS}
+                        />
                       </div>
 
                       <div className="flex justify-end gap-2 pt-2">
