@@ -314,12 +314,10 @@ html.light nav[aria-label="Platform navigation dock"] button:not(.bg-gradient-to
   background: rgba(0, 0, 0, 0.05);
 }
 
-html.light .text-white {
-  color: #0f172a !important;
-}
-
-html.light .text-slate-400 {
-  color: #64748b !important;
+html.light .bg-gradient-to-r .text-white,
+html.light .btn-3d-top,
+html.light .btn-3d-top * {
+  color: #ffffff !important;
 }
 
 html.light .bg-black\/40,

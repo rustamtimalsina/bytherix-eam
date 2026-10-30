@@ -33,8 +33,8 @@ export function OrbitalCore({ label = "BYTHERIX ENTERPRISE RAG CORE" }: { label?
       </div>
 
       {/* Pill Badge under the core */}
-      <div className="mt-3 inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/[0.04] border border-white/10 text-[11px] font-mono tracking-wider text-slate-300 shadow-sm backdrop-blur-md">
-        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+      <div className="mt-3 inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-slate-900/[0.06] dark:bg-white/[0.04] border border-slate-900/10 dark:border-white/10 text-[11px] font-mono font-semibold tracking-wider text-slate-800 dark:text-slate-300 shadow-sm backdrop-blur-md">
+        <span className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-cyan-400 animate-ping" />
         <span>{label}</span>
       </div>
     </div>
