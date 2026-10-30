@@ -1,3 +1,14 @@
+GREETING_PATTERNS = {
+    "hi", "hello", "hey", "wassup", "whats up", "what's up",
+    "howdy", "good morning", "good afternoon", "good evening",
+    "how are you", "who are you", "what can you do", "help",
+    "sup", "yo"
+}
+
+def is_conversational_greeting(text: str) -> bool:
+    clean = re.sub(r"[^a-zA-Z0-9\s]", "", text.strip().lower())
+    return clean in GREETING_PATTERNS
+
 import io
 import math
 import re
@@ -274,6 +285,17 @@ def stream_query_rag(
     Yields ('citations', citations) first, then ('token', token_str),
     and finally ('done', (prompt_tokens, completion_tokens, model)).
     """
+    # 0. Conversational greeting check
+    if is_conversational_greeting(question):
+        yield ("citations", [])
+        msg = "Hello! I am your Bytherix Enterprise AI Assistant. How can I help you explore your uploaded documents today?"
+        words = msg.split(" ")
+        for i, w in enumerate(words):
+            token = w if i == len(words) - 1 else w + " "
+            yield ("token", token)
+        yield ("done", (len(question.split()), len(words), "bytherix-assistant"))
+        return
+
     query_terms = extract_terms(question)
     query_vector = embedding_provider.get_embedding(question)
 
@@ -377,6 +399,18 @@ def stream_query_rag(
             "page_number": chunk.page_number,
             "content": chunk.content
         })
+
+    # Check insufficient evidence (Section 18)
+    has_match = (best_doc_id is not None and doc_affinity.get(best_doc_id, 0) > 0) or any(s >= 0.28 for s, _, _ in top_chunks)
+    if not has_match and query_terms:
+        yield ("citations", [])
+        msg = "I could not find sufficient evidence or matching context in your uploaded documents regarding this query. Please ask a question related to your documents."
+        words = msg.split(" ")
+        for i, w in enumerate(words):
+            token = w if i == len(words) - 1 else w + " "
+            yield ("token", token)
+        yield ("done", (len(question.split()), len(words), "bytherix-assistant"))
+        return
 
     # 1. Yield citations first
     yield ("citations", citations)
