@@ -1,20 +1,17 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
+import { useTheme } from "@/lib/theme-context";
 
 export function CosmicThemeToggle() {
-  const [isDark, setIsDark] = useState(true);
-
-  const toggle = () => {
-    setIsDark(!isDark);
-    // Future expansion: toggle document.documentElement.classList
-  };
+  const { isDark, toggleTheme } = useTheme();
 
   return (
     <button
-      onClick={toggle}
-      title={isDark ? "Switch to Celestial Light" : "Switch to Deep Space"}
-      className="relative w-16 h-8 rounded-full p-1 cursor-pointer transition-all duration-500 overflow-hidden shadow-[inset_0_2px_4px_rgba(0,0,0,0.6),0_0_15px_rgba(59,130,246,0.2)] border border-white/15 hover:border-white/30"
+      onClick={toggleTheme}
+      type="button"
+      title={isDark ? "Switch to Daylight Mode" : "Switch to Deep Space Mode"}
+      className="relative w-16 h-8 rounded-full p-1 cursor-pointer transition-all duration-500 overflow-hidden shadow-[inset_0_2px_4px_rgba(0,0,0,0.5),0_0_15px_rgba(59,130,246,0.2)] border border-white/20 hover:border-white/40"
       style={{
         background: isDark
           ? "linear-gradient(135deg, #090e1c 0%, #151f38 100%)"
@@ -33,7 +30,7 @@ export function CosmicThemeToggle() {
         <span className="absolute top-2 right-4 w-0.5 h-0.5 rounded-full bg-amber-100 opacity-90" />
       </div>
 
-      {/* Floating Celestial Orb (Moon / Sun) */}
+      {/* Floating Celestial Orb (Moon in dark / Sun in light) */}
       <div
         className={`relative w-6 h-6 rounded-full transition-transform duration-500 ease-out flex items-center justify-center ${
           isDark
