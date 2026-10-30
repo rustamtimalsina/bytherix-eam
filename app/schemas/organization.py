@@ -31,9 +31,14 @@ class MembershipOut(BaseModel):
     status: str
     user_email: Optional[str] = None
     user_full_name: Optional[str] = None
+    invitation_token: Optional[str] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UpdateMemberRoleRequest(BaseModel):
+    role: str = Field(description="Updated role: organization_administrator, developer, ai_ml_engineer, analyst, billing_manager, viewer")
 
 
 class AcceptInviteRequest(BaseModel):

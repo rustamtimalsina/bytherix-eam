@@ -21,8 +21,10 @@ import {
   Zap,
   RefreshCw,
   Cpu,
+  UserPlus,
+  X,
 } from "lucide-react";
-import { api, DocumentItem, ApiKeyItem, SourceCitation, UsageSummary } from "@/lib/api";
+import { api, DocumentItem, ApiKeyItem, SourceCitation, UsageSummary, MembershipItem } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { CosmicThemeToggle } from "@/components/CosmicThemeToggle";
 import { FloatingRocketDock, ActiveTab } from "@/components/FloatingRocketDock";
@@ -36,6 +38,17 @@ export default function DashboardPage() {
   // Usage telemetry state (Section 7.4)
   const [usage, setUsage] = useState<UsageSummary | null>(null);
   const [isUsageLoading, setIsUsageLoading] = useState(false);
+
+  // Members state (Section 7.1)
+  const [members, setMembers] = useState<MembershipItem[]>([]);
+  const [isMembersLoading, setIsMembersLoading] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("developer");
+  const [isInviting, setIsInviting] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [generatedInviteLink, setGeneratedInviteLink] = useState<string | null>(null);
+  const [copiedInvite, setCopiedInvite] = useState(false);
 
   // Documents state
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
@@ -78,8 +91,10 @@ export default function DashboardPage() {
       loadDocuments();
       loadApiKeys();
       loadUsage();
+      loadMembers();
     }
-  }, [token]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, organizationId]);
 
   // Auto-poll document status if any document is processing or queued
   useEffect(() => {
@@ -128,6 +143,62 @@ export default function DashboardPage() {
       console.error("Failed to load telemetry usage:", e);
     } finally {
       setIsUsageLoading(false);
+    }
+  };
+
+  const loadMembers = async () => {
+    if (!organizationId) return;
+    try {
+      setIsMembersLoading(true);
+      const data = await api.listMembers(organizationId);
+      setMembers(data);
+    } catch (e) {
+      console.error("Failed to load members:", e);
+    } finally {
+      setIsMembersLoading(false);
+    }
+  };
+
+  const handleInviteSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!organizationId) return;
+    setInviteError(null);
+    setIsInviting(true);
+    setGeneratedInviteLink(null);
+
+    try {
+      const res = await api.inviteMember(organizationId, inviteEmail, inviteRole);
+      if (res.invitation_token) {
+        const link = `${window.location.origin}/accept-invite?token=${res.invitation_token}`;
+        setGeneratedInviteLink(link);
+      }
+      setInviteEmail("");
+      await loadMembers();
+    } catch (err: unknown) {
+      setInviteError((err as Error).message || "Failed to invite member");
+    } finally {
+      setIsInviting(false);
+    }
+  };
+
+  const handleRemoveMember = async (membershipId: string) => {
+    if (!organizationId) return;
+    if (!confirm("Are you sure you want to remove this member or revoke their invitation?")) return;
+    try {
+      await api.removeMember(organizationId, membershipId);
+      await loadMembers();
+    } catch (err: unknown) {
+      alert((err as Error).message || "Failed to remove member");
+    }
+  };
+
+  const handleUpdateRole = async (membershipId: string, newRole: string) => {
+    if (!organizationId) return;
+    try {
+      await api.updateMemberRole(organizationId, membershipId, newRole);
+      await loadMembers();
+    } catch (err: unknown) {
+      alert((err as Error).message || "Failed to update role");
     }
   };
 
@@ -980,6 +1051,240 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
+
+            {/* Team Members & Role Access Control (Section 7.1) */}
+            <div className="card-depth-3d p-5 sm:p-6 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-white/[0.08] pb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-500/10 dark:bg-indigo-400/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                    <Users className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <span>Team Members & RBAC</span>
+                      <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-slate-200 dark:bg-white/[0.08] text-slate-700 dark:text-slate-300">
+                        Section 7.1
+                      </span>
+                    </h3>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">
+                      Collaborator accounts, scoped roles, and single-use invitation tokens
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setShowInviteModal(true)}
+                  className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-teal-500 to-indigo-600 hover:from-teal-400 hover:to-indigo-500 shadow-lg shadow-teal-500/20 active:scale-[0.98] transition-all"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>Invite Member</span>
+                </button>
+              </div>
+
+              {/* Members List */}
+              <div className="space-y-2">
+                {members.length === 0 ? (
+                  <div className="text-center py-6 text-xs text-slate-500">
+                    {isMembersLoading ? "Loading members..." : "No members found in this workspace."}
+                  </div>
+                ) : (
+                  members.map((m) => (
+                    <div
+                      key={m.id}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/[0.06] gap-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-teal-500/20 to-indigo-500/20 flex items-center justify-center text-slate-800 dark:text-slate-200 font-bold text-xs uppercase border border-slate-200 dark:border-white/[0.08]">
+                          {(m.user_full_name || m.user_email || "U").slice(0, 2)}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-slate-900 dark:text-white">
+                              {m.user_full_name || "Invited User"}
+                            </span>
+                            {m.user_id === user?.id && (
+                              <span className="text-[9px] px-1.5 py-0.2 rounded bg-teal-500/10 text-teal-700 dark:text-teal-300 font-mono font-semibold">
+                                You
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                            {m.user_email}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 self-end sm:self-center">
+                        {/* Status Badge */}
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                            m.status === "active"
+                              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20"
+                              : "bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20"
+                          }`}
+                        >
+                          {m.status}
+                        </span>
+
+                        {/* Role Select Dropdown */}
+                        <select
+                          value={m.role}
+                          disabled={m.role === "organization_owner"}
+                          onChange={(e) => handleUpdateRole(m.id, e.target.value)}
+                          className="text-[11px] font-semibold py-1 px-2 rounded-lg bg-slate-100 dark:bg-white/[0.06] border border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-slate-200 disabled:opacity-60 focus:outline-none"
+                        >
+                          <option value="organization_owner">Owner</option>
+                          <option value="organization_administrator">Admin</option>
+                          <option value="developer">Developer</option>
+                          <option value="ai_ml_engineer">AI/ML Engineer</option>
+                          <option value="analyst">Analyst</option>
+                          <option value="viewer">Viewer</option>
+                        </select>
+
+                        {/* Copy Invite Link if Invited */}
+                        {m.status === "invited" && m.invitation_token && (
+                          <button
+                            onClick={() => {
+                              const link = `${window.location.origin}/accept-invite?token=${m.invitation_token}`;
+                              navigator.clipboard.writeText(link);
+                              alert("Invitation link copied to clipboard!");
+                            }}
+                            title="Copy Invitation Link"
+                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.06] dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-white/[0.08] transition-all"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+
+                        {/* Remove / Revoke Button */}
+                        {m.role !== "organization_owner" && (
+                          <button
+                            onClick={() => handleRemoveMember(m.id)}
+                            title="Remove member"
+                            className="p-1.5 rounded-lg hover:bg-rose-500/10 text-slate-400 hover:text-rose-500 transition-all"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Invite Member Modal */}
+            {showInviteModal && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                <div className="card-depth-3d w-full max-w-md p-6 space-y-4 relative">
+                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/[0.08] pb-3">
+                    <div className="flex items-center gap-2">
+                      <UserPlus className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                        Invite New Collaborator
+                      </h4>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setShowInviteModal(false);
+                        setGeneratedInviteLink(null);
+                        setInviteError(null);
+                      }}
+                      className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {inviteError && (
+                    <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-rose-900 dark:text-rose-200 text-xs">
+                      {inviteError}
+                    </div>
+                  )}
+
+                  {generatedInviteLink ? (
+                    <div className="space-y-3">
+                      <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 text-emerald-900 dark:text-emerald-200 text-xs font-semibold flex items-center gap-2">
+                        <Check className="w-4 h-4" />
+                        <span>Invitation generated successfully!</span>
+                      </div>
+                      <p className="text-xs text-slate-600 dark:text-slate-400">
+                        Share this single-use link with your teammate (valid for 7 days per Section 7.1):
+                      </p>
+                      <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-100 dark:bg-black/40 border border-slate-200 dark:border-white/[0.08]">
+                        <input
+                          type="text"
+                          readOnly
+                          value={generatedInviteLink}
+                          className="bg-transparent font-mono text-[11px] text-slate-900 dark:text-white w-full focus:outline-none"
+                        />
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(generatedInviteLink);
+                            setCopiedInvite(true);
+                            setTimeout(() => setCopiedInvite(false), 2000);
+                          }}
+                          className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-white bg-teal-600 hover:bg-teal-500 shrink-0 flex items-center gap-1"
+                        >
+                          {copiedInvite ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                          <span>{copiedInvite ? "Copied" : "Copy"}</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleInviteSubmit} className="space-y-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                          Teammate Email
+                        </label>
+                        <input
+                          type="email"
+                          required
+                          value={inviteEmail}
+                          onChange={(e) => setInviteEmail(e.target.value)}
+                          placeholder="teammate@example.com"
+                          className="w-full px-3.5 py-2 rounded-xl text-xs bg-slate-100 dark:bg-black/40 border border-slate-300 dark:border-white/[0.08] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                          Tenant Role (Least Privilege)
+                        </label>
+                        <select
+                          value={inviteRole}
+                          onChange={(e) => setInviteRole(e.target.value)}
+                          className="w-full px-3.5 py-2 rounded-xl text-xs bg-slate-100 dark:bg-black/40 border border-slate-300 dark:border-white/[0.08] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        >
+                          <option value="organization_administrator">Organization Administrator (Full Org Config)</option>
+                          <option value="developer">Developer (API Keys, Docs, RAG Ingestion)</option>
+                          <option value="ai_ml_engineer">AI/ML Engineer (Models, Inference & RAG)</option>
+                          <option value="analyst">Analyst (RAG Queries & Telemetry)</option>
+                          <option value="viewer">Viewer (Read-only)</option>
+                        </select>
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowInviteModal(false)}
+                          className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[0.06]"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={isInviting}
+                          className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-teal-500 to-indigo-600 hover:from-teal-400 hover:to-indigo-500 disabled:opacity-50 flex items-center gap-1.5"
+                        >
+                          {isInviting ? "Generating Invite..." : "Send Invitation"}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </main>

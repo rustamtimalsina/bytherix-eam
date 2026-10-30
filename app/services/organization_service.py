@@ -120,11 +120,15 @@ def accept_invite(
             detail="Invalid or expired invitation token"
         )
 
-    if membership.invitation_expires_at and membership.invitation_expires_at < datetime.now(timezone.utc):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invitation has expired"
-        )
+    if membership.invitation_expires_at:
+        expires_at = membership.invitation_expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if expires_at < datetime.now(timezone.utc):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invitation has expired"
+            )
 
     user = db.query(User).filter(User.id == membership.user_id).first()
     if not user:

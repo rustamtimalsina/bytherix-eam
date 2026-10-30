@@ -14,6 +14,7 @@ from app.schemas.organization import (
     MembershipOut,
     OrganizationCreate,
     OrganizationOut,
+    UpdateMemberRoleRequest,
 )
 from app.services.organization_service import (
     accept_invite,
@@ -74,6 +75,7 @@ def list_members(
             status=m.status,
             user_email=user.email if user else None,
             user_full_name=user.full_name if user else None,
+            invitation_token=m.invitation_token,
             created_at=m.created_at
         )
         result.append(out)
@@ -106,8 +108,87 @@ def invite(
         status=membership.status,
         user_email=user.email if user else None,
         user_full_name=user.full_name if user else None,
+        invitation_token=membership.invitation_token,
         created_at=membership.created_at
     )
+
+
+@router.patch("/{organization_id}/members/{membership_id}", response_model=MembershipOut)
+def update_member_role(
+    organization_id: str,
+    membership_id: str,
+    data: UpdateMemberRoleRequest,
+    context: TenantContext = Depends(require_permission(Permission.MEMBERS_UPDATE)),
+    db: Session = Depends(get_db)
+):
+    """Update a team member's role (Section 7.1 & 10.2)."""
+    if context.organization.id != organization_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cross-tenant access forbidden")
+
+    membership = db.query(Membership).filter(
+        Membership.id == membership_id,
+        Membership.organization_id == organization_id
+    ).first()
+
+    if not membership:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Membership record not found")
+
+    if membership.role == Role.OWNER.value and data.role != Role.OWNER.value:
+        owners = db.query(Membership).filter(
+            Membership.organization_id == organization_id,
+            Membership.role == Role.OWNER.value
+        ).count()
+        if owners <= 1:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot demote the sole organization owner")
+
+    membership.role = data.role
+    db.commit()
+    db.refresh(membership)
+
+    user = db.query(User).filter(User.id == membership.user_id).first()
+    return MembershipOut(
+        id=membership.id,
+        user_id=membership.user_id,
+        organization_id=membership.organization_id,
+        role=membership.role,
+        status=membership.status,
+        user_email=user.email if user else None,
+        user_full_name=user.full_name if user else None,
+        invitation_token=membership.invitation_token,
+        created_at=membership.created_at
+    )
+
+
+@router.delete("/{organization_id}/members/{membership_id}", status_code=status.HTTP_200_OK)
+def remove_member(
+    organization_id: str,
+    membership_id: str,
+    context: TenantContext = Depends(require_permission(Permission.MEMBERS_REMOVE)),
+    db: Session = Depends(get_db)
+):
+    """Remove a team member or revoke a pending invitation (Section 7.1 & 10.2)."""
+    if context.organization.id != organization_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cross-tenant access forbidden")
+
+    membership = db.query(Membership).filter(
+        Membership.id == membership_id,
+        Membership.organization_id == organization_id
+    ).first()
+
+    if not membership:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Membership record not found")
+
+    if membership.role == Role.OWNER.value:
+        owners = db.query(Membership).filter(
+            Membership.organization_id == organization_id,
+            Membership.role == Role.OWNER.value
+        ).count()
+        if owners <= 1:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot remove the sole organization owner")
+
+    db.delete(membership)
+    db.commit()
+    return {"success": True, "message": "Membership deleted successfully"}
 
 
 @router.post("/accept-invite", status_code=status.HTTP_200_OK)

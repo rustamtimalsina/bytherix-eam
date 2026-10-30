@@ -68,6 +68,18 @@ export interface UsageSummary {
   is_quota_exceeded: boolean;
 }
 
+export interface MembershipItem {
+  id: string;
+  user_id: string;
+  organization_id: string;
+  role: string;
+  status: string;
+  user_email: string | null;
+  user_full_name: string | null;
+  invitation_token: string | null;
+  created_at: string;
+}
+
 export interface ApiKeyItem {
   id: string;
   organization_id: string;
@@ -186,6 +198,38 @@ class ApiClient {
   // Usage & Quota endpoints (Section 7.4 & 10.2)
   async getUsage(): Promise<UsageSummary> {
     return this.request<UsageSummary>("/usage");
+  }
+
+  // Member & Organization endpoints (Section 7.1 & 10.2)
+  async listMembers(orgId: string): Promise<MembershipItem[]> {
+    return this.request<MembershipItem[]>(`/organizations/${orgId}/members`);
+  }
+
+  async inviteMember(orgId: string, email: string, role: string): Promise<MembershipItem> {
+    return this.request<MembershipItem>(`/organizations/${orgId}/members/invite`, {
+      method: "POST",
+      body: JSON.stringify({ email, role }),
+    });
+  }
+
+  async removeMember(orgId: string, membershipId: string): Promise<{ success: boolean }> {
+    return this.request<{ success: boolean }>(`/organizations/${orgId}/members/${membershipId}`, {
+      method: "DELETE",
+    });
+  }
+
+  async updateMemberRole(orgId: string, membershipId: string, role: string): Promise<MembershipItem> {
+    return this.request<MembershipItem>(`/organizations/${orgId}/members/${membershipId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ role }),
+    });
+  }
+
+  async acceptInvite(token: string, password: string, fullName: string): Promise<{ message: string; email: string; organization_id: string }> {
+    return this.request<{ message: string; email: string; organization_id: string }>("/organizations/accept-invite", {
+      method: "POST",
+      body: JSON.stringify({ token, password, full_name: fullName }),
+    });
   }
 }
 
