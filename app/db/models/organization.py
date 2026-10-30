@@ -7,6 +7,7 @@ if TYPE_CHECKING:
     from app.db.models.membership import Membership
     from app.db.models.document import Document
     from app.db.models.api_key import APIKey
+    from app.db.models.usage import UsageRecord
 
 
 class Organization(Base):
@@ -31,5 +32,10 @@ class Organization(Base):
     api_keys: Mapped[List["APIKey"]] = relationship(
         "APIKey", 
         back_populates="organization", 
+        cascade="all, delete-orphan"
+    )
+    usage_records: Mapped[List["UsageRecord"]] = relationship(
+        "UsageRecord",
+        back_populates="organization",
         cascade="all, delete-orphan"
     )

@@ -17,8 +17,12 @@ import {
   Layers,
   Key,
   Users,
+  Gauge,
+  Zap,
+  RefreshCw,
+  Cpu,
 } from "lucide-react";
-import { api, DocumentItem, ApiKeyItem, SourceCitation } from "@/lib/api";
+import { api, DocumentItem, ApiKeyItem, SourceCitation, UsageSummary } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { CosmicThemeToggle } from "@/components/CosmicThemeToggle";
 import { FloatingRocketDock, ActiveTab } from "@/components/FloatingRocketDock";
@@ -28,6 +32,10 @@ export default function DashboardPage() {
   const router = useRouter();
   const { user, token, organizationId, role, isLoading: authLoading, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<ActiveTab>("documents");
+
+  // Usage telemetry state (Section 7.4)
+  const [usage, setUsage] = useState<UsageSummary | null>(null);
+  const [isUsageLoading, setIsUsageLoading] = useState(false);
 
   // Documents state
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
@@ -69,6 +77,7 @@ export default function DashboardPage() {
     if (token) {
       loadDocuments();
       loadApiKeys();
+      loadUsage();
     }
   }, [token]);
 
@@ -107,6 +116,18 @@ export default function DashboardPage() {
       setApiKeys(keys);
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const loadUsage = async () => {
+    try {
+      setIsUsageLoading(true);
+      const data = await api.getUsage();
+      setUsage(data);
+    } catch (e) {
+      console.error("Failed to load telemetry usage:", e);
+    } finally {
+      setIsUsageLoading(false);
     }
   };
 
@@ -768,10 +789,21 @@ export default function DashboardPage() {
                   Document Limit
                 </span>
                 <p className="text-2xl font-extrabold text-slate-900 dark:text-white">
-                  {Math.min(documents.length, 5)} <span className="text-xs font-normal text-slate-500">/ 5 docs</span>
+                  {Math.min(documents.length, usage?.documents_limit ?? 5)}{" "}
+                  <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
+                    / {usage?.documents_limit ?? 5} docs
+                  </span>
                 </p>
-                <p className={`text-[11px] font-semibold ${documents.length >= 5 ? "text-amber-600 dark:text-amber-400" : "text-slate-600 dark:text-slate-400"}`}>
-                  {documents.length >= 5 ? "● Quota Cap Reached (Free Tier)" : "PDF Magic Byte Protected"}
+                <p
+                  className={`text-[11px] font-semibold ${
+                    documents.length >= (usage?.documents_limit ?? 5)
+                      ? "text-amber-600 dark:text-amber-400"
+                      : "text-slate-600 dark:text-slate-400"
+                  }`}
+                >
+                  {documents.length >= (usage?.documents_limit ?? 5)
+                    ? "● Quota Cap Reached (Free Tier)"
+                    : "PDF Magic Byte Protected"}
                 </p>
               </div>
 
@@ -779,9 +811,153 @@ export default function DashboardPage() {
                 <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   Token Allowance
                 </span>
-                <p className="text-2xl font-extrabold text-slate-900 dark:text-white">100,000</p>
-                <p className="text-[11px] text-slate-600 dark:text-slate-400">Monthly RAG Token Budget</p>
+                <p className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono">
+                  {(usage?.tokens_used ?? 0).toLocaleString()}{" "}
+                  <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
+                    / {(usage?.token_allowance ?? 100000).toLocaleString()}
+                  </span>
+                </p>
+                <p
+                  className={`text-[11px] font-semibold ${
+                    usage?.is_quota_exceeded
+                      ? "text-rose-600 dark:text-rose-400"
+                      : (usage?.percentage_used ?? 0) >= 80
+                      ? "text-amber-600 dark:text-amber-400"
+                      : "text-slate-600 dark:text-slate-400"
+                  }`}
+                >
+                  {usage?.is_quota_exceeded
+                    ? "● Quota Cap Reached"
+                    : `${usage?.percentage_used ?? 0}% utilized this cycle`}
+                </p>
               </div>
+            </div>
+
+            {/* Real-time Token Metering & Telemetry Console (Section 7.4) */}
+            <div className="card-depth-3d p-5 sm:p-6 space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-white/[0.08] pb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-teal-500/10 dark:bg-teal-400/10 flex items-center justify-center text-teal-600 dark:text-teal-400 border border-teal-500/20">
+                    <Zap className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <span>Token Usage Metering</span>
+                      <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-slate-200 dark:bg-white/[0.08] text-slate-700 dark:text-slate-300">
+                        Section 7.4
+                      </span>
+                    </h3>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">
+                      Real-time consumption telemetry across RAG inference & LLM prompts
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={loadUsage}
+                  disabled={isUsageLoading}
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.06] dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-white/[0.08] transition-all disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isUsageLoading ? "animate-spin" : ""}`} />
+                  <span>Sync Telemetry</span>
+                </button>
+              </div>
+
+              {/* Gauge Progress Bar */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-baseline text-xs font-semibold">
+                  <span className="text-slate-700 dark:text-slate-300">
+                    Quota Consumption Gauge
+                  </span>
+                  <span className="font-mono text-slate-900 dark:text-white font-bold">
+                    {(usage?.tokens_used ?? 0).toLocaleString()} / {(usage?.token_allowance ?? 100000).toLocaleString()} tokens ({usage?.percentage_used ?? 0}%)
+                  </span>
+                </div>
+
+                {/* Progress Bar Track */}
+                <div className="h-3.5 w-full rounded-full bg-slate-200 dark:bg-black/60 border border-slate-300 dark:border-white/[0.08] overflow-hidden p-0.5 shadow-inner">
+                  <div
+                    className={`h-full rounded-full transition-all duration-700 ease-out ${
+                      (usage?.percentage_used ?? 0) >= 100
+                        ? "bg-gradient-to-r from-rose-500 to-red-600 shadow-[0_0_12px_rgba(244,63,94,0.6)]"
+                        : (usage?.percentage_used ?? 0) >= 80
+                        ? "bg-gradient-to-r from-amber-500 to-orange-500 shadow-[0_0_12px_rgba(245,158,11,0.5)]"
+                        : "bg-gradient-to-r from-teal-500 via-emerald-400 to-cyan-500 shadow-[0_0_12px_rgba(20,184,166,0.5)]"
+                    }`}
+                    style={{ width: `${Math.min(100, Math.max(usage?.tokens_used ? 2 : 0, usage?.percentage_used ?? 0))}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Detailed Telemetry 4-Column Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-3 rounded-xl bg-slate-100 dark:bg-black/40 border border-slate-200 dark:border-white/[0.06] space-y-1">
+                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    <Cpu className="w-3 h-3 text-cyan-600 dark:text-cyan-400" />
+                    <span>Prompt Tokens</span>
+                  </div>
+                  <p className="text-lg font-extrabold text-slate-900 dark:text-white font-mono">
+                    {(usage?.prompt_tokens ?? 0).toLocaleString()}
+                  </p>
+                  <p className="text-[10px] text-slate-600 dark:text-slate-400">Context & RAG prompt</p>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-100 dark:bg-black/40 border border-slate-200 dark:border-white/[0.06] space-y-1">
+                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    <Sparkles className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                    <span>Completion</span>
+                  </div>
+                  <p className="text-lg font-extrabold text-slate-900 dark:text-white font-mono">
+                    {(usage?.completion_tokens ?? 0).toLocaleString()}
+                  </p>
+                  <p className="text-[10px] text-slate-600 dark:text-slate-400">Generated answers</p>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-100 dark:bg-black/40 border border-slate-200 dark:border-white/[0.06] space-y-1">
+                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    <Layers className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                    <span>RAG Queries</span>
+                  </div>
+                  <p className="text-lg font-extrabold text-slate-900 dark:text-white font-mono">
+                    {(usage?.queries_count ?? 0).toLocaleString()}
+                  </p>
+                  <p className="text-[10px] text-slate-600 dark:text-slate-400">Billable interactions</p>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-100 dark:bg-black/40 border border-slate-200 dark:border-white/[0.06] space-y-1">
+                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    <Gauge className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                    <span>Remaining</span>
+                  </div>
+                  <p className="text-lg font-extrabold text-slate-900 dark:text-white font-mono">
+                    {Math.max(0, (usage?.token_allowance ?? 100000) - (usage?.tokens_used ?? 0)).toLocaleString()}
+                  </p>
+                  <p className="text-[10px] text-slate-600 dark:text-slate-400">Monthly headroom</p>
+                </div>
+              </div>
+
+              {/* Quota Threshold Warning Banner */}
+              {(usage?.is_quota_exceeded || (usage?.percentage_used ?? 0) >= 80) && (
+                <div
+                  className={`flex items-start gap-3 p-3.5 rounded-xl border text-xs ${
+                    usage?.is_quota_exceeded
+                      ? "bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900/50 text-rose-900 dark:text-rose-200"
+                      : "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900/50 text-amber-900 dark:text-amber-200"
+                  }`}
+                >
+                  <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
+                  <div>
+                    <span className="font-bold">
+                      {usage?.is_quota_exceeded
+                        ? "Quota Limit Reached:"
+                        : "Approaching Plan Boundary:"}
+                    </span>{" "}
+                    {usage?.is_quota_exceeded
+                      ? "Your organization has consumed all 100,000 free tokens. Further RAG queries will be rejected with HTTP 429 until the next billing cycle or tier upgrade (Section 7.4)."
+                      : `You have consumed ${usage?.percentage_used}% of your monthly allowance. Consider upgrading to the Growth Tier for higher allowances.`}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Workspace Identifiers Table */}

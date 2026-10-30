@@ -54,6 +54,20 @@ export interface ChatResponse {
   completion_tokens: number;
 }
 
+export interface UsageSummary {
+  organization_id: string;
+  plan_tier: string;
+  token_allowance: number;
+  tokens_used: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  queries_count: number;
+  percentage_used: number;
+  documents_count: number;
+  documents_limit: number;
+  is_quota_exceeded: boolean;
+}
+
 export interface ApiKeyItem {
   id: string;
   organization_id: string;
@@ -167,6 +181,11 @@ class ApiClient {
     return this.request<{ success: boolean }>(`/api-keys/${keyId}`, {
       method: "DELETE",
     });
+  }
+
+  // Usage & Quota endpoints (Section 7.4 & 10.2)
+  async getUsage(): Promise<UsageSummary> {
+    return this.request<UsageSummary>("/usage");
   }
 }
 
