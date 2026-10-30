@@ -460,6 +460,7 @@ const loadChatSessions = async () => {
           });
           setIsQuerying(false);
           loadUsage(); // Live refresh token quota telemetry (Section 7.4)
+          loadChatSessions(); // Refresh past conversation sessions list
         },
         onError: (errMsg: string) => {
           setChatMessages((prev) => {
