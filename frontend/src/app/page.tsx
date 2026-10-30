@@ -898,10 +898,10 @@ const loadChatSessions = async () => {
                       <div
                         key={session.id}
                         onClick={() => handleSelectSession(session.id)}
-                        className={`group relative flex items-center justify-between p-2.5 rounded-xl cursor-pointer text-xs transition-all ${
+                        className={`group relative flex items-center justify-between p-2.5 rounded-xl cursor-pointer text-xs select-none transition-colors duration-150 border outline-none ${
                           isSelected
-                            ? "bg-indigo-50 dark:bg-white/[0.08] text-indigo-700 dark:text-indigo-300 font-semibold border border-indigo-200 dark:border-indigo-500/30 shadow-sm"
-                            : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.04]"
+                            ? "bg-indigo-50 dark:bg-white/[0.08] text-indigo-700 dark:text-indigo-300 font-semibold border-indigo-200 dark:border-indigo-500/30 shadow-sm"
+                            : "border-transparent text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.04]"
                         }`}
                       >
                         <div className="truncate pr-4 flex-1">
@@ -971,10 +971,10 @@ const loadChatSessions = async () => {
                               handleSelectSession(session.id);
                               setIsMobileDrawerOpen(false);
                             }}
-                            className={`flex items-center justify-between p-2.5 rounded-xl cursor-pointer text-xs transition-all ${
+                            className={`flex items-center justify-between p-2.5 rounded-xl cursor-pointer text-xs select-none transition-colors duration-150 border outline-none ${
                               isSelected
-                                ? "bg-indigo-50 dark:bg-white/[0.08] text-indigo-700 dark:text-indigo-300 font-semibold border border-indigo-200 dark:border-indigo-500/30"
-                                : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.04]"
+                                ? "bg-indigo-50 dark:bg-white/[0.08] text-indigo-700 dark:text-indigo-300 font-semibold border-indigo-200 dark:border-indigo-500/30"
+                                : "border-transparent text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.04]"
                             }`}
                           >
                             <div className="truncate pr-2 flex-1">
@@ -1216,10 +1216,10 @@ const loadChatSessions = async () => {
                   <div
                     key={wf.id || wfName}
                     onClick={() => setSelectedWfName(wfName)}
-                    className={`card-depth-3d relative p-4 rounded-2xl cursor-pointer outline-none focus:outline-none select-none transition-colors duration-150 group ${
+                    className={`card-depth-3d relative p-4 rounded-2xl cursor-pointer outline-none focus:outline-none select-none transition-colors duration-150 group border ${
                       isSelected
-                        ? "!border-indigo-600 dark:!border-indigo-500 ring-2 ring-indigo-600/30 dark:ring-indigo-500/40 !bg-indigo-50/90 dark:!bg-indigo-950/40 shadow-lg shadow-indigo-500/15 scale-[1.01]"
-                        : "hover:border-slate-300 dark:hover:border-white/20 hover:scale-[1.005]"
+                        ? "!border-indigo-600 dark:!border-indigo-500 ring-2 ring-indigo-600/30 dark:ring-indigo-500/40 !bg-indigo-50/90 dark:!bg-indigo-950/40 shadow-lg shadow-indigo-500/15"
+                        : "border-slate-200/80 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2 mb-2">
@@ -1329,10 +1329,10 @@ const loadChatSessions = async () => {
                         <div
                           key={e.id}
                           onClick={() => handleSelectExecution(e.id)}
-                          className={`p-3 rounded-xl cursor-pointer text-xs transition-all ${
+                          className={`p-3 rounded-xl cursor-pointer text-xs select-none transition-colors duration-150 border outline-none ${
                             isSelected
-                              ? "bg-indigo-50 dark:bg-white/[0.08] text-indigo-700 dark:text-indigo-300 font-semibold border border-indigo-200 dark:border-indigo-500/30"
-                              : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.04]"
+                              ? "bg-indigo-50 dark:bg-white/[0.08] text-indigo-700 dark:text-indigo-300 font-semibold border-indigo-200 dark:border-indigo-500/30"
+                              : "border-transparent text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.04]"
                           }`}
                         >
                           <div className="flex items-center justify-between gap-1 mb-1">
