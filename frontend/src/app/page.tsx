@@ -1216,7 +1216,7 @@ const loadChatSessions = async () => {
                   <div
                     key={wf.id || wfName}
                     onClick={() => setSelectedWfName(wfName)}
-                    className={`card-depth-3d relative p-4 rounded-2xl cursor-pointer transition-all duration-200 group ${
+                    className={`card-depth-3d relative p-4 rounded-2xl cursor-pointer outline-none focus:outline-none select-none transition-colors duration-150 group ${
                       isSelected
                         ? "!border-indigo-600 dark:!border-indigo-500 ring-2 ring-indigo-600/30 dark:ring-indigo-500/40 !bg-indigo-50/90 dark:!bg-indigo-950/40 shadow-lg shadow-indigo-500/15 scale-[1.01]"
                         : "hover:border-slate-300 dark:hover:border-white/20 hover:scale-[1.005]"

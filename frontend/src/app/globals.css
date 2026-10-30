@@ -330,3 +330,18 @@ html.light .bg-black\/70 {
 html.light .text-slate-200 {
   color: #1e293b !important;
 }
+
+/* 7. BROWSER FOCUS GHOSTING & OUTLINE FIX */
+button:focus:not(:focus-visible),
+[role="button"]:focus:not(:focus-visible),
+a:focus:not(:focus-visible),
+div:focus:not(:focus-visible),
+input:focus:not(:focus-visible) {
+  outline: none !important;
+}
+
+button,
+[role="button"] {
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+}
