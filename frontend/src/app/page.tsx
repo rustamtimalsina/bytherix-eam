@@ -23,8 +23,9 @@ import {
   Cpu,
   UserPlus,
   X,
+  History as HistoryIcon,
 } from "lucide-react";
-import { api, DocumentItem, ApiKeyItem, SourceCitation, UsageSummary, MembershipItem } from "@/lib/api";
+import { api, DocumentItem, ApiKeyItem, SourceCitation, UsageSummary, MembershipItem, SessionSummary } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { CosmicThemeToggle } from "@/components/CosmicThemeToggle";
 import { CustomRoleDropdown, ROLE_OPTIONS, INVITE_ROLE_OPTIONS } from "@/components/CustomRoleDropdown";
@@ -129,6 +130,12 @@ export default function DashboardPage() {
       isStreaming?: boolean;
     }>
   >([]);
+  // Conversation Session state (Section 16.1 #6)
+  const [chatSessions, setChatSessions] = useState<SessionSummary[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [isSessionsLoading, setIsSessionsLoading] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(true);
+
   const [inputQuery, setInputQuery] = useState("");
   const [isQuerying, setIsQuerying] = useState(false);
   const chatBottomRef = useRef<HTMLDivElement>(null);
@@ -155,6 +162,7 @@ export default function DashboardPage() {
       loadApiKeys();
       loadUsage();
       loadMembers();
+      loadChatSessions();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, organizationId]);
@@ -336,6 +344,56 @@ export default function DashboardPage() {
     }
   };
 
+const loadChatSessions = async () => {
+    setIsSessionsLoading(true);
+    try {
+      const data = await api.listChatSessions();
+      setChatSessions(data);
+    } catch (err) {
+      console.error("Failed to load chat sessions:", err);
+    } finally {
+      setIsSessionsLoading(false);
+    }
+  };
+
+  const handleSelectSession = async (sessionId: string) => {
+    if (sessionId === currentSessionId) return;
+    setCurrentSessionId(sessionId);
+    try {
+      const detail = await api.getChatSession(sessionId);
+      const converted = detail.messages.map((m) => ({
+        sender: m.sender as "user" | "assistant",
+        text: m.content,
+        sources: m.sources,
+        model: m.model,
+        isStreaming: false,
+      }));
+      setChatMessages(converted);
+    } catch (err) {
+      alert((err as Error).message || "Failed to load thread");
+    }
+  };
+
+  const handleNewThread = () => {
+    setCurrentSessionId(null);
+    setChatMessages([]);
+    setInputQuery("");
+  };
+
+  const handleDeleteSession = async (e: React.MouseEvent, sessionId: string) => {
+    e.stopPropagation();
+    if (!confirm("Are you sure you want to delete this conversation thread?")) return;
+    try {
+      await api.deleteChatSession(sessionId);
+      setChatSessions((prev) => prev.filter((s) => s.id !== sessionId));
+      if (currentSessionId === sessionId) {
+        handleNewThread();
+      }
+    } catch (err) {
+      alert((err as Error).message || "Failed to delete thread");
+    }
+  };
+
   const handleSendChat = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputQuery.trim() || isQuerying) return;
@@ -352,8 +410,15 @@ export default function DashboardPage() {
     setIsQuerying(true);
 
     try {
-      await api.chatQueryStream(query, 3, {
-        onToken: (token: string) => {
+      await api.chatQueryStream(
+        query,
+        3,
+        {
+          onSession: (meta) => {
+            setCurrentSessionId(meta.session_id);
+            loadChatSessions();
+          },
+          onToken: (token: string) => {
           setChatMessages((prev) => {
             const copy = [...prev];
             const last = copy[copy.length - 1];
@@ -411,7 +476,7 @@ export default function DashboardPage() {
           });
           setIsQuerying(false);
         }
-      });
+      }, currentSessionId || undefined);
     } catch (err: unknown) {
       const errMsg = (err as Error).message || "Unknown error";
       setChatMessages((prev) => {
@@ -714,141 +779,220 @@ export default function DashboardPage() {
 
         {/* TAB 2: RAG AI CHATROOM */}
         {activeTab === "chat" && (
-          <div className="card-depth-3d flex flex-col h-[600px] sm:h-[650px] overflow-hidden">
-            {/* Chat Header */}
-            <div className="p-4 border-b border-slate-200 dark:border-white/[0.08] flex items-center justify-between bg-slate-50/50 dark:bg-white/[0.02]">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-                  Grounded Knowledge QA
-                </h3>
-              </div>
-              <span className="text-[11px] font-mono text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded bg-slate-200/50 dark:bg-white/[0.04]">
-                Section 9.2 Hybrid Retrieval
-              </span>
-            </div>
-
-            {/* Conversation Scroll */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
-              {chatMessages.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-3 text-slate-500">
-                  <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm">
-                    <Sparkles className="w-6 h-6" />
-                  </div>
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">Ask your knowledge library</h4>
-                  <p className="text-xs text-slate-600 dark:text-slate-400 max-w-sm">
-                    Answers are strictly grounded in your ingested documents with verbatim source citations.
-                  </p>
-
-                  <div className="flex flex-wrap gap-2 justify-center max-w-md pt-3">
-                    <button
-                      onClick={() => setInputQuery("What are the core technical requirements for Bytherix EAM?")}
-                      className="text-xs px-3 py-1.5 rounded-full bg-slate-100 dark:bg-white/[0.04] hover:bg-slate-200 dark:hover:bg-white/[0.08] border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 transition-colors"
-                    >
-                      &quot;What are the core technical requirements for Bytherix EAM?&quot;
-                    </button>
-                    <button
-                      onClick={() => setInputQuery("What are the subscription plans and quotas?")}
-                      className="text-xs px-3 py-1.5 rounded-full bg-slate-100 dark:bg-white/[0.04] hover:bg-slate-200 dark:hover:bg-white/[0.08] border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 transition-colors"
-                    >
-                      &quot;What are the subscription plans and quotas?&quot;
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                chatMessages.map((msg, idx) => (
-                  <div
-                    key={idx}
-                    className={`flex flex-col ${msg.sender === "user" ? "items-end" : "items-start"}`}
-                  >
-                    <div
-                      className={`max-w-2xl rounded-2xl p-4 sm:p-5 text-xs sm:text-sm leading-relaxed transition-all shadow-sm ${
-                        msg.sender === "user"
-                          ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md border border-white/20"
-                          : "bg-white/90 dark:bg-white/[0.04] backdrop-blur-md border border-slate-200 dark:border-white/10 text-slate-900 dark:text-slate-200"
-                      }`}
-                    >
-                      {msg.sender === "user" ? (
-                        <p className="whitespace-pre-wrap font-medium">{msg.text}</p>
-                      ) : msg.text ? (
-                        <div className="space-y-1.5 text-slate-800 dark:text-slate-200">
-                          {renderFormattedAnswer(msg.text)}
-                          {msg.isStreaming && (
-                            <span className="inline-block w-1.5 h-3.5 ml-1 bg-indigo-500 animate-pulse rounded-sm align-middle" />
-                          )}
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2 py-1 text-xs text-indigo-600 dark:text-indigo-400">
-                          <div className="w-3.5 h-3.5 border-2 border-indigo-600 dark:border-indigo-400 border-t-transparent rounded-full animate-spin" />
-                          <span className="font-medium animate-pulse">Consulting vector index & streaming grounded answer...</span>
-                        </div>
-                      )}
-
-                      {/* Citations section */}
-                      {msg.sources && msg.sources.length > 0 && (
-                        <div className="mt-4 pt-3 border-t border-slate-200 dark:border-white/[0.08] space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
-                              <FileText className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
-                              Citations & Provenance ({msg.sources.length})
-                            </span>
-                            {msg.model && (
-                              <span className="text-[9px] font-mono text-slate-400 dark:text-slate-500">
-                                Model: {msg.model}
-                              </span>
-                            )}
-                          </div>
-                          <div className="grid grid-cols-1 gap-2">
-                            {msg.sources.map((src, sIdx) => (
-                              <div
-                                key={sIdx}
-                                className="holo-citation p-2.5 rounded-xl text-[11px] text-slate-800 dark:text-slate-300 transition-all hover:border-indigo-500/30"
-                              >
-                                <div className="flex items-center justify-between font-medium text-slate-600 dark:text-slate-400 mb-1">
-                                  <span className="font-bold text-slate-900 dark:text-white truncate max-w-[220px]">
-                                    {src.document_title || "Document"}
-                                  </span>
-                                  <span className="px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 font-mono text-[10px] font-semibold border border-indigo-500/20">
-                                    Page {src.page_number} • Match: {(src.similarity_score * 100).toFixed(1)}%
-                                  </span>
-                                </div>
-                                <p className="text-slate-600 dark:text-slate-400 line-clamp-2 italic text-[11px]">
-                                  &ldquo;{src.snippet}&rdquo;
-                                </p>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-              <div ref={chatBottomRef} />
-            </div>
-
-            {/* Glowing Input Console */}
-            <form onSubmit={handleSendChat} className="p-3 border-t border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-black/20">
-              <div className="relative flex items-center">
-                <input
-                  type="text"
-                  value={inputQuery}
-                  onChange={(e) => setInputQuery(e.target.value)}
-                  placeholder="Ask a question about your uploaded documents..."
-                  className="neon-console-input w-full pl-4 pr-24 py-3 text-xs placeholder-slate-400"
-                />
+          <div className="card-depth-3d flex flex-col md:flex-row h-[650px] sm:h-[700px] overflow-hidden">
+            {/* Thread History Sidebar */}
+            <div
+              className={`${
+                isHistoryOpen ? "flex" : "hidden md:flex md:w-14"
+              } flex-col w-full md:w-64 border-b md:border-b-0 md:border-r border-slate-200 dark:border-white/[0.08] bg-slate-50/70 dark:bg-black/20 transition-all duration-200 shrink-0`}
+            >
+              <div className="p-3 border-b border-slate-200 dark:border-white/[0.08] flex items-center justify-between gap-2">
                 <button
-                  type="submit"
-                  disabled={isQuerying || !inputQuery.trim()}
-                  className="btn-3d absolute right-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                  onClick={handleNewThread}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-sm transition-all"
                 >
-                  <span className="btn-3d-top py-2 px-3 text-xs">
-                    <span>Send</span>
-                    <Send className="w-3 h-3" />
-                  </span>
+                  <Plus className="w-3.5 h-3.5" />
+                  {isHistoryOpen && <span>New Thread</span>}
+                </button>
+                <button
+                  onClick={() => setIsHistoryOpen(!isHistoryOpen)}
+                  title={isHistoryOpen ? "Collapse history" : "Expand history"}
+                  className="p-2 rounded-xl text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-white/[0.06] transition-colors"
+                >
+                  <HistoryIcon className="w-3.5 h-3.5" />
                 </button>
               </div>
-            </form>
+
+              {isHistoryOpen && (
+                <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                  <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    Past Conversations ({chatSessions.length})
+                  </div>
+
+                  {isSessionsLoading ? (
+                    <div className="p-4 text-center text-xs text-slate-400">Loading threads...</div>
+                  ) : chatSessions.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-slate-400 italic">No saved threads yet</div>
+                  ) : (
+                    chatSessions.map((session) => {
+                      const isSelected = session.id === currentSessionId;
+                      return (
+                        <div
+                          key={session.id}
+                          onClick={() => handleSelectSession(session.id)}
+                          className={`group relative flex items-center justify-between p-2.5 rounded-xl cursor-pointer text-xs transition-all ${
+                            isSelected
+                              ? "bg-indigo-50 dark:bg-white/[0.08] text-indigo-700 dark:text-indigo-300 font-semibold border border-indigo-200 dark:border-indigo-500/30"
+                              : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.04]"
+                          }`}
+                        >
+                          <div className="truncate pr-5 flex-1">
+                            <p className="truncate font-medium">{session.title}</p>
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                              {session.message_count} messages
+                            </span>
+                          </div>
+                          <button
+                            onClick={(e) => handleDeleteSession(e, session.id)}
+                            title="Delete thread"
+                            className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-500 transition-opacity"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Main Chat Area */}
+            <div className="flex-1 flex flex-col min-w-0">
+              {/* Chat Header */}
+              <div className="p-3.5 sm:p-4 border-b border-slate-200 dark:border-white/[0.08] flex items-center justify-between bg-slate-50/50 dark:bg-white/[0.02]">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                      Grounded Knowledge QA
+                    </h3>
+                    {currentSessionId && (
+                      <p className="text-[10px] text-slate-500 truncate max-w-xs">
+                        {chatSessions.find((s) => s.id === currentSessionId)?.title || "Active Thread"}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-mono text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded bg-slate-200/50 dark:bg-white/[0.04]">
+                    Section 9.2 Hybrid
+                  </span>
+                </div>
+              </div>
+
+              {/* Conversation Scroll */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
+                {chatMessages.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-3 text-slate-500">
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm">
+                      <Sparkles className="w-6 h-6" />
+                    </div>
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">Ask your knowledge library</h4>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 max-w-sm">
+                      Answers are strictly grounded in your ingested documents with verbatim source citations.
+                    </p>
+
+                    <div className="flex flex-wrap gap-2 justify-center max-w-md pt-3">
+                      <button
+                        onClick={() => setInputQuery("What are the core technical requirements for Bytherix EAM?")}
+                        className="text-xs px-3 py-1.5 rounded-full bg-slate-100 dark:bg-white/[0.04] hover:bg-slate-200 dark:hover:bg-white/[0.08] border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 transition-colors"
+                      >
+                        &quot;What are the core technical requirements for Bytherix EAM?&quot;
+                      </button>
+                      <button
+                        onClick={() => setInputQuery("What are the subscription plans and quotas?")}
+                        className="text-xs px-3 py-1.5 rounded-full bg-slate-100 dark:bg-white/[0.04] hover:bg-slate-200 dark:hover:bg-white/[0.08] border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 transition-colors"
+                      >
+                        &quot;What are the subscription plans and quotas?&quot;
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  chatMessages.map((msg, idx) => (
+                    <div
+                      key={idx}
+                      className={`flex flex-col ${msg.sender === "user" ? "items-end" : "items-start"}`}
+                    >
+                      <div
+                        className={`max-w-2xl rounded-2xl p-4 sm:p-5 text-xs sm:text-sm leading-relaxed transition-all shadow-sm ${
+                          msg.sender === "user"
+                            ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md border border-white/20"
+                            : "bg-white/90 dark:bg-white/[0.04] backdrop-blur-md border border-slate-200 dark:border-white/10 text-slate-900 dark:text-slate-200"
+                        }`}
+                      >
+                        {msg.sender === "user" ? (
+                          <p className="whitespace-pre-wrap font-medium">{msg.text}</p>
+                        ) : msg.text ? (
+                          <div className="space-y-1.5 text-slate-800 dark:text-slate-200">
+                            {renderFormattedAnswer(msg.text)}
+                            {msg.isStreaming && (
+                              <span className="inline-block w-1.5 h-3.5 ml-1 bg-indigo-500 animate-pulse rounded-sm align-middle" />
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 py-1 text-xs text-indigo-600 dark:text-indigo-400">
+                            <div className="w-3.5 h-3.5 border-2 border-indigo-600 dark:border-indigo-400 border-t-transparent rounded-full animate-spin" />
+                            <span className="font-medium animate-pulse">Consulting vector index & streaming grounded answer...</span>
+                          </div>
+                        )}
+
+                        {/* Citations section */}
+                        {msg.sources && msg.sources.length > 0 && (
+                          <div className="mt-4 pt-3 border-t border-slate-200 dark:border-white/[0.08] space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
+                                <FileText className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                                Citations & Provenance ({msg.sources.length})
+                              </span>
+                              {msg.model && (
+                                <span className="text-[9px] font-mono text-slate-400 dark:text-slate-500">
+                                  Model: {msg.model}
+                                </span>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-1 gap-2">
+                              {msg.sources.map((src, sIdx) => (
+                                <div
+                                  key={sIdx}
+                                  className="holo-citation p-2.5 rounded-xl text-[11px] text-slate-800 dark:text-slate-300 transition-all hover:border-indigo-500/30"
+                                >
+                                  <div className="flex items-center justify-between font-medium text-slate-600 dark:text-slate-400 mb-1">
+                                    <span className="font-bold text-slate-900 dark:text-white truncate max-w-[220px]">
+                                      {src.document_title || "Document"}
+                                    </span>
+                                    <span className="px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 font-mono text-[10px] font-semibold border border-indigo-500/20">
+                                      Page {src.page_number} • Match: {(src.similarity_score * 100).toFixed(1)}%
+                                    </span>
+                                  </div>
+                                  <p className="text-slate-600 dark:text-slate-400 line-clamp-2 italic text-[11px]">
+                                    &ldquo;{src.snippet}&rdquo;
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+                <div ref={chatBottomRef} />
+              </div>
+
+              {/* Glowing Input Console */}
+              <form onSubmit={handleSendChat} className="p-3 border-t border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-black/20">
+                <div className="relative flex items-center">
+                  <input
+                    type="text"
+                    value={inputQuery}
+                    onChange={(e) => setInputQuery(e.target.value)}
+                    placeholder="Ask a question about your uploaded documents..."
+                    className="neon-console-input w-full pl-4 pr-24 py-3 text-xs placeholder-slate-400"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isQuerying || !inputQuery.trim()}
+                    className="btn-3d absolute right-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <span className="btn-3d-top py-2 px-3 text-xs">
+                      <span>Send</span>
+                      <Send className="w-3 h-3" />
+                    </span>
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
 

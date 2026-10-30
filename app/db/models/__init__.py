@@ -6,6 +6,7 @@ from app.db.models.api_key import APIKey
 from app.db.models.document import Document
 from app.db.models.chunk import DocumentChunk
 from app.db.models.usage import UsageRecord
+from app.db.models.conversation import ConversationSession, ConversationMessage
 
 __all__ = [
     "Base",
@@ -16,4 +17,6 @@ __all__ = [
     "Document",
     "DocumentChunk",
     "UsageRecord",
+    "ConversationSession",
+    "ConversationMessage",
 ]

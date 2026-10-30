@@ -54,6 +54,31 @@ export interface ChatResponse {
   completion_tokens: number;
 }
 
+export interface MessageItem {
+  id: string;
+  sender: "user" | "assistant";
+  content: string;
+  sources: SourceCitation[];
+  model?: string;
+  created_at: string;
+}
+
+export interface SessionSummary {
+  id: string;
+  title: string;
+  message_count: number;
+  updated_at: string;
+  created_at: string;
+}
+
+export interface SessionDetail {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  messages: MessageItem[];
+}
+
 export interface UsageSummary {
   organization_id: string;
   plan_tier: string;
@@ -170,10 +195,24 @@ class ApiClient {
   }
 
   // Chat / RAG endpoints
-  async chatQuery(question: string, topK: number = 3): Promise<ChatResponse> {
+  async chatQuery(question: string, topK: number = 3, sessionId?: string): Promise<ChatResponse> {
     return this.request<ChatResponse>("/chat", {
       method: "POST",
-      body: JSON.stringify({ question, top_k: topK }),
+      body: JSON.stringify({ question, top_k: topK, session_id: sessionId }),
+    });
+  }
+
+  async listChatSessions(): Promise<SessionSummary[]> {
+    return this.request<SessionSummary[]>("/chat/sessions");
+  }
+
+  async getChatSession(sessionId: string): Promise<SessionDetail> {
+    return this.request<SessionDetail>(`/chat/sessions/${sessionId}`);
+  }
+
+  async deleteChatSession(sessionId: string): Promise<{ success: boolean }> {
+    return this.request<{ success: boolean }>(`/chat/sessions/${sessionId}`, {
+      method: "DELETE",
     });
   }
 
@@ -183,9 +222,11 @@ class ApiClient {
     callbacks: {
       onToken: (token: string) => void;
       onCitations: (citations: SourceCitation[]) => void;
-      onDone: (metrics: { prompt_tokens: number; completion_tokens: number; total_tokens: number; model: string }) => void;
+      onDone: (metrics: { prompt_tokens: number; completion_tokens: number; total_tokens: number; model: string; session_id?: string }) => void;
+      onSession?: (meta: { session_id: string; title: string }) => void;
       onError?: (error: string) => void;
-    }
+    },
+    sessionId?: string
   ): Promise<void> {
     const token = this.getToken();
     const headers: Record<string, string> = {
@@ -198,7 +239,7 @@ class ApiClient {
     const res = await fetch(`${API_BASE_URL}/chat/stream`, {
       method: "POST",
       headers,
-      body: JSON.stringify({ question, top_k: topK }),
+      body: JSON.stringify({ question, top_k: topK, session_id: sessionId }),
     });
 
     if (!res.ok) {
@@ -237,6 +278,8 @@ class ApiClient {
               callbacks.onToken(parsed.token);
             } else if (parsed.type === "citations") {
               callbacks.onCitations(parsed.data);
+            } else if (parsed.type === "session") {
+              if (callbacks.onSession) callbacks.onSession(parsed);
             } else if (parsed.type === "done") {
               callbacks.onDone(parsed);
             } else if (parsed.type === "error") {
