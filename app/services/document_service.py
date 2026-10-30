@@ -48,7 +48,20 @@ def upload_document(
     file: UploadFile,
     title: str | None = None
 ) -> Document:
-    """Validate, store, and enqueue document for ingestion (Section 8.1.1)."""
+    """Validate, store, and enqueue document for ingestion (Section 8.1.1 & 7.4)."""
+    # 0. Quota enforcement before costly storage/embedding work (Section 7.4)
+    active_docs_count = db.query(Document).filter(
+        Document.organization_id == organization_id,
+        Document.status != "deleting"
+    ).count()
+
+    MAX_FREE_DOCUMENTS = 5
+    if active_docs_count >= MAX_FREE_DOCUMENTS:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Plan quota exceeded: Free tier allows up to {MAX_FREE_DOCUMENTS} documents ({active_docs_count} currently stored). Please upgrade your plan or delete existing documents to upload more."
+        )
+
     # 1. Read file bytes and validate magic bytes (Must be valid PDF)
     content = file.file.read()
     if len(content) == 0:

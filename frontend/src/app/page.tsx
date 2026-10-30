@@ -116,6 +116,11 @@ export default function DashboardPage() {
       return;
     }
 
+    if (documents.length >= 5) {
+      setUploadError("Plan quota exceeded: Free tier allows up to 5 documents. Please delete an existing document or upgrade your plan to upload more.");
+      return;
+    }
+
     setUploadError(null);
     setIsUploading(true);
 
@@ -368,6 +373,15 @@ export default function DashboardPage() {
                       </p>
                       <p className="text-xs text-slate-500 dark:text-slate-400">
                         Worker thread generating 1536-dim vector embeddings
+                      </p>
+                    </div>
+                  ) : documents.length >= 5 ? (
+                    <div className="space-y-1">
+                      <p className="text-sm font-bold text-amber-600 dark:text-amber-400">
+                        Plan Quota Reached (5/5 Documents)
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Free tier cap reached. Delete an existing document below to upload a new one.
                       </p>
                     </div>
                   ) : (
@@ -754,9 +768,11 @@ export default function DashboardPage() {
                   Document Limit
                 </span>
                 <p className="text-2xl font-extrabold text-slate-900 dark:text-white">
-                  {documents.length} <span className="text-xs font-normal text-slate-500">/ 5 docs</span>
+                  {Math.min(documents.length, 5)} <span className="text-xs font-normal text-slate-500">/ 5 docs</span>
                 </p>
-                <p className="text-[11px] text-slate-600 dark:text-slate-400">PDF Magic Byte Protected</p>
+                <p className={`text-[11px] font-semibold ${documents.length >= 5 ? "text-amber-600 dark:text-amber-400" : "text-slate-600 dark:text-slate-400"}`}>
+                  {documents.length >= 5 ? "● Quota Cap Reached (Free Tier)" : "PDF Magic Byte Protected"}
+                </p>
               </div>
 
               <div className="card-depth-3d p-5 space-y-1">
