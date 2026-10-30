@@ -1,9 +1,9 @@
 "use client";
 
 import React from "react";
-import { FileText, MessageSquare, Key, Users, Rocket } from "lucide-react";
+import { FileText, MessageSquare, Bot, Key, Users, Rocket } from "lucide-react";
 
-export type ActiveTab = "documents" | "chat" | "apikeys" | "team";
+export type ActiveTab = "documents" | "chat" | "agents" | "apikeys" | "team";
 
 interface FloatingRocketDockProps {
   activeTab: ActiveTab;
@@ -29,6 +29,12 @@ export function FloatingRocketDock({
       id: "chat" as ActiveTab,
       label: "RAG AI",
       icon: MessageSquare,
+      badge: null,
+    },
+    {
+      id: "agents" as ActiveTab,
+      label: "Agents",
+      icon: Bot,
       badge: null,
     },
     {

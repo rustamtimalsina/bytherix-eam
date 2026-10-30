@@ -24,8 +24,25 @@ import {
   UserPlus,
   X,
   History as HistoryIcon,
+  Bot,
+  Play,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  Terminal,
 } from "lucide-react";
-import { api, DocumentItem, ApiKeyItem, SourceCitation, UsageSummary, MembershipItem, SessionSummary } from "@/lib/api";
+import {
+  api,
+  DocumentItem,
+  ApiKeyItem,
+  SourceCitation,
+  UsageSummary,
+  MembershipItem,
+  SessionSummary,
+  WorkflowDefinition,
+  AgentExecutionSummary,
+  AgentExecutionDetail,
+} from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { CosmicThemeToggle } from "@/components/CosmicThemeToggle";
 import { CustomRoleDropdown, ROLE_OPTIONS, INVITE_ROLE_OPTIONS } from "@/components/CustomRoleDropdown";
@@ -98,6 +115,16 @@ export default function DashboardPage() {
   const { user, token, organizationId, role, isLoading: authLoading, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<ActiveTab>("documents");
 
+  // Agent Workflows state (Section 8.4 & 11)
+  const [workflows, setWorkflows] = useState<WorkflowDefinition[]>([]);
+  const [executions, setExecutions] = useState<AgentExecutionSummary[]>([]);
+  const [selectedExecution, setSelectedExecution] = useState<AgentExecutionDetail | null>(null);
+  const [selectedWfName, setSelectedWfName] = useState("Enterprise Knowledge Auditor");
+  const [agentPrompt, setAgentPrompt] = useState("");
+  const [isAgentExecuting, setIsAgentExecuting] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
+  const [approvalReason, setApprovalReason] = useState("");
+
   // Usage telemetry state (Section 7.4)
   const [usage, setUsage] = useState<UsageSummary | null>(null);
   const [isUsageLoading, setIsUsageLoading] = useState(false);
@@ -163,6 +190,7 @@ export default function DashboardPage() {
       loadUsage();
       loadMembers();
       loadChatSessions();
+      loadAgentData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, organizationId]);
@@ -192,6 +220,64 @@ export default function DashboardPage() {
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages, isQuerying]);
+
+  const loadAgentData = async () => {
+    try {
+      const [wfList, execList] = await Promise.all([
+        api.listWorkflows(),
+        api.listAgentExecutions()
+      ]);
+      setWorkflows(wfList);
+      setExecutions(execList);
+      if (execList.length > 0 && !selectedExecution) {
+        const firstDetail = await api.getAgentExecution(execList[0].id);
+        setSelectedExecution(firstDetail);
+      }
+    } catch (err) {
+      console.error("Failed to load agent workflows:", err);
+    }
+  };
+
+  const handleLaunchAgent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!agentPrompt.trim() || isAgentExecuting) return;
+    setIsAgentExecuting(true);
+    try {
+      const detail = await api.startAgentExecution(selectedWfName, agentPrompt.trim());
+      setSelectedExecution(detail);
+      setAgentPrompt("");
+      await loadAgentData();
+      await loadUsage();
+    } catch (err) {
+      alert((err as Error).message || "Agent execution failed");
+    } finally {
+      setIsAgentExecuting(false);
+    }
+  };
+
+  const handleSelectExecution = async (id: string) => {
+    try {
+      const detail = await api.getAgentExecution(id);
+      setSelectedExecution(detail);
+    } catch (err) {
+      alert((err as Error).message || "Failed to load execution trace");
+    }
+  };
+
+  const handleProcessApproval = async (approve: boolean) => {
+    if (!selectedExecution) return;
+    setIsApproving(true);
+    try {
+      const updated = await api.approveAgentAction(selectedExecution.id, approve, approvalReason || undefined);
+      setSelectedExecution(updated);
+      setApprovalReason("");
+      await loadAgentData();
+    } catch (err) {
+      alert((err as Error).message || "Failed to process approval");
+    } finally {
+      setIsApproving(false);
+    }
+  };
 
   const loadDocuments = async () => {
     try {
@@ -417,6 +503,7 @@ const loadChatSessions = async () => {
           onSession: (meta) => {
             setCurrentSessionId(meta.session_id);
             loadChatSessions();
+      loadAgentData();
           },
           onToken: (token: string) => {
           setChatMessages((prev) => {
@@ -460,7 +547,8 @@ const loadChatSessions = async () => {
           });
           setIsQuerying(false);
           loadUsage(); // Live refresh token quota telemetry (Section 7.4)
-          loadChatSessions(); // Refresh past conversation sessions list
+          loadChatSessions();
+      loadAgentData(); // Refresh past conversation sessions list
         },
         onError: (errMsg: string) => {
           setChatMessages((prev) => {
@@ -1076,6 +1164,317 @@ const loadChatSessions = async () => {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: GOVERNED AGENT WORKFLOWS (SECTION 8.4 & 11) */}
+        {activeTab === "agents" && (
+          <div className="space-y-6">
+            {/* Header */}
+            <div className="text-center space-y-1">
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center justify-center gap-2">
+                <span>Governed Agent Workflows</span>
+                <Bot className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-lg mx-auto">
+                Allowlisted tools, bounded step budgets, and human-in-the-loop authorization gates (Section 8.4 & 11).
+              </p>
+            </div>
+
+            {/* Workflow Catalog Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+              {(workflows.length > 0 ? workflows : [
+                {
+                  id: "Enterprise Knowledge Auditor",
+                  name: "Enterprise Knowledge Auditor",
+                  category: "Governance & Compliance",
+                  description: "Scans all ingested tenant documents, verifies chunk indexes, and audits compliance coverage.",
+                  allowed_tools: ["DocumentSearchTool", "KnowledgeAuditReportTool", "QuotaCheckTool"],
+                  has_approval_gate: false,
+                },
+                {
+                  id: "Executive Briefing Synthesizer",
+                  name: "Executive Briefing Synthesizer",
+                  category: "Intelligence Synthesis",
+                  description: "Cross-references multiple organization documents to generate high-level strategic intelligence.",
+                  allowed_tools: ["DocumentSearchTool", "QuotaCheckTool"],
+                  has_approval_gate: false,
+                },
+                {
+                  id: "Governed Data Export & Integration",
+                  name: "Governed Data Export & Integration",
+                  category: "Operations",
+                  description: "Prepares compliance data for external export. Pauses at human-in-the-loop gate before dispatch.",
+                  allowed_tools: ["DocumentSearchTool", "SensitiveExportTool"],
+                  has_approval_gate: true,
+                },
+              ]).map((wf) => {
+                const wfName = wf.name || wf.id;
+                const isSelected = selectedWfName === wfName;
+                return (
+                  <div
+                    key={wf.id || wfName}
+                    onClick={() => setSelectedWfName(wfName)}
+                    className={`card-depth-3d p-4 rounded-2xl cursor-pointer transition-all ${
+                      isSelected
+                        ? "border-indigo-500/80 ring-2 ring-indigo-500/20 bg-indigo-50/50 dark:bg-indigo-950/20"
+                        : "hover:border-slate-300 dark:hover:border-white/20"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                        {wf.category}
+                      </span>
+                      {wf.has_approval_gate && (
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                          <AlertTriangle className="w-2.5 h-2.5" />
+                          Approval Gate
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1.5">{wfName}</h3>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mb-3 leading-relaxed">{wf.description}</p>
+                    <div className="flex flex-wrap gap-1">
+                      {wf.allowed_tools.map((t, tIdx) => (
+                        <span
+                          key={tIdx}
+                          className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-slate-100 dark:bg-white/[0.04] text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-white/10"
+                        >
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Launch Form */}
+            <form onSubmit={handleLaunchAgent} className="card-depth-3d p-4 sm:p-5 rounded-2xl space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Terminal className="w-4 h-4 text-indigo-500" />
+                  <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                    Target Objective: {selectedWfName}
+                  </span>
+                </div>
+                <span className="text-[10px] font-mono text-slate-400">Max Step Budget: 5 Steps</span>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  required
+                  value={agentPrompt}
+                  onChange={(e) => setAgentPrompt(e.target.value)}
+                  placeholder="Enter objective for the agent (e.g., Audit knowledge base and verify token usage)..."
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder-slate-400 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <button
+                  type="submit"
+                  disabled={isAgentExecuting || !agentPrompt.trim()}
+                  className="shrink-0 flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-40 text-white font-bold text-xs shadow-md shadow-indigo-500/20 active:scale-95 transition-all"
+                >
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  <span>{isAgentExecuting ? "Executing Workflow..." : "Launch Governed Agent"}</span>
+                </button>
+              </div>
+            </form>
+
+            {/* Dual-Pane Execution Trace & History Monitor */}
+            <div className="card-depth-3d flex flex-col md:flex-row h-[600px] rounded-2xl overflow-hidden">
+              {/* Left Column: Execution History */}
+              <div className="w-full md:w-72 border-b md:border-b-0 md:border-r border-slate-200 dark:border-white/[0.08] bg-slate-50/60 dark:bg-black/25 flex flex-col shrink-0">
+                <div className="p-3 border-b border-slate-200 dark:border-white/[0.08] flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    Execution Audit Log ({executions.length})
+                  </span>
+                  <button onClick={loadAgentData} className="p-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-white">
+                    <RefreshCw className="w-3 h-3" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+                  {executions.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-slate-400 italic">No executions recorded yet</div>
+                  ) : (
+                    executions.map((e) => {
+                      const isSelected = selectedExecution?.id === e.id;
+                      return (
+                        <div
+                          key={e.id}
+                          onClick={() => handleSelectExecution(e.id)}
+                          className={`p-3 rounded-xl cursor-pointer text-xs transition-all ${
+                            isSelected
+                              ? "bg-indigo-50 dark:bg-white/[0.08] text-indigo-700 dark:text-indigo-300 font-semibold border border-indigo-200 dark:border-indigo-500/30"
+                              : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.04]"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-1 mb-1">
+                            <span className="font-bold truncate text-[11px]">{e.workflow_name}</span>
+                            <span
+                              className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                                e.status === "completed"
+                                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                                  : e.status === "pending_approval"
+                                  ? "bg-amber-500/20 text-amber-700 dark:text-amber-300 animate-pulse"
+                                  : "bg-red-500/15 text-red-600 dark:text-red-400"
+                              }`}
+                            >
+                              {e.status}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mb-1">{e.input_prompt}</p>
+                          <span className="text-[10px] text-slate-400 font-mono">{e.total_steps} steps</span>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Right Column: Step-by-Step Trace & Approval Gate */}
+              <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-[#0d1322] overflow-y-auto p-4 sm:p-6 space-y-4">
+                {!selectedExecution ? (
+                  <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-2 text-slate-400">
+                    <Bot className="w-10 h-10 text-indigo-400/50" />
+                    <p className="text-xs">Select or launch a workflow to view its governed execution trace.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Header bar of trace */}
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-white/10">
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                          <span>{selectedExecution.workflow_name}</span>
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                              selectedExecution.status === "completed"
+                                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                                : selectedExecution.status === "pending_approval"
+                                ? "bg-amber-500/20 text-amber-700 dark:text-amber-300 animate-pulse border border-amber-500/30"
+                                : "bg-red-500/15 text-red-600 dark:text-red-400"
+                            }`}
+                          >
+                            {selectedExecution.status}
+                          </span>
+                        </h4>
+                        <p className="text-xs text-slate-500 mt-0.5">&ldquo;{selectedExecution.input_prompt}&rdquo;</p>
+                      </div>
+                      <span className="text-xs font-mono text-slate-400">{selectedExecution.total_steps} steps executed</span>
+                    </div>
+
+                    {/* Human-In-The-Loop Approval Gate Banner (Section 8.4 #6) */}
+                    {selectedExecution.status === "pending_approval" && (
+                      <div className="p-4 rounded-2xl bg-amber-500/10 border-2 border-amber-500/40 space-y-3 shadow-lg shadow-amber-500/5">
+                        <div className="flex items-start gap-2.5">
+                          <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                          <div>
+                            <h5 className="text-xs font-extrabold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                              Human-In-The-Loop Authorization Gate (Section 8.4 #6)
+                            </h5>
+                            <p className="text-xs text-slate-700 dark:text-slate-300 mt-1">
+                              The agent proposed a consequential action requiring explicit tenant administrator authorization:
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="p-2.5 rounded-xl bg-amber-500/15 font-mono text-[11px] text-amber-900 dark:text-amber-200 space-y-1">
+                          <p>
+                            <strong>Proposed Tool:</strong> {selectedExecution.pending_tool_name}
+                          </p>
+                          <p>
+                            <strong>Parameters:</strong> {selectedExecution.pending_tool_args}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2 pt-1">
+                          <input
+                            type="text"
+                            value={approvalReason}
+                            onChange={(e) => setApprovalReason(e.target.value)}
+                            placeholder="Optional authorization note..."
+                            className="flex-1 px-3 py-2 rounded-xl text-xs bg-white dark:bg-black/40 border border-amber-500/30 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            disabled={isApproving}
+                            onClick={() => handleProcessApproval(true)}
+                            className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 flex items-center gap-1.5 shadow-md active:scale-95 transition-all"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Approve & Execute</span>
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isApproving}
+                            onClick={() => handleProcessApproval(false)}
+                            className="px-3.5 py-2 rounded-xl text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-500/10 border border-red-500/30 flex items-center gap-1.5 transition-colors"
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                            <span>Reject</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Step-by-Step Execution Trace Timeline */}
+                    <div className="space-y-3">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                        Agent Reasoning & Tool Step Log
+                      </span>
+                      {selectedExecution.traces.map((trace) => (
+                        <div
+                          key={trace.id}
+                          className="p-3.5 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-50/50 dark:bg-white/[0.02] space-y-2 text-xs"
+                        >
+                          <div className="flex items-center justify-between font-mono text-[11px]">
+                            <span className="font-bold text-indigo-600 dark:text-indigo-400">Step {trace.step_number}</span>
+                            <span
+                              className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                                trace.status === "completed"
+                                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                                  : trace.status === "pending_approval"
+                                  ? "bg-amber-500/20 text-amber-700 dark:text-amber-300"
+                                  : "bg-red-500/15 text-red-600 dark:text-red-400"
+                              }`}
+                            >
+                              {trace.status}
+                            </span>
+                          </div>
+
+                          {trace.thought && (
+                            <p className="text-slate-700 dark:text-slate-300 italic leading-relaxed">
+                              &ldquo;{trace.thought}&rdquo;
+                            </p>
+                          )}
+
+                          {trace.tool_name && (
+                            <div className="p-2.5 rounded-lg bg-slate-100 dark:bg-black/30 font-mono text-[11px] space-y-1">
+                              <span className="text-indigo-600 dark:text-indigo-400 font-bold">
+                                🔧 Tool: {trace.tool_name}
+                              </span>
+                              {trace.tool_output && (
+                                <p className="text-slate-600 dark:text-slate-400 mt-1">{trace.tool_output}</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Final Output Card */}
+                    {selectedExecution.final_output && (
+                      <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-slate-800 dark:text-slate-200 space-y-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                          Finalized Workflow Result
+                        </span>
+                        <div className="whitespace-pre-wrap leading-relaxed">{selectedExecution.final_output}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}

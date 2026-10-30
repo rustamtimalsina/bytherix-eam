@@ -7,6 +7,7 @@ from app.db.models.document import Document
 from app.db.models.chunk import DocumentChunk
 from app.db.models.usage import UsageRecord
 from app.db.models.conversation import ConversationSession, ConversationMessage
+from app.db.models.agent import AgentExecution, AgentStepTrace
 
 __all__ = [
     "Base",
@@ -19,4 +20,6 @@ __all__ = [
     "UsageRecord",
     "ConversationSession",
     "ConversationMessage",
+    "AgentExecution",
+    "AgentStepTrace",
 ]

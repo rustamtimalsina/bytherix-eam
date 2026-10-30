@@ -63,6 +63,52 @@ export interface MessageItem {
   created_at: string;
 }
 
+export interface WorkflowDefinition {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  allowed_tools: string[];
+  has_approval_gate: boolean;
+}
+
+export interface AgentStepTraceItem {
+  id: string;
+  step_number: number;
+  thought: string | null;
+  tool_name: string | null;
+  tool_input: string | null;
+  tool_output: string | null;
+  status: string;
+  requires_approval: boolean;
+  created_at: string;
+}
+
+export interface AgentExecutionSummary {
+  id: string;
+  workflow_name: string;
+  status: "running" | "pending_approval" | "completed" | "failed" | "rejected";
+  input_prompt: string;
+  total_steps: number;
+  has_pending_approval: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AgentExecutionDetail {
+  id: string;
+  workflow_name: string;
+  status: "running" | "pending_approval" | "completed" | "failed" | "rejected";
+  input_prompt: string;
+  final_output: string | null;
+  total_steps: number;
+  pending_tool_name: string | null;
+  pending_tool_args: string | null;
+  traces: AgentStepTraceItem[];
+  created_at: string;
+  updated_at: string;
+}
+
 export interface SessionSummary {
   id: string;
   title: string;
@@ -293,6 +339,33 @@ class ApiClient {
     } finally {
       reader.releaseLock();
     }
+  }
+
+  // Governed Agent Workflows (Section 8.4 & 11)
+  async listWorkflows(): Promise<WorkflowDefinition[]> {
+    return this.request<WorkflowDefinition[]>("/agents/workflows");
+  }
+
+  async startAgentExecution(workflow_name: string, input_prompt: string): Promise<AgentExecutionDetail> {
+    return this.request<AgentExecutionDetail>("/agents/executions", {
+      method: "POST",
+      body: JSON.stringify({ workflow_name, input_prompt }),
+    });
+  }
+
+  async listAgentExecutions(): Promise<AgentExecutionSummary[]> {
+    return this.request<AgentExecutionSummary[]>("/agents/executions");
+  }
+
+  async getAgentExecution(executionId: string): Promise<AgentExecutionDetail> {
+    return this.request<AgentExecutionDetail>(`/agents/executions/${executionId}`);
+  }
+
+  async approveAgentAction(executionId: string, approve: boolean, reason?: string): Promise<AgentExecutionDetail> {
+    return this.request<AgentExecutionDetail>(`/agents/executions/${executionId}/approval`, {
+      method: "POST",
+      body: JSON.stringify({ approve, reason }),
+    });
   }
 
   // API Key endpoints
