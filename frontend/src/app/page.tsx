@@ -42,6 +42,9 @@ import {
   WorkflowDefinition,
   AgentExecutionSummary,
   AgentExecutionDetail,
+  RegisteredModelSummary,
+  RegisteredModelDetail,
+  PredictionResult,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { CosmicThemeToggle } from "@/components/CosmicThemeToggle";
@@ -114,6 +117,21 @@ export default function DashboardPage() {
   const router = useRouter();
   const { user, token, organizationId, role, isLoading: authLoading, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<ActiveTab>("documents");
+
+  // MLOps Model Registry state (Section 9 & 14)
+  const [models, setModels] = useState<RegisteredModelSummary[]>([]);
+  const [selectedModel, setSelectedModel] = useState<RegisteredModelDetail | null>(null);
+  const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
+  const [isModelLoading, setIsModelLoading] = useState(false);
+  const [predictPrompt, setPredictPrompt] = useState("");
+  const [isPredicting, setIsPredicting] = useState(false);
+  const [predictionResult, setPredictionResult] = useState<PredictionResult | null>(null);
+  const [isPromoting, setIsPromoting] = useState(false);
+  const [showNewModelModal, setShowNewModelModal] = useState(false);
+  const [newModelName, setNewModelName] = useState("");
+  const [newModelDesc, setNewModelDesc] = useState("");
+  const [newModelTask, setNewModelTask] = useState("text-generation");
+  const [isCreatingModel, setIsCreatingModel] = useState(false);
 
   // Agent Workflows state (Section 8.4 & 11)
   const [workflows, setWorkflows] = useState<WorkflowDefinition[]>([]);
@@ -220,6 +238,101 @@ export default function DashboardPage() {
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages, isQuerying]);
+
+  const loadModelsData = async () => {
+    try {
+      setIsModelLoading(true);
+      const list = await api.listModels();
+      setModels(list);
+      if (list.length > 0) {
+        const targetId = selectedModelId || list[0].id;
+        setSelectedModelId(targetId);
+        const detail = await api.getModel(targetId);
+        setSelectedModel(detail);
+      }
+    } catch (err) {
+      console.error("Failed to load MLOps models:", err);
+    } finally {
+      setIsModelLoading(false);
+    }
+  };
+
+  const handleSelectModel = async (id: string) => {
+    try {
+      setSelectedModelId(id);
+      setPredictionResult(null);
+      const detail = await api.getModel(id);
+      setSelectedModel(detail);
+    } catch (err) {
+      alert((err as Error).message || "Failed to load model details");
+    }
+  };
+
+  const handlePromoteVersion = async (versionId: string, stage: string) => {
+    try {
+      setIsPromoting(true);
+      await api.promoteModelVersion(versionId, stage);
+      if (selectedModelId) {
+        const detail = await api.getModel(selectedModelId);
+        setSelectedModel(detail);
+      }
+      const list = await api.listModels();
+      setModels(list);
+    } catch (err) {
+      alert((err as Error).message || "Failed to promote version");
+    } finally {
+      setIsPromoting(false);
+    }
+  };
+
+  const handleRollbackVersion = async (targetVersionId: string) => {
+    if (!selectedModelId) return;
+    try {
+      setIsPromoting(true);
+      await api.rollbackModel(selectedModelId, targetVersionId);
+      const detail = await api.getModel(selectedModelId);
+      setSelectedModel(detail);
+      const list = await api.listModels();
+      setModels(list);
+    } catch (err) {
+      alert((err as Error).message || "Failed to rollback version");
+    } finally {
+      setIsPromoting(false);
+    }
+  };
+
+  const handlePredict = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!predictPrompt.trim() || !selectedModel || isPredicting) return;
+    try {
+      setIsPredicting(true);
+      const res = await api.predictModel(selectedModel.name, predictPrompt.trim());
+      setPredictionResult(res);
+      await loadUsage();
+    } catch (err) {
+      alert((err as Error).message || "Prediction request failed");
+    } finally {
+      setIsPredicting(false);
+    }
+  };
+
+  const handleCreateNewModel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newModelName.trim() || isCreatingModel) return;
+    try {
+      setIsCreatingModel(true);
+      const created = await api.registerModel(newModelName.trim(), newModelDesc.trim() || undefined, newModelTask);
+      setShowNewModelModal(false);
+      setNewModelName("");
+      setNewModelDesc("");
+      await loadModelsData();
+      handleSelectModel(created.id);
+    } catch (err) {
+      alert((err as Error).message || "Failed to register model");
+    } finally {
+      setIsCreatingModel(false);
+    }
+  };
 
   const loadAgentData = async () => {
     try {
@@ -1502,6 +1615,343 @@ const loadChatSessions = async () => {
                 )}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* TAB: MLOPS MODEL REGISTRY & DEPLOYMENTS (SECTION 9 & 14) */}
+        {activeTab === "models" && (
+          <div className="space-y-6">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+                  <span>MLOps Model Registry & Deployments</span>
+                  <Cpu className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-xl">
+                  Versioned model catalog with deployment lifecycle states (draft → staging → production → archived) and latency/accuracy telemetry (Section 9 & 14).
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => loadModelsData()}
+                  disabled={isModelLoading}
+                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white/60 dark:bg-black/30 hover:bg-slate-100 dark:hover:bg-white/5 text-slate-700 dark:text-slate-300 text-xs font-semibold transition-all disabled:opacity-50"
+                  title="Refresh catalog"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isModelLoading ? "animate-spin text-indigo-500" : ""}`} />
+                  <span className="hidden sm:inline">Refresh</span>
+                </button>
+                <button
+                  onClick={() => setShowNewModelModal(true)}
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md shadow-indigo-500/20 active:scale-95 transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Register Model</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Register Model Modal */}
+            {showNewModelModal && (
+              <div className="card-depth-3d p-5 border-indigo-500/30 bg-indigo-50/50 dark:bg-black/60 rounded-2xl space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <Plus className="w-4 h-4 text-indigo-500" />
+                    <span>Register New Model Architecture (Section 9.2 #1)</span>
+                  </h3>
+                  <button onClick={() => setShowNewModelModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-white">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleCreateNewModel} className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Model Name</label>
+                      <input
+                        type="text"
+                        required
+                        value={newModelName}
+                        onChange={(e) => setNewModelName(e.target.value)}
+                        placeholder="e.g. customer-sentiment-llama3"
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Task Type</label>
+                      <select
+                        value={newModelTask}
+                        onChange={(e) => setNewModelTask(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      >
+                        <option value="text-generation">Text Generation (LLM)</option>
+                        <option value="embeddings">Dense Vector Embeddings</option>
+                        <option value="classification">Classification</option>
+                        <option value="summarization">Summarization</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Description</label>
+                    <input
+                      type="text"
+                      value={newModelDesc}
+                      onChange={(e) => setNewModelDesc(e.target.value)}
+                      placeholder="e.g. Fine-tuned model on internal support dataset with 8k context window"
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowNewModelModal(false)}
+                      className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.04]"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isCreatingModel}
+                      className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md active:scale-95 transition-all"
+                    >
+                      {isCreatingModel ? "Registering..." : "Confirm Registration"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* Model Catalog Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+              {models.map((m) => {
+                const isSelected = selectedModelId === m.id;
+                return (
+                  <div
+                    key={m.id}
+                    onClick={() => handleSelectModel(m.id)}
+                    className={`card-depth-3d relative p-4 rounded-2xl cursor-pointer outline-none focus:outline-none select-none transition-colors duration-150 group border ${
+                      isSelected
+                        ? "!border-indigo-600 dark:!border-indigo-500 ring-2 ring-indigo-600/30 dark:ring-indigo-500/40 !bg-indigo-50/90 dark:!bg-indigo-950/40 shadow-lg shadow-indigo-500/15"
+                        : "border-slate-200/80 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                        {m.task_type}
+                      </span>
+
+                      {isSelected ? (
+                        <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-600 text-white shadow-sm shadow-indigo-600/40 shrink-0">
+                          <CheckCircle2 className="w-3 h-3 text-white" />
+                          <span>Active</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-medium text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 shrink-0 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors">
+                          <span>Select</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <h3 className={`text-sm mb-1 transition-colors ${isSelected ? "font-extrabold text-indigo-950 dark:text-white" : "font-bold text-slate-900 dark:text-white"}`}>
+                      {m.name}
+                    </h3>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mb-3 line-clamp-2 leading-relaxed">
+                      {m.description || "Enterprise deployed model."}
+                    </p>
+
+                    <div className="flex items-center justify-between text-[11px] pt-2 border-t border-slate-200/60 dark:border-white/[0.06]">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
+                        {m.active_version_name ? `Prod: ${m.active_version_name}` : "No active release"}
+                      </span>
+                      <span className="text-slate-500 dark:text-slate-400 font-mono text-[10px]">
+                        {m.total_versions} {m.total_versions === 1 ? "version" : "versions"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Dual-Pane Lifecycle History & Prediction Station */}
+            {selectedModel && (
+              <div className="card-depth-3d flex flex-col lg:flex-row rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10">
+                {/* Left Column: Version History & State Machine */}
+                <div className="w-full lg:w-1/2 p-5 border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-black/20 space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-white/10">
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <span>Version Lifecycle Timeline</span>
+                        <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-slate-300">
+                          Section 9.1
+                        </span>
+                      </h4>
+                      <p className="text-xs text-slate-500">Model: {selectedModel.name}</p>
+                    </div>
+                    <span className="text-xs font-mono text-slate-400">{selectedModel.versions.length} Releases</span>
+                  </div>
+
+                  <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                    {selectedModel.versions.map((ver) => {
+                      const isProd = ver.lifecycle_stage === "production";
+                      const isStaging = ver.lifecycle_stage === "staging";
+                      return (
+                        <div
+                          key={ver.id}
+                          className={`p-3.5 rounded-xl border text-xs space-y-2.5 transition-all ${
+                            isProd
+                              ? "bg-emerald-500/10 border-emerald-500/30"
+                              : isStaging
+                              ? "bg-amber-500/10 border-amber-500/30"
+                              : "bg-white dark:bg-white/[0.02] border-slate-200 dark:border-white/10"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400 text-xs">
+                                {ver.version}
+                              </span>
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                                  isProd
+                                    ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30"
+                                    : isStaging
+                                    ? "bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/30"
+                                    : "bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-slate-400"
+                                }`}
+                              >
+                                {ver.lifecycle_stage}
+                              </span>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex items-center gap-1.5">
+                              {!isProd && (
+                                <button
+                                  type="button"
+                                  disabled={isPromoting}
+                                  onClick={() => handlePromoteVersion(ver.id, "production")}
+                                  className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-sm active:scale-95 transition-all"
+                                >
+                                  Promote to Prod
+                                </button>
+                              )}
+                              {!isStaging && !isProd && (
+                                <button
+                                  type="button"
+                                  disabled={isPromoting}
+                                  onClick={() => handlePromoteVersion(ver.id, "staging")}
+                                  className="px-2 py-1 rounded-lg text-[10px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-colors"
+                                >
+                                  Stage
+                                </button>
+                              )}
+                              {isStaging && (
+                                <button
+                                  type="button"
+                                  disabled={isPromoting}
+                                  onClick={() => handleRollbackVersion(ver.id)}
+                                  className="px-2 py-1 rounded-lg text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-500/30 transition-colors"
+                                >
+                                  Rollback to This
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Telemetry Metrics */}
+                          <div className="grid grid-cols-2 gap-2 text-[11px] font-mono bg-slate-100 dark:bg-black/30 p-2 rounded-lg">
+                            <div>
+                              <span className="text-slate-500">Benchmark Acc: </span>
+                              <span className="font-bold text-slate-800 dark:text-slate-200">
+                                {ver.accuracy_score ? `${(ver.accuracy_score * 100).toFixed(1)}%` : "N/A"}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-slate-500">p95 Latency: </span>
+                              <span className="font-bold text-slate-800 dark:text-slate-200">
+                                {ver.latency_p95_ms ? `${ver.latency_p95_ms}ms` : "N/A"}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono">
+                            <span>SHA: {ver.artifact_checksum.slice(0, 10)}...</span>
+                            {ver.promoted_by && <span>By: {ver.promoted_by}</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Right Column: Prediction Station & Inference Console */}
+                <div className="w-full lg:w-1/2 p-5 bg-white dark:bg-[#0d1322] space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-white/10">
+                    <div className="flex items-center gap-2">
+                      <Terminal className="w-4 h-4 text-indigo-500" />
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                        Prediction Request Lifecycle (Section 9.3)
+                      </h4>
+                    </div>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                      Active: {selectedModel.active_version_id ? "Production Route" : "Unrouted"}
+                    </span>
+                  </div>
+
+                  <form onSubmit={handlePredict} className="space-y-3">
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                      Input Payload / Prompt
+                    </label>
+                    <textarea
+                      required
+                      rows={3}
+                      value={predictPrompt}
+                      onChange={(e) => setPredictPrompt(e.target.value)}
+                      placeholder={`Enter prompt for ${selectedModel.name} (e.g. Generate executive summary or classification)...`}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono"
+                    />
+
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-[11px] text-slate-500">Meters tokens against organization quota (Section 7.4)</span>
+                      <button
+                        type="submit"
+                        disabled={isPredicting || !predictPrompt.trim()}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-40 text-white font-bold text-xs shadow-md shadow-indigo-500/20 active:scale-95 transition-all shrink-0"
+                      >
+                        <Play className="w-3.5 h-3.5 fill-current" />
+                        <span>{isPredicting ? "Running Inference..." : "Run Inference"}</span>
+                      </button>
+                    </div>
+                  </form>
+
+                  {/* Prediction Output Result */}
+                  {predictionResult && (
+                    <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 space-y-2.5 text-xs">
+                      <div className="flex items-center justify-between font-mono text-[11px]">
+                        <span className="font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Inference Response (200 OK)</span>
+                        </span>
+                        <div className="flex items-center gap-2 text-slate-500">
+                          <span>{predictionResult.latency_ms} ms</span>
+                          <span>•</span>
+                          <span>{predictionResult.tokens_consumed} tokens</span>
+                        </div>
+                      </div>
+
+                      <div className="p-3 rounded-lg bg-black/40 font-mono text-[11px] text-emerald-200 whitespace-pre-wrap leading-relaxed">
+                        {predictionResult.prediction}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

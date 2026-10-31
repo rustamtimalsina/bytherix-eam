@@ -13,6 +13,7 @@ from app.api.v1.documents import router as documents_router
 from app.api.v1.organizations import router as organizations_router
 from app.api.v1.usage import router as usage_router
 from app.api.v1.agents import router as agents_router
+from app.api.v1.models import router as models_router
 from app.core.config import settings
 from app.db.base import Base
 from app.db.session import engine
@@ -94,3 +95,4 @@ app.include_router(documents_router, prefix=settings.API_V1_STR)
 app.include_router(chat_router, prefix=settings.API_V1_STR)
 app.include_router(usage_router, prefix=settings.API_V1_STR)
 app.include_router(agents_router, prefix=settings.API_V1_STR)
+app.include_router(models_router, prefix=settings.API_V1_STR)

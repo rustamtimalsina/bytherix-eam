@@ -1,9 +1,9 @@
 "use client";
 
 import React from "react";
-import { FileText, MessageSquare, Bot, Key, Users, Rocket } from "lucide-react";
+import { FileText, MessageSquare, Bot, Cpu, Key, Users, Rocket } from "lucide-react";
 
-export type ActiveTab = "documents" | "chat" | "agents" | "apikeys" | "team";
+export type ActiveTab = "documents" | "chat" | "agents" | "models" | "apikeys" | "team";
 
 interface FloatingRocketDockProps {
   activeTab: ActiveTab;
@@ -38,6 +38,12 @@ export function FloatingRocketDock({
       badge: null,
     },
     {
+      id: "models" as ActiveTab,
+      label: "Models",
+      icon: Cpu,
+      badge: null,
+    },
+    {
       id: "apikeys" as ActiveTab,
       label: "API Keys",
       icon: Key,
@@ -64,10 +70,10 @@ export function FloatingRocketDock({
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`relative flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-full text-[11px] sm:text-xs font-semibold whitespace-nowrap outline-none focus:outline-none focus:ring-0 select-none transition-colors duration-150 ${
+            className={`relative flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-full text-[11px] sm:text-xs font-semibold whitespace-nowrap outline-none focus:outline-none focus:ring-0 select-none transition-colors duration-150 border ${
               isActive
-                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.5)] border border-white/20"
-                : "border border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06]"
+                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.5)] border-white/20"
+                : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06]"
             }`}
           >
             {/* Active Rocket Thruster */}

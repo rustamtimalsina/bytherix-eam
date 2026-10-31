@@ -8,6 +8,7 @@ from app.db.models.chunk import DocumentChunk
 from app.db.models.usage import UsageRecord
 from app.db.models.conversation import ConversationSession, ConversationMessage
 from app.db.models.agent import AgentExecution, AgentStepTrace
+from app.db.models.model_registry import RegisteredModel, ModelVersion, PredictionLog
 
 __all__ = [
     "Base",
@@ -22,4 +23,7 @@ __all__ = [
     "ConversationMessage",
     "AgentExecution",
     "AgentStepTrace",
+    "RegisteredModel",
+    "ModelVersion",
+    "PredictionLog",
 ]

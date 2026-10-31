@@ -117,6 +117,55 @@ export interface SessionSummary {
   created_at: string;
 }
 
+
+export interface RegisteredModelSummary {
+  id: string;
+  name: string;
+  description?: string;
+  task_type: string;
+  active_version_id?: string;
+  active_version_name?: string;
+  total_versions: number;
+  created_at: string;
+}
+
+export interface ModelVersionDetail {
+  id: string;
+  registered_model_id: string;
+  version: string;
+  lifecycle_stage: string;
+  artifact_checksum: string;
+  input_schema: string;
+  output_schema: string;
+  parameters: string;
+  training_data_ref?: string;
+  accuracy_score?: number;
+  latency_p95_ms?: number;
+  promoted_by?: string;
+  promoted_at?: string;
+  created_at: string;
+}
+
+export interface RegisteredModelDetail {
+  id: string;
+  organization_id: string;
+  name: string;
+  description?: string;
+  task_type: string;
+  active_version_id?: string;
+  created_at: string;
+  versions: ModelVersionDetail[];
+}
+
+export interface PredictionResult {
+  model_name: string;
+  version: string;
+  prediction: string;
+  latency_ms: number;
+  tokens_consumed: number;
+  lifecycle_stage: string;
+}
+
 export interface SessionDetail {
   id: string;
   title: string;
@@ -422,6 +471,50 @@ class ApiClient {
       body: JSON.stringify({ token, password, full_name: fullName }),
     });
   }
+
+  // MLOps Model Registry & Deployment endpoints (Section 9 & 16.1 #4)
+  async listModels(): Promise<RegisteredModelSummary[]> {
+    return this.request<RegisteredModelSummary[]>("/models");
+  }
+
+  async getModel(modelId: string): Promise<RegisteredModelDetail> {
+    return this.request<RegisteredModelDetail>(`/models/${modelId}`);
+  }
+
+  async registerModel(name: string, description?: string, task_type: string = "text-generation"): Promise<RegisteredModelDetail> {
+    return this.request<RegisteredModelDetail>("/models", {
+      method: "POST",
+      body: JSON.stringify({ name, description, task_type }),
+    });
+  }
+
+  async createModelVersion(modelId: string, version: string, parameters?: string, accuracy_score?: number, latency_p95_ms?: number): Promise<ModelVersionDetail> {
+    return this.request<ModelVersionDetail>(`/models/${modelId}/versions`, {
+      method: "POST",
+      body: JSON.stringify({ version, parameters, accuracy_score, latency_p95_ms }),
+    });
+  }
+
+  async promoteModelVersion(versionId: string, target_stage: string): Promise<ModelVersionDetail> {
+    return this.request<ModelVersionDetail>(`/models/versions/${versionId}/promote`, {
+      method: "POST",
+      body: JSON.stringify({ target_stage }),
+    });
+  }
+
+  async rollbackModel(modelId: string, targetVersionId: string): Promise<ModelVersionDetail> {
+    return this.request<ModelVersionDetail>(`/models/${modelId}/rollback/${targetVersionId}`, {
+      method: "POST",
+    });
+  }
+
+  async predictModel(modelName: string, prompt: string, version?: string): Promise<PredictionResult> {
+    return this.request<PredictionResult>(`/models/${modelName}/predict`, {
+      method: "POST",
+      body: JSON.stringify({ prompt, version }),
+    });
+  }
+
 }
 
 export const api = new ApiClient();
