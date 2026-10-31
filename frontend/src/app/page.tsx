@@ -1886,25 +1886,30 @@ const loadChatSessions = async () => {
               <div className="card-depth-3d flex flex-col lg:flex-row rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10">
                 {/* Left Column: Version History & State Machine */}
                 <div className="w-full lg:w-1/2 p-5 border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-black/20 space-y-4">
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-white/10">
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                        <span>Version Lifecycle Timeline</span>
-                        <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-slate-300">
-                          Section 9.1
-                        </span>
-                      </h4>
-                      <p className="text-xs text-slate-500">Model: {selectedModel.name}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono text-slate-400">{selectedModel.versions.length} Releases</span>
+                  {/* Timeline Header */}
+                  <div className="pb-3 border-b border-slate-200 dark:border-white/10 space-y-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2.5">
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-extrabold text-slate-900 dark:text-white whitespace-nowrap">
+                            Version Lifecycle Timeline
+                          </h4>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-slate-300 font-medium whitespace-nowrap">
+                            Section 9.1
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500">
+                          Model: <span className="font-semibold text-slate-700 dark:text-slate-300">{selectedModel.name}</span> • {selectedModel.versions.length} {selectedModel.versions.length === 1 ? "release" : "releases"}
+                        </p>
+                      </div>
+
                       <button
                         type="button"
                         onClick={() => setShowNewVersionModal(true)}
-                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[11px] shadow-sm active:scale-95 transition-all"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md shadow-indigo-600/20 active:scale-95 transition-all shrink-0 whitespace-nowrap"
                         title="Add a new release candidate version to this model"
                       >
-                        <Plus className="w-3 h-3" />
+                        <Plus className="w-3.5 h-3.5" />
                         <span>New Version</span>
                       </button>
                     </div>
@@ -1976,9 +1981,14 @@ const loadChatSessions = async () => {
                   )}
 
                   <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
-                    {selectedModel.versions.map((ver) => {
-                      const isProd = ver.lifecycle_stage === "production";
+                    {selectedModel.versions.map((ver, index) => {
+                      const isProd = ver.lifecycle_stage === "production" || ver.id === selectedModel.active_version_id;
                       const isStaging = ver.lifecycle_stage === "staging";
+                      const activeIndex = selectedModel.versions.findIndex(
+                        (v) => v.id === selectedModel.active_version_id || v.lifecycle_stage === "production"
+                      );
+                      const isOlderThanActive = activeIndex !== -1 && index > activeIndex;
+
                       return (
                         <div
                           key={ver.id}
@@ -2008,36 +2018,44 @@ const loadChatSessions = async () => {
                               </span>
                             </div>
 
-                            {/* Action Buttons */}
-                            <div className="flex items-center gap-1.5">
-                              {!isProd && (
-                                <button
-                                  type="button"
-                                  disabled={isPromoting}
-                                  onClick={() => handlePromoteVersion(ver.id, "production")}
-                                  className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-sm active:scale-95 transition-all"
-                                >
-                                  Promote to Prod
-                                </button>
-                              )}
-                              {!isStaging && !isProd && (
+                            {/* Action Button - EXACTLY ONE context-aware button per card */}
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {isProd ? (
+                                <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                  <span>Active Prod</span>
+                                </span>
+                              ) : isStaging ? (
+                                isOlderThanActive ? (
+                                  <button
+                                    type="button"
+                                    disabled={isPromoting}
+                                    onClick={() => handleRollbackVersion(ver.id)}
+                                    className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-500/30 transition-all active:scale-95"
+                                    title="Revert active production deployment to this prior stable version"
+                                  >
+                                    Rollback to This
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    disabled={isPromoting}
+                                    onClick={() => handlePromoteVersion(ver.id, "production")}
+                                    className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-sm active:scale-95 transition-all"
+                                    title="Promote this validated candidate release to active production"
+                                  >
+                                    Promote to Prod
+                                  </button>
+                                )
+                              ) : (
                                 <button
                                   type="button"
                                   disabled={isPromoting}
                                   onClick={() => handlePromoteVersion(ver.id, "staging")}
-                                  className="px-2 py-1 rounded-lg text-[10px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-colors"
+                                  className="px-2.5 py-1 rounded-lg text-[10px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-colors"
+                                  title="Stage this draft candidate for pre-production evaluation"
                                 >
-                                  Stage
-                                </button>
-                              )}
-                              {isStaging && (
-                                <button
-                                  type="button"
-                                  disabled={isPromoting}
-                                  onClick={() => handleRollbackVersion(ver.id)}
-                                  className="px-2 py-1 rounded-lg text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-500/30 transition-colors"
-                                >
-                                  Rollback to This
+                                  Stage Candidate
                                 </button>
                               )}
                             </div>
