@@ -142,6 +142,11 @@ export default function DashboardPage() {
   const [isTaskDropdownOpen, setIsTaskDropdownOpen] = useState(false);
   const taskDropdownRef = useRef<HTMLDivElement>(null);
   const [isCreatingModel, setIsCreatingModel] = useState(false);
+  const [showNewVersionModal, setShowNewVersionModal] = useState(false);
+  const [newVersionTag, setNewVersionTag] = useState("");
+  const [newVersionAccuracy, setNewVersionAccuracy] = useState("98.0");
+  const [newVersionLatency, setNewVersionLatency] = useState("85");
+  const [isCreatingVersion, setIsCreatingVersion] = useState(false);
 
   // Agent Workflows state (Section 8.4 & 11)
   const [workflows, setWorkflows] = useState<WorkflowDefinition[]>([]);
@@ -332,6 +337,31 @@ export default function DashboardPage() {
       alert((err as Error).message || "Failed to rollback version");
     } finally {
       setIsPromoting(false);
+    }
+  };
+
+  const handleCreateNewVersion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newVersionTag.trim() || !selectedModelId || isCreatingVersion) return;
+    try {
+      setIsCreatingVersion(true);
+      await api.createModelVersion(
+        selectedModelId,
+        newVersionTag.trim(),
+        JSON.stringify({ context_window: 128000, temperature: 0.7 }),
+        parseFloat(newVersionAccuracy) / 100.0 || 0.95,
+        parseFloat(newVersionLatency) || 90.0
+      );
+      setShowNewVersionModal(false);
+      setNewVersionTag("");
+      const detail = await api.getModel(selectedModelId);
+      setSelectedModel(detail);
+      const list = await api.listModels();
+      setModels(list);
+    } catch (err) {
+      alert((err as Error).message || "Failed to create model version");
+    } finally {
+      setIsCreatingVersion(false);
     }
   };
 
@@ -1866,8 +1896,84 @@ const loadChatSessions = async () => {
                       </h4>
                       <p className="text-xs text-slate-500">Model: {selectedModel.name}</p>
                     </div>
-                    <span className="text-xs font-mono text-slate-400">{selectedModel.versions.length} Releases</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono text-slate-400">{selectedModel.versions.length} Releases</span>
+                      <button
+                        type="button"
+                        onClick={() => setShowNewVersionModal(true)}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[11px] shadow-sm active:scale-95 transition-all"
+                        title="Add a new release candidate version to this model"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>New Version</span>
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Create Version Modal */}
+                  {showNewVersionModal && (
+                    <div className="p-3.5 rounded-xl border border-indigo-500/30 bg-white/95 dark:bg-[#0c1220]/95 backdrop-blur-xl shadow-xl space-y-2.5">
+                      <div className="flex items-center justify-between pb-1 border-b border-slate-200 dark:border-white/10">
+                        <h5 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <Plus className="w-3.5 h-3.5 text-indigo-500" />
+                          <span>Release Candidate for {selectedModel.name}</span>
+                        </h5>
+                        <button onClick={() => setShowNewVersionModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-white">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <form onSubmit={handleCreateNewVersion} className="space-y-2.5 text-xs">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-700 dark:text-slate-300">Version Tag</label>
+                            <input
+                              type="text"
+                              required
+                              value={newVersionTag}
+                              onChange={(e) => setNewVersionTag(e.target.value)}
+                              placeholder="e.g. v1.2.0"
+                              className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-[#080d1a] border border-slate-200 dark:border-white/15 text-slate-900 dark:text-white font-mono text-xs focus:ring-2 focus:ring-indigo-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-700 dark:text-slate-300">Benchmark Acc (%)</label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={newVersionAccuracy}
+                              onChange={(e) => setNewVersionAccuracy(e.target.value)}
+                              className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-[#080d1a] border border-slate-200 dark:border-white/15 text-slate-900 dark:text-white font-mono text-xs focus:ring-2 focus:ring-indigo-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-700 dark:text-slate-300">Latency p95 (ms)</label>
+                            <input
+                              type="number"
+                              value={newVersionLatency}
+                              onChange={(e) => setNewVersionLatency(e.target.value)}
+                              className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-[#080d1a] border border-slate-200 dark:border-white/15 text-slate-900 dark:text-white font-mono text-xs focus:ring-2 focus:ring-indigo-500"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex justify-end gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => setShowNewVersionModal(false)}
+                            className="px-3 py-1 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10 font-medium"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="submit"
+                            disabled={isCreatingVersion || !newVersionTag.trim()}
+                            className="px-3.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold disabled:opacity-40"
+                          >
+                            {isCreatingVersion ? "Creating..." : "Save Candidate"}
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  )}
 
                   <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
                     {selectedModel.versions.map((ver) => {
