@@ -229,6 +229,7 @@ export default function DashboardPage() {
     if (token && activeTab === "models") {
       loadModelsData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, activeTab]);
 
   // Auto-poll document status if any document is processing or queued
@@ -2004,20 +2005,20 @@ const loadChatSessions = async () => {
 
                   {/* Prediction Output Result */}
                   {predictionResult && (
-                    <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 space-y-2.5 text-xs">
+                    <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 dark:bg-emerald-950/20 space-y-3 text-xs">
                       <div className="flex items-center justify-between font-mono text-[11px]">
-                        <span className="font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span className="font-bold text-emerald-800 dark:text-emerald-400 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                           <span>Inference Response (200 OK)</span>
                         </span>
-                        <div className="flex items-center gap-2 text-slate-500">
+                        <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 font-medium">
                           <span>{predictionResult.latency_ms} ms</span>
                           <span>•</span>
                           <span>{predictionResult.tokens_consumed} tokens</span>
                         </div>
                       </div>
 
-                      <div className="p-3 rounded-lg bg-black/40 font-mono text-[11px] text-emerald-200 whitespace-pre-wrap leading-relaxed">
+                      <div className="p-4 rounded-xl bg-slate-950 dark:bg-black/90 border border-slate-800 dark:border-white/10 font-mono text-xs text-emerald-300 dark:text-emerald-300 whitespace-pre-wrap leading-relaxed shadow-lg">
                         {predictionResult.prediction}
                       </div>
                     </div>
