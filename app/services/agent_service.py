@@ -1,3 +1,4 @@
+from app.services.audit_service import AuditService
 import json
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
@@ -128,6 +129,17 @@ def start_agent_workflow(
     db.add(execution)
     db.commit()
     db.refresh(execution)
+
+    AuditService.record_event(
+        db=db,
+        organization_id=organization_id,
+        action="agent.workflow_started",
+        resource_type="agent_execution",
+        resource_id=execution.id,
+        actor_id=user_id,
+        severity="info",
+        details={"workflow_name": matched_wf["name"], "prompt": input_prompt}
+    )
 
     # Step 1: Initial Reasoning & Quota Check
     step1 = AgentStepTrace(
@@ -277,6 +289,17 @@ def process_approval(
     execution.pending_tool_args = None
     execution.updated_at = datetime.now(timezone.utc)
     db.commit()
+
+    AuditService.record_event(
+        db=db,
+        organization_id=organization_id,
+        action="agent.approval_granted" if approve else "agent.approval_rejected",
+        resource_type="agent_execution",
+        resource_id=execution_id,
+        actor_id=execution.user_id,
+        severity="info" if approve else "warning",
+        details={"reason": reason or "", "decision": "approved" if approve else "rejected"}
+    )
 
     return get_execution_detail(organization_id=organization_id, execution_id=execution.id, db=db)
 

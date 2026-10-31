@@ -9,6 +9,7 @@ from app.core.tenant_context import TenantContext, require_permission
 from app.db.models.api_key import APIKey
 from app.db.session import get_db
 from app.schemas.api_key import APIKeyCreate, APIKeyCreatedResponse, APIKeyOut
+from app.services.audit_service import AuditService
 
 router = APIRouter(prefix="/api-keys", tags=["API Keys"])
 
@@ -54,6 +55,18 @@ def create_key(
     db.commit()
     db.refresh(api_key_rec)
 
+    AuditService.record_event(
+        db=db,
+        organization_id=context.organization.id,
+        action="security.api_key_created",
+        resource_type="api_key",
+        resource_id=api_key_rec.id,
+        actor_email=context.user.email if context.user else "system",
+        actor_id=user_id,
+        severity="warning",
+        details={"name": data.name, "prefix": api_key_rec.prefix, "scopes": data.scopes}
+    )
+
     response_dict = APIKeyOut.model_validate(api_key_rec).model_dump()
     response_dict["raw_key"] = raw_key
     return APIKeyCreatedResponse(**response_dict)
@@ -79,4 +92,17 @@ def revoke_key(
 
     key_rec.is_revoked = True
     db.commit()
+
+    AuditService.record_event(
+        db=db,
+        organization_id=context.organization.id,
+        action="security.api_key_revoked",
+        resource_type="api_key",
+        resource_id=key_id,
+        actor_email=context.user.email if context.user else "system",
+        actor_id=context.user.id if context.user else None,
+        severity="warning",
+        details={"name": key_rec.name, "prefix": key_rec.prefix}
+    )
+
     return {"message": "API key revoked successfully"}

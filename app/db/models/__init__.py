@@ -9,6 +9,7 @@ from app.db.models.usage import UsageRecord
 from app.db.models.conversation import ConversationSession, ConversationMessage
 from app.db.models.agent import AgentExecution, AgentStepTrace
 from app.db.models.model_registry import RegisteredModel, ModelVersion, PredictionLog
+from app.db.models.audit import AuditLog
 
 __all__ = [
     "Base",
@@ -26,4 +27,5 @@ __all__ = [
     "RegisteredModel",
     "ModelVersion",
     "PredictionLog",
+    "AuditLog",
 ]

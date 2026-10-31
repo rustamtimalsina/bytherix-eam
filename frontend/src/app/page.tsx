@@ -31,6 +31,11 @@ import {
   AlertTriangle,
   XCircle,
   Terminal,
+  Download,
+  Search,
+  Eye,
+  ShieldCheck,
+  Filter,
 } from "lucide-react";
 import {
   api,
@@ -46,6 +51,8 @@ import {
   RegisteredModelSummary,
   RegisteredModelDetail,
   PredictionResult,
+  AuditLogItem,
+  AuditStats,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { CosmicThemeToggle } from "@/components/CosmicThemeToggle";
@@ -148,6 +155,19 @@ export default function DashboardPage() {
   const [newVersionLatency, setNewVersionLatency] = useState("85");
   const [isCreatingVersion, setIsCreatingVersion] = useState(false);
 
+  // Audit Logs state (Section 10 & 13)
+  const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
+  const [auditTotal, setAuditTotal] = useState(0);
+  const [auditStats, setAuditStats] = useState<AuditStats | null>(null);
+  const [isLoadingAudit, setIsLoadingAudit] = useState(false);
+  const [auditSeverityFilter, setAuditSeverityFilter] = useState<"" | "info" | "warning" | "critical">("");
+  const [auditSearchQuery, setAuditSearchQuery] = useState("");
+  const [auditPage, setAuditPage] = useState(1);
+  const auditLimit = 15;
+  const [isExportingAudit, setIsExportingAudit] = useState(false);
+  const [inspectingAuditLog, setInspectingAuditLog] = useState<AuditLogItem | null>(null);
+  const [copiedAuditJson, setCopiedAuditJson] = useState(false);
+
   // Agent Workflows state (Section 8.4 & 11)
   const [workflows, setWorkflows] = useState<WorkflowDefinition[]>([]);
   const [executions, setExecutions] = useState<AgentExecutionSummary[]>([]);
@@ -228,6 +248,55 @@ export default function DashboardPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, organizationId]);
+
+  // Load audit trail data
+  const loadAuditData = async () => {
+    try {
+      setIsLoadingAudit(true);
+      const [stats, logs] = await Promise.all([
+        api.getAuditStats(),
+        api.listAuditLogs({
+          severity: auditSeverityFilter || undefined,
+          limit: auditLimit,
+          offset: (auditPage - 1) * auditLimit,
+        }),
+      ]);
+      setAuditStats(stats);
+      setAuditLogs(logs.items);
+      setAuditTotal(logs.total);
+    } catch (err) {
+      console.error("Failed to load audit data", err);
+    } finally {
+      setIsLoadingAudit(false);
+    }
+  };
+
+  const handleExportAuditLogsCsv = async () => {
+    try {
+      setIsExportingAudit(true);
+      const blob = await api.exportAuditLogsCsv();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `bytherix_audit_trail_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error("Failed to export audit logs CSV", err);
+    } finally {
+      setIsExportingAudit(false);
+    }
+  };
+
+  // Re-fetch audit logs when switching to audit tab or changing filters
+  useEffect(() => {
+    if (token && activeTab === "audit") {
+      loadAuditData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, activeTab, auditSeverityFilter, auditPage]);
 
   // Re-fetch models when switching to models tab
   useEffect(() => {
@@ -882,6 +951,8 @@ const loadChatSessions = async () => {
               ? "MLOPS MODEL REGISTRY & DEPLOYMENTS"
               : activeTab === "apikeys"
               ? "MACHINE AUTHENTICATION VAULT"
+              : activeTab === "audit"
+              ? "ENTERPRISE AUDIT & COMPLIANCE"
               : "TENANT WORKSPACE TELEMETRY"
           }
         />
@@ -2286,6 +2357,406 @@ const loadChatSessions = async () => {
                 )}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* TAB: ENTERPRISE AUDIT & COMPLIANCE TRAIL (Section 10 & 13) */}
+        {activeTab === "audit" && (
+          <div className="space-y-6">
+            <div className="text-center space-y-1">
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center justify-center gap-2">
+                <span>Enterprise Audit & Compliance</span>
+                <ShieldCheck className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-lg mx-auto">
+                Immutable SOC 2 & ISO 27001 audit trail, cryptographic event logging, and security telemetry.
+              </p>
+            </div>
+
+            {/* Telemetry Gauge Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+              <div className="card-depth-3d p-4 sm:p-5 space-y-1">
+                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-indigo-500" />
+                  Total Audit Events
+                </span>
+                <p className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white">
+                  {auditStats?.total_events ?? 0}
+                </p>
+                <p className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold">
+                  Immutable Ledgers
+                </p>
+              </div>
+
+              <div className="card-depth-3d p-4 sm:p-5 space-y-1">
+                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-blue-500" />
+                  Routine Operations
+                </span>
+                <p className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white">
+                  {auditStats?.info_count ?? 0}
+                </p>
+                <p className="text-[11px] text-blue-600 dark:text-blue-400 font-semibold">
+                  Info Level Logs
+                </p>
+              </div>
+
+              <div className="card-depth-3d p-4 sm:p-5 space-y-1">
+                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                  Security Warnings
+                </span>
+                <p className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white">
+                  {auditStats?.warning_count ?? 0}
+                </p>
+                <p className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold">
+                  API & Access Changes
+                </p>
+              </div>
+
+              <div className="card-depth-3d p-4 sm:p-5 space-y-1">
+                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <ShieldAlert className="w-3.5 h-3.5 text-rose-500" />
+                  Critical Incidents
+                </span>
+                <p className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white">
+                  {auditStats?.critical_count ?? 0}
+                </p>
+                <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">
+                  Requires Triage
+                </p>
+              </div>
+            </div>
+
+            {/* Action Toolbar */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 rounded-2xl bg-white/70 dark:bg-[#0c1222]/70 border border-slate-200/80 dark:border-white/[0.08] backdrop-blur-xl">
+              {/* Severity Filter Pills */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 mr-1 flex items-center gap-1">
+                  <Filter className="w-3 h-3" /> Filter:
+                </span>
+                {(
+                  [
+                    { id: "", label: "All" },
+                    { id: "info", label: "Info" },
+                    { id: "warning", label: "Warning" },
+                    { id: "critical", label: "Critical" },
+                  ] as const
+                ).map((s) => {
+                  const isSel = auditSeverityFilter === s.id;
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => {
+                        setAuditSeverityFilter(s.id);
+                        setAuditPage(1);
+                      }}
+                      className={`px-3 py-1 rounded-full text-xs font-semibold transition-all duration-150 ${
+                        isSel
+                          ? "bg-indigo-600 text-white shadow-sm shadow-indigo-500/30"
+                          : "bg-slate-100 dark:bg-white/[0.06] text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/[0.12]"
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Search & Actions */}
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1 sm:w-56">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                  <input
+                    type="text"
+                    value={auditSearchQuery}
+                    onChange={(e) => setAuditSearchQuery(e.target.value)}
+                    placeholder="Search action or actor..."
+                    className="w-full pl-8 pr-3 py-1.5 rounded-xl text-xs bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.1] text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 transition-colors"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={loadAuditData}
+                  disabled={isLoadingAudit}
+                  title="Refresh Audit Logs"
+                  className="p-1.5 rounded-xl border border-slate-200 dark:border-white/[0.1] bg-white dark:bg-white/[0.05] text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white disabled:opacity-50 transition-colors"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isLoadingAudit ? "animate-spin text-indigo-500" : ""}`} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleExportAuditLogsCsv}
+                  disabled={isExportingAudit}
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 shadow-sm shadow-indigo-500/30 disabled:opacity-50 flex items-center gap-1.5 shrink-0 transition-all"
+                >
+                  <Download className={`w-3.5 h-3.5 ${isExportingAudit ? "animate-bounce" : ""}`} />
+                  <span>{isExportingAudit ? "Exporting..." : "Export CSV"}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Audit Logs Table / Stream */}
+            <div className="card-depth-3d overflow-hidden rounded-2xl">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-white/[0.08] bg-slate-50/80 dark:bg-white/[0.02] text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      <th className="py-3 px-4">Timestamp (UTC)</th>
+                      <th className="py-3 px-3">Severity</th>
+                      <th className="py-3 px-4">Action Event</th>
+                      <th className="py-3 px-3">Resource</th>
+                      <th className="py-3 px-4">Actor</th>
+                      <th className="py-3 px-3 text-right">Details</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-white/[0.05] text-xs">
+                    {isLoadingAudit ? (
+                      <tr>
+                        <td colSpan={6} className="py-12 text-center text-slate-500 dark:text-slate-400">
+                          <RefreshCw className="w-5 h-5 animate-spin mx-auto text-indigo-500 mb-2" />
+                          <span>Streaming audit event ledger...</span>
+                        </td>
+                      </tr>
+                    ) : auditLogs.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-12 text-center text-slate-500 dark:text-slate-400">
+                          <ShieldCheck className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+                          <p className="font-semibold">No audit events found</p>
+                          <p className="text-xs text-slate-400">Events will record automatically as operations occur.</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      auditLogs
+                        .filter((log) => {
+                          if (!auditSearchQuery.trim()) return true;
+                          const q = auditSearchQuery.toLowerCase();
+                          return (
+                            log.action.toLowerCase().includes(q) ||
+                            log.actor_email.toLowerCase().includes(q) ||
+                            log.resource_type.toLowerCase().includes(q) ||
+                            (log.resource_id && log.resource_id.toLowerCase().includes(q))
+                          );
+                        })
+                        .map((log) => {
+                          const dateObj = new Date(log.created_at);
+                          const dateStr = !isNaN(dateObj.getTime())
+                            ? dateObj.toISOString().replace("T", " ").slice(0, 19)
+                            : log.created_at;
+
+                          return (
+                            <tr
+                              key={log.id}
+                              className="hover:bg-slate-50/60 dark:hover:bg-white/[0.02] transition-colors"
+                            >
+                              <td className="py-3 px-4 font-mono text-[11px] text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                                {dateStr}
+                              </td>
+
+                              <td className="py-3 px-3 whitespace-nowrap">
+                                <span
+                                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                                    log.severity === "critical"
+                                      ? "bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/30"
+                                      : log.severity === "warning"
+                                      ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30"
+                                      : "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/30"
+                                  }`}
+                                >
+                                  {log.severity}
+                                </span>
+                              </td>
+
+                              <td className="py-3 px-4">
+                                <div className="font-mono text-xs font-semibold text-slate-900 dark:text-white">
+                                  {log.action}
+                                </div>
+                              </td>
+
+                              <td className="py-3 px-3 whitespace-nowrap">
+                                <span className="inline-block px-2 py-0.5 rounded-md text-[11px] font-mono bg-slate-100 dark:bg-white/[0.06] text-slate-700 dark:text-slate-300">
+                                  {log.resource_type}
+                                </span>
+                              </td>
+
+                              <td className="py-3 px-4">
+                                <div className="font-medium text-slate-800 dark:text-slate-200 truncate max-w-[180px]">
+                                  {log.actor_email}
+                                </div>
+                                <div className="font-mono text-[10px] text-slate-500 dark:text-slate-400">
+                                  {log.ip_address}
+                                </div>
+                              </td>
+
+                              <td className="py-3 px-3 text-right whitespace-nowrap">
+                                <button
+                                  type="button"
+                                  onClick={() => setInspectingAuditLog(log)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border border-transparent hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                  <span>Inspect</span>
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Table Footer / Pagination */}
+              <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 dark:border-white/[0.08] bg-slate-50/50 dark:bg-white/[0.01] text-xs text-slate-600 dark:text-slate-400">
+                <div>
+                  Showing{" "}
+                  <span className="font-semibold text-slate-900 dark:text-white">
+                    {auditTotal === 0 ? 0 : (auditPage - 1) * auditLimit + 1}
+                  </span>{" "}
+                  to{" "}
+                  <span className="font-semibold text-slate-900 dark:text-white">
+                    {Math.min(auditPage * auditLimit, auditTotal)}
+                  </span>{" "}
+                  of{" "}
+                  <span className="font-semibold text-slate-900 dark:text-white">
+                    {auditTotal}
+                  </span>{" "}
+                  events
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setAuditPage((p) => Math.max(1, p - 1))}
+                    disabled={auditPage <= 1}
+                    className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-white/[0.1] bg-white dark:bg-white/[0.05] text-slate-700 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-white/[0.1] transition-colors"
+                  >
+                    Previous
+                  </button>
+                  <span className="px-2 font-mono text-[11px]">
+                    Page {auditPage} of {Math.max(1, Math.ceil(auditTotal / auditLimit))}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setAuditPage((p) => p + 1)}
+                    disabled={auditPage * auditLimit >= auditTotal}
+                    className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-white/[0.1] bg-white dark:bg-white/[0.05] text-slate-700 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-white/[0.1] transition-colors"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Inspect Modal Drawer */}
+            {inspectingAuditLog && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                <div className="card-depth-3d w-full max-w-xl p-6 space-y-4 relative">
+                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/[0.08] pb-3">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                          Audit Event Inspector
+                        </h4>
+                        <p className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                          {inspectingAuditLog.id}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setInspectingAuditLog(null)}
+                      className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Metadata Summary Grid */}
+                  <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] text-xs">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Action</span>
+                      <span className="font-mono font-semibold text-slate-900 dark:text-white">
+                        {inspectingAuditLog.action}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Severity</span>
+                      <span className="font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                        {inspectingAuditLog.severity}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Actor</span>
+                      <span className="font-mono text-slate-700 dark:text-slate-300">
+                        {inspectingAuditLog.actor_email}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Client IP</span>
+                      <span className="font-mono text-slate-700 dark:text-slate-300">
+                        {inspectingAuditLog.ip_address}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* JSON Payload Details */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                        <Terminal className="w-3.5 h-3.5 text-indigo-500" />
+                        Event Payload Details (JSON)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(inspectingAuditLog.details);
+                          setCopiedAuditJson(true);
+                          setTimeout(() => setCopiedAuditJson(false), 2000);
+                        }}
+                        className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+                      >
+                        {copiedAuditJson ? (
+                          <>
+                            <Check className="w-3 h-3 text-emerald-500" />
+                            <span className="text-emerald-500">Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            <span>Copy JSON</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    <pre className="p-3.5 rounded-xl bg-slate-950 dark:bg-black/90 text-emerald-300 font-mono text-xs overflow-x-auto max-h-56 scrollbar-none border border-slate-800">
+                      {(() => {
+                        try {
+                          return JSON.stringify(JSON.parse(inspectingAuditLog.details), null, 2);
+                        } catch {
+                          return inspectingAuditLog.details || "{}";
+                        }
+                      })()}
+                    </pre>
+                  </div>
+
+                  <div className="flex justify-end pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setInspectingAuditLog(null)}
+                      className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-white/[0.06] text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-white/[0.1] transition-colors"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

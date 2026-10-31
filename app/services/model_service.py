@@ -6,6 +6,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from app.core.config import settings
+from app.services.audit_service import AuditService
 
 from app.db.models.model_registry import RegisteredModel, ModelVersion, PredictionLog
 from app.schemas.model_registry import (
@@ -268,6 +269,19 @@ class ModelService:
         version.lifecycle_stage = target_stage
         db.commit()
         db.refresh(version)
+
+        action_name = "mlops.version_promoted" if target_stage == "production" else f"mlops.version_stage_{target_stage}"
+        AuditService.record_event(
+            db=db,
+            organization_id=organization_id,
+            action=action_name,
+            resource_type="model_version",
+            resource_id=version.id,
+            actor_email=user_email,
+            severity="info" if target_stage != "archived" else "warning",
+            details={"model_name": model.name, "version": version.version, "target_stage": target_stage}
+        )
+
         return version
 
     @staticmethod

@@ -8,6 +8,7 @@ from app.db.models.user import User
 from app.db.session import get_db
 from app.schemas.auth import TokenResponse, UserCreate, UserLogin, UserOut
 from app.services.organization_service import create_organization_with_owner
+from app.services.audit_service import AuditService
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -37,6 +38,18 @@ def signup(data: UserCreate, db: Session = Depends(get_db)):
         db=db,
         user=user,
         organization_name=data.organization_name
+    )
+
+    AuditService.record_event(
+        db=db,
+        organization_id=org.id,
+        action="auth.signup",
+        resource_type="user",
+        resource_id=user.id,
+        actor_email=user.email,
+        actor_id=user.id,
+        severity="info",
+        details={"role": membership.role, "organization": org.name}
     )
 
     # 3. Generate scoped JWT token
@@ -86,6 +99,19 @@ def login(data: UserLogin, db: Session = Depends(get_db)):
         organization_id=org_id,
         role=role
     )
+
+    if org_id:
+        AuditService.record_event(
+            db=db,
+            organization_id=org_id,
+            action="auth.login",
+            resource_type="user",
+            resource_id=user.id,
+            actor_email=user.email,
+            actor_id=user.id,
+            severity="info",
+            details={"role": role}
+        )
 
     return TokenResponse(
         access_token=token,

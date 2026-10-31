@@ -1,3 +1,32 @@
+
+export interface AuditLogItem {
+  id: string;
+  organization_id: string;
+  actor_id: string | null;
+  actor_email: string;
+  action: string;
+  resource_type: string;
+  resource_id: string | null;
+  severity: "info" | "warning" | "critical";
+  details: string;
+  ip_address: string;
+  created_at: string;
+}
+
+export interface AuditLogListResponse {
+  items: AuditLogItem[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface AuditStats {
+  total_events: number;
+  info_count: number;
+  warning_count: number;
+  critical_count: number;
+}
+
 /**
  * Bytherix EAM Enterprise API Client
  * Connects directly to FastAPI backend at /api/v1
@@ -515,6 +544,42 @@ class ApiClient {
     });
   }
 
+  // Audit & Compliance Trail (Section 10 & 13)
+  async listAuditLogs(params?: {
+    action?: string;
+    severity?: string;
+    resource_type?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<AuditLogListResponse> {
+    const query = new URLSearchParams();
+    if (params?.action) query.set("action", params.action);
+    if (params?.severity) query.set("severity", params.severity);
+    if (params?.resource_type) query.set("resource_type", params.resource_type);
+    if (params?.limit) query.set("limit", String(params.limit));
+    if (params?.offset) query.set("offset", String(params.offset));
+    const qs = query.toString();
+    return this.request<AuditLogListResponse>(`/audit-logs${qs ? `?${qs}` : ""}`);
+  }
+
+  async getAuditStats(): Promise<AuditStats> {
+    return this.request<AuditStats>("/audit-logs/stats");
+  }
+
+  async exportAuditLogsCsv(): Promise<Blob> {
+    const token = this.getToken();
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+    const res = await fetch(`${API_BASE_URL}/audit-logs/export`, {
+      headers,
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to export audit logs: ${res.statusText}`);
+    }
+    return res.blob();
+  }
 }
 
 export const api = new ApiClient();

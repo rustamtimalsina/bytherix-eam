@@ -11,6 +11,7 @@ from app.db.models.document import Document
 from app.db.session import SessionLocal
 from app.integrations.object_storage.s3 import storage_service
 from app.services.retrieval_service import parse_and_index_document
+from app.services.audit_service import AuditService
 from app.workers.tasks.document_tasks import process_document_task
 
 
@@ -120,6 +121,17 @@ def upload_document(
     else:
         _run_indexing_thread(doc.id)
 
+    AuditService.record_event(
+        db=db,
+        organization_id=organization_id,
+        action="document.upload",
+        resource_type="document",
+        resource_id=doc.id,
+        actor_id=user_id,
+        severity="info",
+        details={"title": doc.title, "file_size_bytes": doc.file_size_bytes, "checksum": doc.checksum}
+    )
+
     db.refresh(doc)
     return doc
 
@@ -134,6 +146,17 @@ def delete_document(db: Session, document: Document) -> bool:
     storage_service.delete_file(document.object_key)
 
     # Cascade deletes chunks in database
+    AuditService.record_event(
+        db=db,
+        organization_id=document.organization_id,
+        action="document.delete",
+        resource_type="document",
+        resource_id=document.id,
+        actor_id=document.owner_id,
+        severity="warning",
+        details={"title": document.title}
+    )
+
     db.delete(document)
     db.commit()
     return True
