@@ -10,6 +10,7 @@ import {
   Plus,
   Copy,
   Check,
+  ChevronDown,
   LogOut,
   Sparkles,
   ShieldAlert,
@@ -113,6 +114,13 @@ function renderFormattedAnswer(text: string) {
   });
 }
 
+const TASK_TYPE_OPTIONS = [
+  { value: "text-generation", label: "Text Generation (LLM)" },
+  { value: "embeddings", label: "Dense Vector Embeddings" },
+  { value: "classification", label: "Classification" },
+  { value: "summarization", label: "Summarization" },
+];
+
 export default function DashboardPage() {
   const router = useRouter();
   const { user, token, organizationId, role, isLoading: authLoading, logout } = useAuth();
@@ -131,6 +139,8 @@ export default function DashboardPage() {
   const [newModelName, setNewModelName] = useState("");
   const [newModelDesc, setNewModelDesc] = useState("");
   const [newModelTask, setNewModelTask] = useState("text-generation");
+  const [isTaskDropdownOpen, setIsTaskDropdownOpen] = useState(false);
+  const taskDropdownRef = useRef<HTMLDivElement>(null);
   const [isCreatingModel, setIsCreatingModel] = useState(false);
 
   // Agent Workflows state (Section 8.4 & 11)
@@ -238,6 +248,21 @@ export default function DashboardPage() {
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages, isQuerying]);
+
+  // Close task type dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (taskDropdownRef.current && !taskDropdownRef.current.contains(event.target as Node)) {
+        setIsTaskDropdownOpen(false);
+      }
+    }
+    if (isTaskDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isTaskDropdownOpen]);
 
   const loadModelsData = async () => {
     try {
@@ -812,6 +837,10 @@ const loadChatSessions = async () => {
               ? "KNOWLEDGE INGESTION STATION"
               : activeTab === "chat"
               ? "GROUNDED HYBRID RAG CORE"
+              : activeTab === "agents"
+              ? "GOVERNED AGENT WORKFLOW ENGINE"
+              : activeTab === "models"
+              ? "MLOPS MODEL REGISTRY & DEPLOYMENTS"
               : activeTab === "apikeys"
               ? "MACHINE AUTHENTICATION VAULT"
               : "TENANT WORKSPACE TELEMETRY"
@@ -1656,19 +1685,25 @@ const loadChatSessions = async () => {
 
             {/* Register Model Modal */}
             {showNewModelModal && (
-              <div className="card-depth-3d p-5 border-indigo-500/30 bg-indigo-50/50 dark:bg-black/60 rounded-2xl space-y-4">
-                <div className="flex items-center justify-between">
+              <div className="card-depth-3d p-5 sm:p-6 border-indigo-500/30 bg-white/95 dark:bg-[#0c1220]/95 backdrop-blur-xl rounded-2xl space-y-4 shadow-2xl">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-white/10">
                   <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     <Plus className="w-4 h-4 text-indigo-500" />
                     <span>Register New Model Architecture (Section 9.2 #1)</span>
                   </h3>
-                  <button onClick={() => setShowNewModelModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-white">
+                  <button
+                    onClick={() => {
+                      setShowNewModelModal(false);
+                      setIsTaskDropdownOpen(false);
+                    }}
+                    className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+                  >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
 
-                <form onSubmit={handleCreateNewModel} className="space-y-3">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <form onSubmit={handleCreateNewModel} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                     <div className="space-y-1">
                       <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Model Name</label>
                       <input
@@ -1677,21 +1712,48 @@ const loadChatSessions = async () => {
                         value={newModelName}
                         onChange={(e) => setNewModelName(e.target.value)}
                         placeholder="e.g. customer-sentiment-llama3"
-                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#080d1a] border border-slate-200 dark:border-white/15 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono"
                       />
                     </div>
-                    <div className="space-y-1">
+
+                    <div className="space-y-1 relative" ref={taskDropdownRef}>
                       <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Task Type</label>
-                      <select
-                        value={newModelTask}
-                        onChange={(e) => setNewModelTask(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      <button
+                        type="button"
+                        onClick={() => setIsTaskDropdownOpen(!isTaskDropdownOpen)}
+                        className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#080d1a] border border-slate-200 dark:border-white/15 text-xs font-semibold text-slate-900 dark:text-white hover:border-indigo-500/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-left"
                       >
-                        <option value="text-generation">Text Generation (LLM)</option>
-                        <option value="embeddings">Dense Vector Embeddings</option>
-                        <option value="classification">Classification</option>
-                        <option value="summarization">Summarization</option>
-                      </select>
+                        <span>
+                          {TASK_TYPE_OPTIONS.find((t) => t.value === newModelTask)?.label || "Select Task Type"}
+                        </span>
+                        <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${isTaskDropdownOpen ? "rotate-180 text-indigo-500" : ""}`} />
+                      </button>
+
+                      {isTaskDropdownOpen && (
+                        <div className="absolute top-full left-0 right-0 mt-1.5 z-50 p-1.5 rounded-xl bg-white dark:bg-[#0c1220] border border-slate-200 dark:border-white/15 shadow-2xl space-y-0.5">
+                          {TASK_TYPE_OPTIONS.map((opt) => {
+                            const isSelected = newModelTask === opt.value;
+                            return (
+                              <button
+                                key={opt.value}
+                                type="button"
+                                onClick={() => {
+                                  setNewModelTask(opt.value);
+                                  setIsTaskDropdownOpen(false);
+                                }}
+                                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
+                                  isSelected
+                                    ? "bg-indigo-600 text-white font-bold"
+                                    : "text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[0.06] hover:text-indigo-600 dark:hover:text-indigo-400"
+                                }`}
+                              >
+                                <span>{opt.label}</span>
+                                {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -1702,22 +1764,25 @@ const loadChatSessions = async () => {
                       value={newModelDesc}
                       onChange={(e) => setNewModelDesc(e.target.value)}
                       placeholder="e.g. Fine-tuned model on internal support dataset with 8k context window"
-                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#080d1a] border border-slate-200 dark:border-white/15 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                     />
                   </div>
 
                   <div className="flex justify-end gap-2 pt-2">
                     <button
                       type="button"
-                      onClick={() => setShowNewModelModal(false)}
-                      className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.04]"
+                      onClick={() => {
+                        setShowNewModelModal(false);
+                        setIsTaskDropdownOpen(false);
+                      }}
+                      className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.04] transition-colors"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      disabled={isCreatingModel}
-                      className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md active:scale-95 transition-all"
+                      disabled={isCreatingModel || !newModelName.trim()}
+                      className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 shadow-md shadow-indigo-600/30 active:scale-95 transition-all"
                     >
                       {isCreatingModel ? "Registering..." : "Confirm Registration"}
                     </button>
