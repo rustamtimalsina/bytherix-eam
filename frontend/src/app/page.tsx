@@ -219,9 +219,17 @@ export default function DashboardPage() {
       loadMembers();
       loadChatSessions();
       loadAgentData();
+      loadModelsData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, organizationId]);
+
+  // Re-fetch models when switching to models tab
+  useEffect(() => {
+    if (token && activeTab === "models") {
+      loadModelsData();
+    }
+  }, [token, activeTab]);
 
   // Auto-poll document status if any document is processing or queued
   useEffect(() => {
