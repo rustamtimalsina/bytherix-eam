@@ -132,6 +132,15 @@ const TASK_TYPE_OPTIONS = [
 export default function DashboardPage() {
   const router = useRouter();
   const { user, token, organizationId, role, isLoading: authLoading, logout } = useAuth();
+
+  // Role-Aware Access Control (Section 3.1 & 10.2)
+  const isOwnerOrAdmin =
+    role === "organization_owner" ||
+    role === "organization_administrator" ||
+    Boolean(user?.is_platform_operator);
+
+  const canManageModels =
+    isOwnerOrAdmin || role === "ai_ml_engineer";
   const [activeTab, setActiveTab] = useState<ActiveTab>("documents");
 
   // MLOps Model Registry state (Section 9 & 14)
@@ -1103,13 +1112,15 @@ const loadChatSessions = async () => {
                           {doc.status === "indexed" ? "Ready" : doc.status}
                         </span>
 
-                        <button
-                          onClick={() => handleDeleteDocument(doc.id)}
-                          title="Delete document"
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {isOwnerOrAdmin && (
+                          <button
+                            onClick={() => handleDeleteDocument(doc.id)}
+                            title="Delete document"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -2097,38 +2108,44 @@ const loadChatSessions = async () => {
                                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                   <span>Active Prod</span>
                                 </span>
-                              ) : isStaging ? (
-                                isOlderThanActive ? (
-                                  <button
-                                    type="button"
-                                    disabled={isPromoting}
-                                    onClick={() => handleRollbackVersion(ver.id)}
-                                    className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-500/30 transition-all active:scale-95"
-                                    title="Revert active production deployment to this prior stable version"
-                                  >
-                                    Rollback to This
-                                  </button>
+                              ) : canManageModels ? (
+                                isStaging ? (
+                                  isOlderThanActive ? (
+                                    <button
+                                      type="button"
+                                      disabled={isPromoting}
+                                      onClick={() => handleRollbackVersion(ver.id)}
+                                      className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-500/30 transition-all active:scale-95"
+                                      title="Revert active production deployment to this prior stable version"
+                                    >
+                                      Rollback to This
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      disabled={isPromoting}
+                                      onClick={() => handlePromoteVersion(ver.id, "production")}
+                                      className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-sm active:scale-95 transition-all"
+                                      title="Promote this validated candidate release to active production"
+                                    >
+                                      Promote to Prod
+                                    </button>
+                                  )
                                 ) : (
                                   <button
                                     type="button"
                                     disabled={isPromoting}
-                                    onClick={() => handlePromoteVersion(ver.id, "production")}
-                                    className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-sm active:scale-95 transition-all"
-                                    title="Promote this validated candidate release to active production"
+                                    onClick={() => handlePromoteVersion(ver.id, "staging")}
+                                    className="px-2.5 py-1 rounded-lg text-[10px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-colors"
+                                    title="Stage this draft candidate for pre-production evaluation"
                                   >
-                                    Promote to Prod
+                                    Stage Candidate
                                   </button>
                                 )
                               ) : (
-                                <button
-                                  type="button"
-                                  disabled={isPromoting}
-                                  onClick={() => handlePromoteVersion(ver.id, "staging")}
-                                  className="px-2.5 py-1 rounded-lg text-[10px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-colors"
-                                  title="Stage this draft candidate for pre-production evaluation"
-                                >
-                                  Stage Candidate
-                                </button>
+                                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/[0.04] text-slate-500 border border-slate-200 dark:border-white/[0.06] capitalize">
+                                  {ver.lifecycle_stage}
+                                </span>
                               )}
                             </div>
                           </div>
@@ -2346,12 +2363,18 @@ const loadChatSessions = async () => {
                       </div>
 
                       {!k.is_revoked && (
-                        <button
-                          onClick={() => handleRevokeKey(k.id)}
-                          className="text-xs px-2.5 py-1 rounded-lg border border-red-200 dark:border-red-800/60 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors font-medium"
-                        >
-                          Revoke
-                        </button>
+                        isOwnerOrAdmin ? (
+                          <button
+                            onClick={() => handleRevokeKey(k.id)}
+                            className="text-xs px-2.5 py-1 rounded-lg border border-red-200 dark:border-red-800/60 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors font-medium"
+                          >
+                            Revoke
+                          </button>
+                        ) : (
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-semibold">
+                            Active
+                          </span>
+                        )
                       )}
                     </div>
                   ))
@@ -3001,13 +3024,15 @@ const loadChatSessions = async () => {
                   </div>
                 </div>
 
-                <button
-                  onClick={() => setShowInviteModal(true)}
-                  className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-teal-500 to-indigo-600 hover:from-teal-400 hover:to-indigo-500 shadow-lg shadow-teal-500/20 active:scale-[0.98] transition-all"
-                >
-                  <UserPlus className="w-3.5 h-3.5" />
-                  <span>Invite Member</span>
-                </button>
+                {isOwnerOrAdmin && (
+                  <button
+                    onClick={() => setShowInviteModal(true)}
+                    className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-teal-500 to-indigo-600 hover:from-teal-400 hover:to-indigo-500 shadow-lg shadow-teal-500/20 active:scale-[0.98] transition-all"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    <span>Invite Member</span>
+                  </button>
+                )}
               </div>
 
               {/* Members List */}
@@ -3055,19 +3080,25 @@ const loadChatSessions = async () => {
                           {m.status}
                         </span>
 
-                        {/* Custom Role Dropdown */}
+                        {/* Custom Role Dropdown (Admins/Owners) or Read-Only Role Badge */}
                         <div className="w-32">
-                          <CustomRoleDropdown
-                            value={m.role}
-                            disabled={m.role === "organization_owner"}
-                            onChange={(newRole) => handleUpdateRole(m.id, newRole)}
-                            options={ROLE_OPTIONS}
-                            compact
-                          />
+                          {isOwnerOrAdmin ? (
+                            <CustomRoleDropdown
+                              value={m.role}
+                              disabled={m.role === "organization_owner"}
+                              onChange={(newRole) => handleUpdateRole(m.id, newRole)}
+                              options={ROLE_OPTIONS}
+                              compact
+                            />
+                          ) : (
+                            <span className="inline-block w-full text-center text-xs font-mono py-1 px-2 rounded-lg bg-slate-100 dark:bg-white/[0.04] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/[0.08] capitalize">
+                              {ROLE_OPTIONS.find((r) => r.value === m.role)?.label || m.role.replace(/_/g, " ")}
+                            </span>
+                          )}
                         </div>
 
                         {/* Copy Invite Link if Invited */}
-                        {m.status === "invited" && m.invitation_token && (
+                        {isOwnerOrAdmin && m.status === "invited" && m.invitation_token && (
                           <button
                             onClick={() => {
                               const link = `${window.location.origin}/accept-invite?token=${m.invitation_token}`;
@@ -3082,7 +3113,7 @@ const loadChatSessions = async () => {
                         )}
 
                         {/* Remove / Revoke Button */}
-                        {m.role !== "organization_owner" && (
+                        {isOwnerOrAdmin && m.role !== "organization_owner" && (
                           <button
                             onClick={() => handleRemoveMember(m.id)}
                             title="Remove member"
