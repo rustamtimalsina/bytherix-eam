@@ -3131,10 +3131,10 @@ const loadChatSessions = async () => {
                     <div className="space-y-3">
                       <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 text-emerald-900 dark:text-emerald-200 text-xs font-semibold flex items-center gap-2">
                         <Check className="w-4 h-4" />
-                        <span>Invitation generated successfully!</span>
+                        <span>Invitation created & email dispatched!</span>
                       </div>
                       <p className="text-xs text-slate-600 dark:text-slate-400">
-                        Share this single-use link with your teammate (valid for 7 days per Section 7.1):
+                        An invitation email was sent to <strong>{inviteEmail}</strong>. You can also share this direct single-use link (valid for 7 days per Section 7.1):
                       </p>
                       <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-100 dark:bg-black/40 border border-slate-200 dark:border-white/[0.08]">
                         <input
