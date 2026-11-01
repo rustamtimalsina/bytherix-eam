@@ -1,94 +1,51 @@
-import time
 import uuid
-from fastapi import FastAPI, Request, status
-from fastapi.exceptions import RequestValidationError
+
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.exceptions import HTTPException as StarletteHTTPException
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
-from app.api.errors import http_exception_handler, validation_exception_handler
-from app.api.v1.api_keys import router as api_keys_router
-from app.api.v1.auth import router as auth_router
-from app.api.v1.chat import router as chat_router
-from app.api.v1.documents import router as documents_router
-from app.api.v1.organizations import router as organizations_router
-from app.api.v1.usage import router as usage_router
-from app.core.config import settings
-from app.db.base import Base
-from app.db.session import engine
+from app.api.errors import register_error_handlers
+from app.api.v1.router import api_router
+from app.core.config import get_settings
+from app.db.session import get_db
 
-from contextlib import asynccontextmanager
+settings = get_settings()
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Application lifespan: initialize tables safely on startup (Section 14.3)."""
-    if settings.APP_ENV != "test":
-        try:
-            Base.metadata.create_all(bind=engine)
-        except Exception as e:
-            print(f"Warning: Could not auto-create database tables on startup: {e}")
-    yield
-
-app = FastAPI(
-    title=settings.APP_NAME,
-    version="1.0.0",
-    description="Bytherix EAM - Enterprise AI Management Platform API",
-    openapi_url=f"{settings.API_V1_STR}/openapi.json",
-    docs_url=f"{settings.API_V1_STR}/docs",
-    redoc_url=f"{settings.API_V1_STR}/redoc",
-    lifespan=lifespan
-)
-
-# CORS configuration
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app = FastAPI(title=settings.app_name, version="0.1.0")
 
 
 @app.middleware("http")
-async def add_request_id_and_timing(request: Request, call_next):
-    """Correlation ID and latency tracking middleware (Section 10.1 & 14.1)."""
-    request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
-    request.state.request_id = request_id
-    start_time = time.time()
-    
+async def add_request_id(request: Request, call_next):
+    # Server-generated correlation id, returned in a header and in error bodies.
+    request.state.request_id = str(uuid.uuid4())
     response = await call_next(request)
-    
-    duration = time.time() - start_time
-    response.headers["X-Request-ID"] = request_id
-    response.headers["X-Process-Time"] = f"{duration:.4f}s"
+    response.headers["X-Request-ID"] = request.state.request_id
     return response
 
 
-# Register exception handlers
-app.add_exception_handler(StarletteHTTPException, http_exception_handler)
-app.add_exception_handler(RequestValidationError, validation_exception_handler)
+# Added after the middleware above, so CORS wraps everything.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
+)
 
-# Health Checks (Section 10.2 & 14.3)
-@app.get("/health/live", tags=["Health"])
-def health_live():
-    """Liveness probe: verifies process is alive without expensive dependency checks."""
-    return {"status": "ok", "service": "bytherix-eam-api"}
+register_error_handlers(app)
+app.include_router(api_router)
 
 
-@app.get("/health/ready", tags=["Health"])
-def health_ready():
-    """Readiness probe: verifies database and dependencies are usable."""
+@app.get("/health/live", tags=["health"])
+def live() -> dict:
+    return {"status": "ok"}
+
+
+@app.get("/health/ready", tags=["health"])
+def ready(db: Session = Depends(get_db)):
     try:
-        with engine.connect() as conn:
-            conn.execute(Base.metadata.tables["users"].select().limit(1))
-        return {"status": "ready", "database": "connected"}
-    except Exception as e:
-        return {"status": "not_ready", "error": str(e)}
-
-
-# Include API v1 Routers (Section 10.1)
-app.include_router(auth_router, prefix=settings.API_V1_STR)
-app.include_router(organizations_router, prefix=settings.API_V1_STR)
-app.include_router(api_keys_router, prefix=settings.API_V1_STR)
-app.include_router(documents_router, prefix=settings.API_V1_STR)
-app.include_router(chat_router, prefix=settings.API_V1_STR)
-app.include_router(usage_router, prefix=settings.API_V1_STR)
+        db.execute(text("SELECT 1"))
+    except Exception:
+        return JSONResponse(status_code=503, content={"status": "database_unavailable"})
+    return {"status": "ready"}

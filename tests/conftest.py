@@ -1,66 +1,42 @@
-import io
-import pytest
-from fastapi.testclient import TestClient
-from pypdf import PdfWriter
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
+import os
 
-from app.core.config import settings
+# Must be set BEFORE the app is imported, because settings are read at import time.
+os.environ.setdefault("DATABASE_URL", "sqlite://")
+os.environ.setdefault("SECRET_KEY", "test-secret-key-for-tests-only-0123456789")
 
-# Force test environment
-settings.APP_ENV = "test"
-settings.DATABASE_URL = "sqlite:///:memory:"
+import pytest  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+from sqlalchemy import create_engine  # noqa: E402
+from sqlalchemy.orm import sessionmaker  # noqa: E402
+from sqlalchemy.pool import StaticPool  # noqa: E402
 
-from app.db.base import Base
-from app.db.session import get_db
-from app.main import app
-
-# Test database: In-memory SQLite with static pool for thread safety
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
-
-test_engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
+import app.db.models  # noqa: E402, F401
+from app.db.base import Base  # noqa: E402
+from app.db.session import get_db  # noqa: E402
+from app.main import app  # noqa: E402
 
 
-@pytest.fixture(scope="function")
-def db():
-    """Create a fresh database for each test."""
-    Base.metadata.create_all(bind=test_engine)
-    session = TestingSessionLocal()
-    try:
-        yield session
-    finally:
-        session.close()
-        Base.metadata.drop_all(bind=test_engine)
+@pytest.fixture()
+def session_factory():
+    """A throwaway in-memory database, created fresh for every test."""
+    engine = create_engine(
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    )
+    Base.metadata.create_all(engine)
+    yield sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+    Base.metadata.drop_all(engine)
 
 
-@pytest.fixture(scope="function")
-def client(db):
-    """FastAPI TestClient with overridden get_db dependency."""
+@pytest.fixture()
+def client(session_factory):
     def override_get_db():
+        db = session_factory()
         try:
             yield db
         finally:
-            pass
+            db.close()
 
     app.dependency_overrides[get_db] = override_get_db
-    with TestClient(app) as test_client:
-        yield test_client
+    with TestClient(app) as c:
+        yield c
     app.dependency_overrides.clear()
-
-
-@pytest.fixture
-def sample_pdf_bytes():
-    """Generate a clean authentic PDF with test text."""
-    writer = PdfWriter()
-    writer.add_blank_page(width=300, height=300)
-    # Write page with raw pdf content
-    stream = io.BytesIO()
-    writer.write(stream)
-    stream.seek(0)
-    return stream.read()

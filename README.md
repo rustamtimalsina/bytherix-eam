@@ -1,119 +1,89 @@
-# Bytherix EAM — Enterprise AI Management Platform
+# Bytherix EAM Backend (auth foundation)
 
-[![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg)](https://fastapi.tiangolo.com)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-336791.svg)](https://github.com/pgvector/pgvector)
-[![Celery](https://img.shields.io/badge/Celery-5.4+-37814A.svg)](https://docs.celeryq.dev/)
-[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED.svg)](https://www.docker.com/)
+FastAPI + PostgreSQL backend for signup and login, with Argon2id password hashing.
+This is Phase 1-3 of the project spec: foundation, database and identity, tenant-aware auth.
 
-A modular, multi-tenant enterprise platform designed to let organizations securely manage AI-powered knowledge workflows, run controlled AI agents, deploy machine-learning models, monitor model behavior, and administer SaaS usage from one system.
+## Endpoints
 
----
+| Method | Path | What it does |
+|---|---|---|
+| POST | `/api/v1/auth/signup` | Creates user + organization + owner membership, returns a token |
+| POST | `/api/v1/auth/login` | Verifies email/password, returns a token |
+| GET | `/api/v1/auth/me` | Current user, organization and role (needs `Authorization: Bearer <token>`) |
+| GET | `/health/live`, `/health/ready` | Liveness / database readiness |
 
-## 🏛 Architecture & Product Modules
+Interactive docs: http://localhost:8000/docs
 
-1. **Enterprise AI Intelligence (RAG & Knowledge)**:
-   - Asynchronous PDF document upload, magic-byte validation, and SHA-256 integrity verification.
-   - Semantic text chunking with stable page and section references.
-   - Vector embeddings indexed into PostgreSQL via `pgvector`.
-   - Source-grounded RAG question-answering with exact document and page citations.
-2. **Multi-Tenant SaaS Foundation**:
-   - Strict tenant isolation: Tenant context is derived on the server from authenticated sessions or API keys, never from untrusted client input alone.
-   - Role-Based Access Control (RBAC): Owner, Administrator, Developer, AI/ML Engineer, Analyst, Billing Manager, Viewer.
-   - Scoped API keys with SHA-256 storage hashing, expiration, and immediate revocation.
-3. **MLOps & Model Governance**:
-   - Model version registry with lifecycle states (`draft` → `staging` → `production` → `archived`).
-   - Versioned prediction endpoints, drift monitoring, and 1-click rollback workflows.
+## Setup (first time)
 
----
-
-## 🚀 Quick Start (Docker Compose)
-
-The easiest way to spin up the entire ecosystem (PostgreSQL with `pgvector`, Redis, MinIO S3 object storage, FastAPI API, and Celery worker):
+Requirements: Python 3.11+, Docker.
 
 ```bash
-# 1. Clone & enter directory
-git clone <repo-url>
-cd bytherix-eam
+# 1. virtual environment and dependencies
+python -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
 
-# 2. Configure environment
-cp .env.example .env
+# 2. configuration
+cp .env.example .env               # Windows: copy .env.example .env
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+#   paste the output as SECRET_KEY in .env
 
-# 3. Spin up all services
+# 3. start PostgreSQL
 docker compose up -d
+
+# 4. create the tables (first time only: generate the migration, then apply it)
+alembic revision --autogenerate -m "create auth tables"
+alembic upgrade head
+
+# 5. run the API
+uvicorn app.main:app --reload
 ```
 
-Once running:
-- **Interactive Swagger Docs**: [http://localhost:8000/api/v1/docs](http://localhost:8000/api/v1/docs)
-- **MinIO Storage Console**: [http://localhost:9001](http://localhost:9001) (`minioadmin` / `minioadmin`)
-
----
-
-## 💻 Local Development Setup
-
-If running without Docker:
+## Run the tests
 
 ```bash
-# 1. Create and activate virtual environment
-python -m venv venv
-venv\Scripts\activate       # Windows
-source venv/bin/activate    # Linux / macOS
-
-# 2. Install dependencies
-pip install -e .
-
-# 3. Run FastAPI backend
-uvicorn app.main:app --reload --port 8000
-
-# 4. In a separate terminal, run Celery worker (optional for background indexing)
-celery -A app.workers.celery_app.celery_app worker --loglevel=info
+pytest
 ```
 
----
+Tests use a throwaway in-memory SQLite database, so they never touch your real data.
 
-## 🧪 Automated Testing
+## Upgrading an existing setup (adding rate limiting)
 
-Run the full automated test suite (including cross-tenant isolation tests, health probes, file validation, and API key lifecycle):
+If you already ran the first migration, add the new table:
 
 ```bash
-pytest -v
+alembic revision --autogenerate -m "add login attempts"
+alembic upgrade head
 ```
 
----
+(If you have not run any migration yet, the first autogenerate will include it.)
 
-## 📂 Project Structure
+## Changing the database later
+
+Never edit tables by hand. Change a model in `app/db/models/`, then:
+
+```bash
+alembic revision --autogenerate -m "describe the change"
+alembic upgrade head
+```
+
+## How a request flows
 
 ```
-bytherix-eam/
-|-- app/
-|   |-- main.py                       # FastAPI application & middleware
-|   |-- api/
-|   |   |-- errors.py                 # Standard error handling (Section 10.3)
-|   |   `-- v1/
-|   |       |-- auth.py               # Authentication & signup routes
-|   |       |-- organizations.py      # Tenants, members & invitation routes
-|   |       |-- api_keys.py           # Scoped API key management
-|   |       |-- documents.py          # PDF upload, ingestion & status
-|   |       `-- chat.py               # Grounded RAG question-answering
-|   |-- core/
-|   |   |-- config.py                 # Pydantic environment settings
-|   |   |-- security.py               # Native bcrypt hashing & JWT tokens
-|   |   |-- permissions.py            # RBAC permissions & role matrices
-|   |   `-- tenant_context.py         # Tenant isolation & security dependencies
-|   |-- db/
-|   |   |-- base.py                   # SQLAlchemy Base model
-|   |   |-- session.py                # Database session generator
-|   |   `-- models/                   # Core entities (User, Org, Doc, Chunk, etc.)
-|   |-- schemas/                      # Pydantic v2 input/output validation contracts
-|   |-- services/                     # Business logic (RAG, documents, organizations)
-|   |-- integrations/
-|   |   |-- object_storage/           # S3 & MinIO private storage adapter
-|   |   |-- embeddings/               # Vector embeddings provider
-|   |   `-- llm/                      # LLM generation adapter
-|   `-- workers/                      # Celery app & background tasks
-|-- tests/                            # Pytest vertical slice & authorization tests
-|-- compose.yaml                      # Docker Compose orchestrator
-|-- Dockerfile                        # Production container image definition
-|-- pyproject.toml                    # Package metadata & dependencies
-`-- README.md                         # Documentation
+route (app/api/v1/auth.py)        HTTP only: parse request, return response
+  -> service (app/services/)      business rules: hash password, create org, issue token
+    -> repository (app/repositories/)   database queries
+      -> models (app/db/models/)  table definitions
 ```
+
+Keep business logic out of route handlers. Add new features the same way.
+
+## Security notes
+
+- Passwords are hashed with Argon2id (random salt per password). The plain password is never stored or logged.
+- Login returns the same error for "unknown email" and "wrong password", and does equal work in both cases.
+- The token holds only the user id. Organization and role are looked up in the database on every request.
+- Validation errors never echo the submitted password back.
+- Login rate limiting: after 5 failed attempts for an email (or 20 from one IP) within 15 minutes, login returns `429 TOO_MANY_ATTEMPTS` with a `Retry-After` header, even if the password is then correct. A successful login clears that email's failures. Limits are in `.env`. Failures are stored in the `login_attempts` table. Trade-off: someone can deliberately lock a victim's account for up to 15 minutes; the short window limits the damage.
+- Not built yet: signup rate limiting, email verification, password reset, refresh tokens and token revocation, invitations.

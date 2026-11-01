@@ -1,64 +1,71 @@
-import hashlib
-import secrets
+"""Password hashing and access tokens.
+
+Passwords: Argon2id (the current OWASP-recommended algorithm), via argon2-cffi.
+Argon2 generates a random salt for every hash and stores the salt and cost
+parameters inside the hash string, so you never handle salts yourself.
+
+Tokens: short-lived signed JWTs that carry only the user id. Tenant (organization)
+and role are always looked up from the database, never trusted from the client.
+"""
+
+import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional, Union
+
 import jwt
-import bcrypt
+from argon2 import PasswordHasher
+from argon2.exceptions import InvalidHashError, VerificationError
 
-from app.core.config import settings
+from app.core.config import get_settings
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a plain password against a bcrypt hash."""
-    pwd_bytes = plain_password.encode("utf-8")[:72]
-    return bcrypt.checkpw(pwd_bytes, hashed_password.encode("utf-8"))
+_hasher = PasswordHasher()  # Argon2id with safe default parameters
 
-
-def get_password_hash(password: str) -> str:
-    """Hash a password securely using native bcrypt."""
-    pwd_bytes = password.encode("utf-8")[:72]
-    salt = bcrypt.gensalt()
-    return bcrypt.hashpw(pwd_bytes, salt).decode("utf-8")
+# Used to burn the same amount of time when an email does not exist, so an
+# attacker cannot discover registered emails by measuring response time.
+_DUMMY_HASH = _hasher.hash("not-a-real-password-just-for-timing")
 
 
-def create_access_token(
-    subject: Union[str, Any],
-    organization_id: Optional[str] = None,
-    role: Optional[str] = None,
-    expires_delta: Optional[timedelta] = None
-) -> str:
-    """Create a scoped JWT access token."""
-    if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
-    else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    
-    to_encode = {
-        "exp": expire,
-        "sub": str(subject),
-        "org": organization_id,
-        "role": role,
-        "iat": datetime.now(timezone.utc)
+def hash_password(plain_password: str) -> str:
+    return _hasher.hash(plain_password)
+
+
+def verify_password(plain_password: str, password_hash: str) -> bool:
+    try:
+        return _hasher.verify(password_hash, plain_password)
+    except (VerificationError, InvalidHashError):
+        return False
+
+
+def password_needs_rehash(password_hash: str) -> bool:
+    """True if the hash was made with weaker settings than we use today."""
+    return _hasher.check_needs_rehash(password_hash)
+
+
+def burn_password_check_time(plain_password: str) -> None:
+    verify_password(plain_password, _DUMMY_HASH)
+
+
+def create_access_token(user_id: uuid.UUID) -> tuple[str, int]:
+    """Returns (token, expires_in_seconds)."""
+    settings = get_settings()
+    now = datetime.now(timezone.utc)
+    expires_delta = timedelta(minutes=settings.access_token_expire_minutes)
+    payload = {
+        "sub": str(user_id),
+        "iat": now,
+        "exp": now + expires_delta,
+        "jti": uuid.uuid4().hex,
     }
-    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-    return encoded_jwt
+    token = jwt.encode(payload, settings.secret_key, algorithm=settings.jwt_algorithm)
+    return token, int(expires_delta.total_seconds())
 
 
-def decode_token(token: str) -> dict:
-    """Decode and validate a JWT access token."""
-    return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-
-
-def generate_api_key(prefix: str = "bx_live_") -> tuple[str, str]:
-    """
-    Generate an API key secret and its storage hash (Section 7.2).
-    Returns (raw_key, hashed_key). The raw key is shown only once to the user.
-    """
-    secret = secrets.token_urlsafe(32)
-    raw_key = f"{prefix}{secret}"
-    hashed_key = hashlib.sha256(raw_key.encode()).hexdigest()
-    return raw_key, hashed_key
-
-
-def hash_api_key(raw_key: str) -> str:
-    """Hash an incoming API key to compare against database hash."""
-    return hashlib.sha256(raw_key.encode()).hexdigest()
+def decode_access_token(token: str) -> uuid.UUID:
+    """Returns the user id, or raises jwt.PyJWTError / ValueError if invalid."""
+    settings = get_settings()
+    payload = jwt.decode(
+        token,
+        settings.secret_key,
+        algorithms=[settings.jwt_algorithm],
+        options={"require": ["exp", "iat", "sub"]},
+    )
+    return uuid.UUID(payload["sub"])

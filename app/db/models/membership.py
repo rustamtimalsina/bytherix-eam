@@ -1,27 +1,41 @@
+import uuid
 from datetime import datetime
-from typing import Optional, TYPE_CHECKING
+from enum import StrEnum
+
 from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.db.base import Base
 
-if TYPE_CHECKING:
-    from app.db.models.user import User
-    from app.db.models.organization import Organization
+from app.db.base import Base, utcnow
+from app.db.models.organization import Organization
+
+
+class Role(StrEnum):
+    OWNER = "owner"
+    ADMIN = "admin"
+    DEVELOPER = "developer"
+    ML_ENGINEER = "ml_engineer"
+    ANALYST = "analyst"
+    BILLING_MANAGER = "billing_manager"
+    VIEWER = "viewer"
 
 
 class Membership(Base):
+    """Links a user to an organization with a role."""
+
     __tablename__ = "memberships"
     __table_args__ = (
-        UniqueConstraint("user_id", "organization_id", name="uq_user_organization"),
+        UniqueConstraint("user_id", "organization_id", name="uq_membership_user_org"),
     )
 
-    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
-    role: Mapped[str] = mapped_column(String(50), default="viewer", nullable=False)
-    status: Mapped[str] = mapped_column(String(50), default="active", nullable=False)  # active, invited, suspended
-    invitation_token: Mapped[Optional[str]] = mapped_column(String(255), unique=True, nullable=True)
-    invitation_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    organization_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), index=True
+    )
+    role: Mapped[str] = mapped_column(String(32))
+    status: Mapped[str] = mapped_column(String(16), default="active")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
-    # Relationships
-    user: Mapped["User"] = relationship("User", back_populates="memberships")
-    organization: Mapped["Organization"] = relationship("Organization", back_populates="memberships")
+    organization: Mapped[Organization] = relationship()

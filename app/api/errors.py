@@ -1,50 +1,75 @@
-import uuid
-from fastapi import Request, status
-from fastapi.responses import JSONResponse
+"""One consistent error shape for the whole API (see section 10.3 of the spec):
+
+{"error": {"code": "...", "message": "...", "request_id": "..."}, "detail": "..."}
+
+`detail` repeats the message so simple frontends that read FastAPI's usual
+`detail` field keep working.
+"""
+
+import logging
+
+from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from starlette.exceptions import HTTPException as StarletteHTTPException
+from fastapi.responses import JSONResponse
+
+logger = logging.getLogger("app")
 
 
-def error_response(
-    code: str,
-    message: str,
-    status_code: int = status.HTTP_400_BAD_REQUEST,
-    request_id: str | None = None
-) -> JSONResponse:
-    """Format standard API error response as specified in Section 10.3."""
-    return JSONResponse(
-        status_code=status_code,
-        content={
-            "error": {
-                "code": code,
-                "message": message,
-                "request_id": request_id or str(uuid.uuid4())
-            }
-        }
-    )
+class AppError(Exception):
+    def __init__(
+        self,
+        status_code: int,
+        code: str,
+        message: str,
+        headers: dict[str, str] | None = None,
+        extra: dict | None = None,
+    ):
+        self.status_code = status_code
+        self.code = code
+        self.message = message
+        self.headers = headers
+        self.extra = extra or {}
 
 
-async def http_exception_handler(request: Request, exc: StarletteHTTPException):
-    request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
-    code_map = {
-        400: "BAD_REQUEST",
-        401: "UNAUTHORIZED",
-        403: "FORBIDDEN",
-        404: "RESOURCE_NOT_FOUND",
-        409: "CONFLICT",
-        422: "VALIDATION_ERROR",
-        429: "RATE_LIMIT_EXCEEDED",
-        500: "INTERNAL_SERVER_ERROR",
+def _body(request: Request, code: str, message: str, **extra) -> dict:
+    request_id = getattr(request.state, "request_id", "unknown")
+    body = {
+        "error": {"code": code, "message": message, "request_id": request_id},
+        "detail": message,
     }
-    code = code_map.get(exc.status_code, "ERROR")
-    return error_response(code, str(exc.detail), exc.status_code, request_id)
+    body["error"].update(extra)
+    return body
 
 
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
-    # Extract first error message cleanly
-    errors = exc.errors()
-    msg = errors[0].get("msg", "Invalid request body") if errors else "Validation failed"
-    loc = " -> ".join(str(l) for l in errors[0].get("loc", [])) if errors else ""
-    detail = f"{msg} ({loc})" if loc else msg
-    return error_response("VALIDATION_ERROR", detail, status.HTTP_422_UNPROCESSABLE_ENTITY, request_id)
+def register_error_handlers(app: FastAPI) -> None:
+    @app.exception_handler(AppError)
+    async def handle_app_error(request: Request, exc: AppError):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=_body(request, exc.code, exc.message, **exc.extra),
+            headers=exc.headers,
+        )
+
+    @app.exception_handler(RequestValidationError)
+    async def handle_validation_error(request: Request, exc: RequestValidationError):
+        # We deliberately do NOT echo the submitted input (it may contain a password).
+        fields = []
+        for err in exc.errors():
+            loc = ".".join(str(p) for p in err["loc"] if p != "body")
+            fields.append({"field": loc, "message": err["msg"]})
+        first = fields[0] if fields else {"field": "", "message": "Invalid request."}
+        message = (
+            f"{first['field']}: {first['message']}" if first["field"] else first["message"]
+        )
+        return JSONResponse(
+            status_code=422,
+            content=_body(request, "VALIDATION_ERROR", message, fields=fields),
+        )
+
+    @app.exception_handler(Exception)
+    async def handle_unexpected_error(request: Request, exc: Exception):
+        logger.exception("Unhandled error", exc_info=exc)
+        return JSONResponse(
+            status_code=500,
+            content=_body(request, "INTERNAL_ERROR", "Something went wrong on our side."),
+        )

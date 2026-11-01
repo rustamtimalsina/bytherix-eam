@@ -1,24 +1,16 @@
-from typing import Generator
+from collections.abc import Iterator
+
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
-from app.core.config import settings
+from sqlalchemy.orm import Session, sessionmaker
 
-# Determine database engine parameters based on URL
-engine_kwargs = {}
-if settings.DATABASE_URL.startswith("sqlite"):
-    engine_kwargs["connect_args"] = {"check_same_thread": False}
-else:
-    engine_kwargs["pool_pre_ping"] = True
-    engine_kwargs["pool_size"] = 10
-    engine_kwargs["max_overflow"] = 20
+from app.core.config import get_settings
 
-engine = create_engine(settings.DATABASE_URL, **engine_kwargs)
-
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+engine = create_engine(get_settings().database_url, pool_pre_ping=True)
+SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 
-def get_db() -> Generator[Session, None, None]:
-    """FastAPI dependency that provides a transactional database session per request."""
+def get_db() -> Iterator[Session]:
+    """FastAPI dependency: one database session per request, always closed."""
     db = SessionLocal()
     try:
         yield db

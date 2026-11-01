@@ -9,16 +9,23 @@ export interface User {
   id: string;
   email: string;
   full_name: string;
-  is_active: boolean;
-  is_platform_operator: boolean;
-  created_at: string;
+  is_active?: boolean;
+  is_platform_operator?: boolean;
+  created_at?: string;
+}
+
+export interface OrganizationSummary {
+  id: string;
+  name: string;
+  plan: string;
 }
 
 export interface AuthResponse {
   access_token: string;
   token_type: string;
+  expires_in: number;
   user: User;
-  organization_id: string;
+  organization: OrganizationSummary;
   role: string;
 }
 
@@ -138,10 +145,12 @@ class ApiClient {
       headers["Content-Type"] = "application/json";
     }
 
-    const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-      ...options,
-      headers,
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
+    } catch {
+      throw new Error("Cannot reach the server. Check that the backend is running.");
+    }
 
     if (!res.ok) {
       let errorMsg = `Request failed (${res.status})`;

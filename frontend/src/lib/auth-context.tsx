@@ -51,14 +51,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const loginSession = (data: AuthResponse) => {
+    const orgId = data.organization.id;
+
     setToken(data.access_token);
     setUser(data.user);
-    setOrganizationId(data.organization_id);
+    setOrganizationId(orgId);
     setRole(data.role);
 
     localStorage.setItem("bytherix_token", data.access_token);
     localStorage.setItem("bytherix_user", JSON.stringify(data.user));
-    localStorage.setItem("bytherix_org", data.organization_id);
+    localStorage.setItem("bytherix_org", orgId);
     localStorage.setItem("bytherix_role", data.role);
   };
 

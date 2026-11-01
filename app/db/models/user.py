@@ -1,24 +1,26 @@
-from typing import List, TYPE_CHECKING
-from sqlalchemy import Boolean, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.db.base import Base
+import uuid
+from datetime import datetime
 
-if TYPE_CHECKING:
-    from app.db.models.membership import Membership
+from sqlalchemy import Boolean, DateTime, String
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.db.base import Base, utcnow
 
 
 class User(Base):
     __tablename__ = "users"
 
-    email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
-    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
-    full_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    is_platform_operator: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-
-    # Relationships
-    memberships: Mapped[List["Membership"]] = relationship(
-        "Membership", 
-        back_populates="user", 
-        cascade="all, delete-orphan"
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    # Always stored lowercase; the unique index makes duplicates impossible.
+    email: Mapped[str] = mapped_column(String(320), unique=True, index=True)
+    full_name: Mapped[str] = mapped_column(String(120))
+    # Argon2id hash string. The plain password is never stored anywhere.
+    password_hash: Mapped[str] = mapped_column(String(255))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+    last_login_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
