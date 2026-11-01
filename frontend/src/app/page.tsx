@@ -59,6 +59,7 @@ import { CosmicThemeToggle } from "@/components/CosmicThemeToggle";
 import { CustomRoleDropdown, ROLE_OPTIONS, INVITE_ROLE_OPTIONS } from "@/components/CustomRoleDropdown";
 import { FloatingRocketDock, ActiveTab } from "@/components/FloatingRocketDock";
 import { OrbitalCore } from "@/components/OrbitalCore";
+import { TiltCard3D } from "@/components/TiltCard3D";
 
 function renderFormattedAnswer(text: string) {
   const lines = text.split("\n");
@@ -2373,9 +2374,9 @@ const loadChatSessions = async () => {
               </p>
             </div>
 
-            {/* Telemetry Gauge Cards */}
+            {/* Telemetry Gauge Cards with 3D Tactile Glare */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-              <div className="card-depth-3d p-4 sm:p-5 space-y-1">
+              <TiltCard3D maxTilt={9} className="card-depth-3d p-4 sm:p-5 space-y-1 rounded-2xl cursor-default">
                 <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                   <ShieldCheck className="w-3.5 h-3.5 text-indigo-500" />
                   Total Audit Events
@@ -2386,9 +2387,9 @@ const loadChatSessions = async () => {
                 <p className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold">
                   Immutable Ledgers
                 </p>
-              </div>
+              </TiltCard3D>
 
-              <div className="card-depth-3d p-4 sm:p-5 space-y-1">
+              <TiltCard3D maxTilt={9} className="card-depth-3d p-4 sm:p-5 space-y-1 rounded-2xl cursor-default">
                 <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5 text-blue-500" />
                   Routine Operations
@@ -2399,9 +2400,9 @@ const loadChatSessions = async () => {
                 <p className="text-[11px] text-blue-600 dark:text-blue-400 font-semibold">
                   Info Level Logs
                 </p>
-              </div>
+              </TiltCard3D>
 
-              <div className="card-depth-3d p-4 sm:p-5 space-y-1">
+              <TiltCard3D maxTilt={9} className="card-depth-3d p-4 sm:p-5 space-y-1 rounded-2xl cursor-default">
                 <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                   <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
                   Security Warnings
@@ -2412,9 +2413,9 @@ const loadChatSessions = async () => {
                 <p className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold">
                   API & Access Changes
                 </p>
-              </div>
+              </TiltCard3D>
 
-              <div className="card-depth-3d p-4 sm:p-5 space-y-1">
+              <TiltCard3D maxTilt={9} className="card-depth-3d p-4 sm:p-5 space-y-1 rounded-2xl cursor-default">
                 <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                   <ShieldAlert className="w-3.5 h-3.5 text-rose-500" />
                   Critical Incidents
@@ -2425,7 +2426,7 @@ const loadChatSessions = async () => {
                 <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">
                   Requires Triage
                 </p>
-              </div>
+              </TiltCard3D>
             </div>
 
             {/* Action Toolbar */}
@@ -2773,17 +2774,17 @@ const loadChatSessions = async () => {
               </p>
             </div>
 
-            {/* 3 Metrics Cards */}
+            {/* 3 Metrics Cards with 3D Tactile Glare */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="card-depth-3d p-5 space-y-1">
+              <TiltCard3D maxTilt={7} className="card-depth-3d p-5 space-y-1 rounded-2xl cursor-default">
                 <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   Subscription Tier
                 </span>
                 <p className="text-2xl font-extrabold text-slate-900 dark:text-white">Starter Free</p>
                 <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">Active Tenant Plan</p>
-              </div>
+              </TiltCard3D>
 
-              <div className="card-depth-3d p-5 space-y-1">
+              <TiltCard3D maxTilt={7} className="card-depth-3d p-5 space-y-1 rounded-2xl cursor-default">
                 <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   Document Limit
                 </span>
@@ -2804,9 +2805,9 @@ const loadChatSessions = async () => {
                     ? "● Quota Cap Reached (Free Tier)"
                     : "PDF Magic Byte Protected"}
                 </p>
-              </div>
+              </TiltCard3D>
 
-              <div className="card-depth-3d p-5 space-y-1">
+              <TiltCard3D maxTilt={7} className="card-depth-3d p-5 space-y-1 rounded-2xl cursor-default">
                 <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   Token Allowance
                 </span>
@@ -2829,7 +2830,7 @@ const loadChatSessions = async () => {
                     ? "● Quota Cap Reached"
                     : `${usage?.percentage_used ?? 0}% utilized this cycle`}
                 </p>
-              </div>
+              </TiltCard3D>
             </div>
 
             {/* Real-time Token Metering & Telemetry Console (Section 7.4) */}
