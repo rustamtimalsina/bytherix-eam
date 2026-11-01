@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     SMTP_USE_TLS: bool = True
     FRONTEND_URL: str = "http://localhost:3000"
 
+    # Rate Limiting & Brute-Force Guardrails (Sections 12 & 15)
+    RATE_LIMIT_ENABLED: bool = True
+    RATE_LIMIT_PER_MINUTE: int = 120
+    LOGIN_MAX_FAILED_ATTEMPTS: int = 5
+    LOGIN_LOCKOUT_SECONDS: int = 60
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

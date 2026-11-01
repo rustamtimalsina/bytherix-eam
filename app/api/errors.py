@@ -9,11 +9,13 @@ def error_response(
     code: str,
     message: str,
     status_code: int = status.HTTP_400_BAD_REQUEST,
-    request_id: str | None = None
+    request_id: str | None = None,
+    headers: dict | None = None
 ) -> JSONResponse:
     """Format standard API error response as specified in Section 10.3."""
     return JSONResponse(
         status_code=status_code,
+        headers=headers,
         content={
             "error": {
                 "code": code,
@@ -37,7 +39,7 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
         500: "INTERNAL_SERVER_ERROR",
     }
     code = code_map.get(exc.status_code, "ERROR")
-    return error_response(code, str(exc.detail), exc.status_code, request_id)
+    return error_response(code, str(exc.detail), exc.status_code, request_id, headers=exc.headers)
 
 
 async def validation_exception_handler(request: Request, exc: RequestValidationError):

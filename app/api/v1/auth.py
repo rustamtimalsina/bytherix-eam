@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
+from app.core.rate_limiter import rate_limiter
 
 from app.core.security import create_access_token, get_password_hash, verify_password
 from app.core.tenant_context import get_current_user
@@ -69,15 +70,70 @@ def signup(data: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(data: UserLogin, db: Session = Depends(get_db)):
-    """Authenticate with email and password, establishing an organization session."""
+def login(data: UserLogin, request: Request, db: Session = Depends(get_db)):
+    """Authenticate with email and password with brute-force defense (Sections 12 & 15)."""
+    client_ip = request.client.host if request.client else "127.0.0.1"
+
+    # 1. Check if identity is currently under brute-force lockout
+    is_locked, remaining_lockout = rate_limiter.is_login_locked(client_ip, data.email)
+    if is_locked:
+        user = db.query(User).filter(User.email == data.email).first()
+        org_id = ""
+        if user:
+            mem = db.query(Membership).filter(Membership.user_id == user.id, Membership.status == "active").first()
+            if mem:
+                org_id = mem.organization_id
+
+        if org_id:
+            AuditService.record_event(
+                db=db,
+                organization_id=org_id,
+                action="auth.login_brute_force_blocked",
+                resource_type="user",
+                resource_id=user.id if user else "unknown",
+                actor_email=data.email,
+                severity="critical",
+                details={"ip": client_ip, "retry_after": remaining_lockout}
+            )
+
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Too many failed login attempts. Account temporarily locked for {remaining_lockout} seconds to prevent brute force attacks.",
+            headers={"Retry-After": str(remaining_lockout)}
+        )
+
+    # 2. Verify credentials
     user = db.query(User).filter(User.email == data.email).first()
     if not user or not verify_password(data.password, user.hashed_password):
+        locked_now, failures, lockout_duration = rate_limiter.record_login_failure(client_ip, data.email)
+        if locked_now:
+            if user:
+                mem = db.query(Membership).filter(Membership.user_id == user.id, Membership.status == "active").first()
+                if mem:
+                    AuditService.record_event(
+                        db=db,
+                        organization_id=mem.organization_id,
+                        action="auth.login_brute_force_blocked",
+                        resource_type="user",
+                        resource_id=user.id,
+                        actor_email=data.email,
+                        severity="critical",
+                        details={"ip": client_ip, "consecutive_failures": failures, "lockout_seconds": lockout_duration}
+                    )
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Too many failed login attempts. Account temporarily locked for {lockout_duration} seconds to prevent brute force attacks.",
+                headers={"Retry-After": str(lockout_duration)}
+            )
+
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"}
         )
+
+    # 3. Successful authentication resets failure counters
+    rate_limiter.record_login_success(client_ip, data.email)
 
     if not user.is_active:
         raise HTTPException(

@@ -5,7 +5,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.api.errors import http_exception_handler, validation_exception_handler
+from app.api.errors import error_response, http_exception_handler, validation_exception_handler
+from app.core.rate_limiter import rate_limiter
 from app.api.v1.api_keys import router as api_keys_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.chat import router as chat_router
@@ -63,6 +64,57 @@ async def add_request_id_and_timing(request: Request, call_next):
     duration = time.time() - start_time
     response.headers["X-Request-ID"] = request_id
     response.headers["X-Process-Time"] = f"{duration:.4f}s"
+    return response
+
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    """
+    Sliding-window token bucket rate limiter per Client IP & API Key (Sections 12 & 15).
+    Enforces HTTP 429 Too Many Requests with RFC 6585 and RFC 7231 standard headers.
+    """
+    if not settings.RATE_LIMIT_ENABLED or settings.APP_ENV == "test":
+        return await call_next(request)
+
+    path = request.url.path
+    # Exempt non-API routes, health checks, docs, and CORS preflights
+    if (
+        request.method == "OPTIONS"
+        or not path.startswith(settings.API_V1_STR)
+        or path.startswith(f"{settings.API_V1_STR}/docs")
+        or path.startswith(f"{settings.API_V1_STR}/openapi.json")
+        or path.startswith(f"{settings.API_V1_STR}/redoc")
+        or path.startswith("/health")
+    ):
+        return await call_next(request)
+
+    client_ip = request.client.host if request.client else "127.0.0.1"
+    key = f"rl:ip:{client_ip}"
+
+    allowed, remaining, retry_after = rate_limiter.check_rate_limit(
+        key=key,
+        limit=settings.RATE_LIMIT_PER_MINUTE,
+        window_seconds=60
+    )
+
+    if not allowed:
+        request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
+        response = error_response(
+            code="RATE_LIMIT_EXCEEDED",
+            message=f"Rate limit exceeded: maximum {settings.RATE_LIMIT_PER_MINUTE} requests per minute. Please retry after {retry_after} seconds.",
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            request_id=request_id
+        )
+        response.headers["Retry-After"] = str(retry_after)
+        response.headers["X-RateLimit-Limit"] = str(settings.RATE_LIMIT_PER_MINUTE)
+        response.headers["X-RateLimit-Remaining"] = "0"
+        response.headers["X-RateLimit-Reset"] = str(int(time.time() + retry_after))
+        return response
+
+    response = await call_next(request)
+    response.headers["X-RateLimit-Limit"] = str(settings.RATE_LIMIT_PER_MINUTE)
+    response.headers["X-RateLimit-Remaining"] = str(remaining)
+    response.headers["X-RateLimit-Reset"] = str(int(time.time() + 60))
     return response
 
 
