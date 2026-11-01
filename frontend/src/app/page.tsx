@@ -141,6 +141,15 @@ export default function DashboardPage() {
 
   const canManageModels =
     isOwnerOrAdmin || role === "ai_ml_engineer";
+
+  const canUploadDocs =
+    isOwnerOrAdmin || role === "developer" || role === "ai_ml_engineer";
+
+  const canCreateApiKeys =
+    isOwnerOrAdmin || role === "developer";
+
+  const canRegisterModels =
+    isOwnerOrAdmin || role === "developer" || role === "ai_ml_engineer";
   const [activeTab, setActiveTab] = useState<ActiveTab>("documents");
 
   // MLOps Model Registry state (Section 9 & 14)
@@ -979,68 +988,89 @@ const loadChatSessions = async () => {
               </p>
             </div>
 
-            {/* Ingestion Dropzone */}
-            <div className="conic-glow-box">
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                className={`conic-glow-inner p-6 sm:p-10 text-center cursor-pointer transition-all duration-300 ${
-                  isDragging ? "bg-blue-50 dark:bg-[#11192d]" : ""
-                }`}
-              >
-                <input
-                  type="file"
-                  accept="application/pdf"
-                  ref={fileInputRef}
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-                <div className="flex flex-col items-center">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600/20 to-purple-600/20 border border-blue-500/20 dark:border-white/20 flex items-center justify-center text-blue-600 dark:text-blue-300 mb-3 shadow-[0_0_25px_rgba(59,130,246,0.2)] dark:shadow-[0_0_25px_rgba(59,130,246,0.4)]">
-                    <UploadCloud className="w-7 h-7" />
+            {/* Ingestion Dropzone (Restricted to Ingestion-Capable Roles) */}
+            {canUploadDocs ? (
+              <div className="conic-glow-box">
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`conic-glow-inner p-6 sm:p-10 text-center cursor-pointer transition-all duration-300 ${
+                    isDragging ? "bg-blue-50 dark:bg-[#11192d]" : ""
+                  }`}
+                >
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                  <div className="flex flex-col items-center">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600/20 to-purple-600/20 border border-blue-500/20 dark:border-white/20 flex items-center justify-center text-blue-600 dark:text-blue-300 mb-3 shadow-[0_0_25px_rgba(59,130,246,0.2)] dark:shadow-[0_0_25px_rgba(59,130,246,0.4)]">
+                      <UploadCloud className="w-7 h-7" />
+                    </div>
+                    {isDragging ? (
+                      <div className="space-y-1">
+                        <p className="text-sm font-bold text-blue-600 dark:text-blue-400 animate-pulse">
+                          Release to launch ingestion sequence
+                        </p>
+                        <p className="text-xs text-blue-500 dark:text-blue-300/80">
+                          File will be validated and queued for background chunking
+                        </p>
+                      </div>
+                    ) : isUploading ? (
+                      <div className="space-y-1">
+                        <p className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                          Ingesting and validating %PDF- header...
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Worker thread generating 1536-dim vector embeddings
+                        </p>
+                      </div>
+                    ) : documents.length >= 5 ? (
+                      <div className="space-y-1">
+                        <p className="text-sm font-bold text-amber-600 dark:text-amber-400">
+                          Plan Quota Reached (5/5 Documents)
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Free tier cap reached. Delete an existing document below to upload a new one.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <p className="text-sm font-bold text-slate-900 dark:text-white">
+                          Click or drag & drop PDF files to ingest
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Strict <span className="font-mono font-semibold text-blue-600 dark:text-cyan-400">%PDF-</span> magic byte validation with SHA-256 deduplication
+                        </p>
+                      </div>
+                    )}
                   </div>
-                  {isDragging ? (
-                    <div className="space-y-1">
-                      <p className="text-sm font-bold text-blue-600 dark:text-blue-400 animate-pulse">
-                        Release to launch ingestion sequence
-                      </p>
-                      <p className="text-xs text-blue-500 dark:text-blue-300/80">
-                        File will be validated and queued for background chunking
-                      </p>
-                    </div>
-                  ) : isUploading ? (
-                    <div className="space-y-1">
-                      <p className="text-sm font-bold text-blue-600 dark:text-blue-400">
-                        Ingesting and validating %PDF- header...
-                      </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Worker thread generating 1536-dim vector embeddings
-                      </p>
-                    </div>
-                  ) : documents.length >= 5 ? (
-                    <div className="space-y-1">
-                      <p className="text-sm font-bold text-amber-600 dark:text-amber-400">
-                        Plan Quota Reached (5/5 Documents)
-                      </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Free tier cap reached. Delete an existing document below to upload a new one.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-1">
-                      <p className="text-sm font-bold text-slate-900 dark:text-white">
-                        Click or drag & drop PDF files to ingest
-                      </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Strict <span className="font-mono font-semibold text-blue-600 dark:text-cyan-400">%PDF-</span> magic byte validation with SHA-256 deduplication
-                      </p>
-                    </div>
-                  )}
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="p-4 sm:p-5 rounded-2xl bg-slate-100/80 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
+                    <Layers className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                      Read-Only Knowledge Vault
+                    </h4>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Your assigned role ({role?.replace(/_/g, " ") || "viewer"}) is restricted to browsing and inspecting verified knowledge assets.
+                    </p>
+                  </div>
+                </div>
+                <span className="self-start sm:self-center text-[10px] font-mono px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-bold uppercase tracking-wider">
+                  Auditor Mode
+                </span>
+              </div>
+            )}
 
             {uploadError && (
               <div className="p-3.5 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 text-red-700 dark:text-red-300 text-xs flex items-center gap-2.5">
@@ -1795,13 +1825,15 @@ const loadChatSessions = async () => {
                   <RefreshCw className={`w-3.5 h-3.5 ${isModelLoading ? "animate-spin text-indigo-500" : ""}`} />
                   <span className="hidden sm:inline">Refresh</span>
                 </button>
-                <button
-                  onClick={() => setShowNewModelModal(true)}
-                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md shadow-indigo-500/20 active:scale-95 transition-all"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Register Model</span>
-                </button>
+                {canRegisterModels && (
+                  <button
+                    onClick={() => setShowNewModelModal(true)}
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md shadow-indigo-500/20 active:scale-95 transition-all"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Register Model</span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -2283,54 +2315,75 @@ const loadChatSessions = async () => {
               </div>
             )}
 
-            {/* Generate Key Form */}
-            <form
-              onSubmit={handleCreateApiKey}
-              className="card-depth-3d p-4 sm:p-5 space-y-4"
-            >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                <div className="space-y-1.5">
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                    Key Description / Name
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newKeyName}
-                    onChange={(e) => setNewKeyName(e.target.value)}
-                    placeholder="e.g. CI/CD Ingestion Pipeline"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder-slate-400 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                  />
+            {/* Generate Key Form (Restricted to Key-Issuing Roles) */}
+            {canCreateApiKeys ? (
+              <form
+                onSubmit={handleCreateApiKey}
+                className="card-depth-3d p-4 sm:p-5 space-y-4"
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                  <div className="space-y-1.5">
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                      Key Description / Name
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={newKeyName}
+                      onChange={(e) => setNewKeyName(e.target.value)}
+                      placeholder="e.g. CI/CD Ingestion Pipeline"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder-slate-400 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                      Permission Scopes (comma-separated)
+                    </label>
+                    <input
+                      type="text"
+                      value={newKeyScopes}
+                      onChange={(e) => setNewKeyScopes(e.target.value)}
+                      placeholder="docs:read, docs:write, chat:query"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder-slate-400 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                    Permission Scopes (comma-separated)
-                  </label>
-                  <input
-                    type="text"
-                    value={newKeyScopes}
-                    onChange={(e) => setNewKeyScopes(e.target.value)}
-                    placeholder="docs:read, docs:write, chat:query"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder-slate-400 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                  />
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1 border-t border-slate-200/60 dark:border-white/[0.06]">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    High-entropy secrets prefixed with <code className="font-mono text-indigo-600 dark:text-indigo-400">bx_live_</code>. SHA-256 hashed at rest.
+                  </p>
+                  <button
+                    type="submit"
+                    disabled={isCreatingKey || !newKeyName.trim()}
+                    className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-40 text-white font-bold text-xs shadow-md shadow-indigo-500/20 active:scale-95 transition-all shrink-0"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>{isCreatingKey ? "Generating Key..." : "Generate Key"}</span>
+                  </button>
                 </div>
+              </form>
+            ) : (
+              <div className="p-4 sm:p-5 rounded-2xl bg-slate-100/80 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-600 dark:text-purple-400 shrink-0">
+                    <Key className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                      Machine Access Credentials Vault
+                    </h4>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Your assigned role ({role?.replace(/_/g, " ") || "viewer"}) is restricted to auditing active organization credentials.
+                    </p>
+                  </div>
+                </div>
+                <span className="self-start sm:self-center text-[10px] font-mono px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 font-bold uppercase tracking-wider">
+                  Auditor Mode
+                </span>
               </div>
-
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1 border-t border-slate-200/60 dark:border-white/[0.06]">
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  High-entropy secrets prefixed with <code className="font-mono text-indigo-600 dark:text-indigo-400">bx_live_</code>. SHA-256 hashed at rest.
-                </p>
-                <button
-                  type="submit"
-                  disabled={isCreatingKey || !newKeyName.trim()}
-                  className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-40 text-white font-bold text-xs shadow-md shadow-indigo-500/20 active:scale-95 transition-all shrink-0"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>{isCreatingKey ? "Generating Key..." : "Generate Key"}</span>
-                </button>
-              </div>
-            </form>
+            )}
 
             {/* Keys Table */}
             <div className="card-depth-3d overflow-hidden">
