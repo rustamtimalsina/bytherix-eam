@@ -685,6 +685,26 @@ export default function DashboardPage() {
     }
   };
 
+  const [downloadingDocId, setDownloadingDocId] = useState<string | null>(null);
+
+  const handleDownloadDocument = async (docId: string) => {
+    try {
+      setDownloadingDocId(docId);
+      const res = await api.getDocumentDownloadUrl(docId);
+      let targetUrl = res.download_url;
+      if (!targetUrl.startsWith("http")) {
+        const token = api.getToken();
+        const base = api.getApiBaseUrl();
+        targetUrl = `${base.replace(/\/api\/v1\/?$/, "")}${targetUrl}${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+      }
+      window.open(targetUrl, "_blank");
+    } catch (err: unknown) {
+      alert((err as Error).message || "Failed to generate document download URL");
+    } finally {
+      setDownloadingDocId(null);
+    }
+  };
+
   const handleDeleteDocument = async (id: string) => {
     if (!confirm("Are you sure you want to delete this document and its chunk vectors?")) return;
     try {
@@ -1141,6 +1161,20 @@ const loadChatSessions = async () => {
                         >
                           {doc.status === "indexed" ? "Ready" : doc.status}
                         </span>
+
+                        {/* Pre-signed S3 / MinIO / Local Download (Section 8.1 & 14) */}
+                        <button
+                          onClick={() => handleDownloadDocument(doc.id)}
+                          disabled={downloadingDocId === doc.id}
+                          title="Download / View Authentic PDF"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors disabled:opacity-50"
+                        >
+                          {downloadingDocId === doc.id ? (
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-500" />
+                          ) : (
+                            <Download className="w-3.5 h-3.5" />
+                          )}
+                        </button>
 
                         {isOwnerOrAdmin && (
                           <button

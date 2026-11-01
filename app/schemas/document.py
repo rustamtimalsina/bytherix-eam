@@ -25,3 +25,12 @@ class DocumentStatusOut(BaseModel):
     status: str
     page_count: int
     error_message: Optional[str] = None
+
+
+class DocumentDownloadUrlOut(BaseModel):
+    """Pre-signed download / preview URL response contract (Section 8.1 & 14)."""
+    document_id: str
+    filename: str
+    download_url: str
+    storage_provider: str  # "minio", "s3", or "local"
+    expires_in_seconds: int

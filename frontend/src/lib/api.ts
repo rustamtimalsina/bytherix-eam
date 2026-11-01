@@ -66,6 +66,14 @@ export interface DocumentItem {
   updated_at: string;
 }
 
+export interface DocumentDownloadUrlResponse {
+  document_id: string;
+  filename: string;
+  download_url: string;
+  storage_provider: "minio" | "s3" | "local";
+  expires_in_seconds: number;
+}
+
 export interface SourceCitation {
   document_id: string;
   document_title: string;
@@ -243,7 +251,20 @@ export interface ApiKeyItem {
 }
 
 class ApiClient {
-  private getToken(): string | null {
+  public getToken(): string | null {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem("bytherix_token");
+  }
+
+  public getBaseUrl(): string {
+    return API_BASE_URL.replace(/\/api\/v1\/?$/, "");
+  }
+
+  public getApiBaseUrl(): string {
+    return API_BASE_URL;
+  }
+
+  private _getStoredToken(): string | null {
     if (typeof window === "undefined") return null;
     return localStorage.getItem("bytherix_token");
   }
@@ -316,6 +337,10 @@ class ApiClient {
     return this.request<{ success: boolean }>(`/documents/${documentId}`, {
       method: "DELETE",
     });
+  }
+
+  async getDocumentDownloadUrl(documentId: string): Promise<DocumentDownloadUrlResponse> {
+    return this.request<DocumentDownloadUrlResponse>(`/documents/${documentId}/download-url`);
   }
 
   // Chat / RAG endpoints
