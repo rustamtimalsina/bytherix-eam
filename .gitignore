@@ -3,3 +3,26 @@
 __pycache__/
 *.pyc
 .pytest_cache/
+
+.coverage
+htmlcov/
+
+# Logs & temporary files
+*.log
+uploads/
+storage/
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+*.pdf

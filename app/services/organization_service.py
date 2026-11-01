@@ -1,3 +1,5 @@
+from app.services.email_service import EmailService
+from app.services.audit_service import AuditService
 from datetime import datetime, timedelta, timezone
 import re
 import secrets
@@ -55,7 +57,8 @@ def invite_member(
     db: Session,
     organization_id: str,
     email: str,
-    role: str
+    role: str,
+    inviter_name: str = "A Workspace Administrator"
 ) -> Membership:
     """Invite a new member via time-limited, single-use token (Section 7.1)."""
     # Check if user already exists
@@ -99,6 +102,32 @@ def invite_member(
     db.add(membership)
     db.commit()
     db.refresh(membership)
+
+    # Fetch organization for email and audit trail
+    org = db.query(Organization).filter(Organization.id == organization_id).first()
+    org_name = org.name if org else "Your Organization"
+
+    # Send real branded invitation email (Section 7.1)
+    EmailService.send_invitation_email(
+        recipient_email=email,
+        organization_name=org_name,
+        role=role,
+        invitation_token=token,
+        inviter_name=inviter_name
+    )
+
+    # Record security audit event
+    AuditService.record_event(
+        db=db,
+        organization_id=organization_id,
+        action="member.invited",
+        resource_type="membership",
+        resource_id=membership.id,
+        actor_email=inviter_name,
+        severity="info",
+        details={"recipient_email": email, "role": role, "organization": org_name}
+    )
+
     return membership
 
 

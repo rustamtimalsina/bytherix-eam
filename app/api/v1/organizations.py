@@ -97,7 +97,8 @@ def invite(
         db=db,
         organization_id=organization_id,
         email=data.email,
-        role=data.role
+        role=data.role,
+        inviter_name=context.user.email if context.user else "A Workspace Administrator"
     )
     user = db.query(User).filter(User.id == membership.user_id).first()
     return MembershipOut(

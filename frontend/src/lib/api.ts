@@ -1,3 +1,32 @@
+
+export interface AuditLogItem {
+  id: string;
+  organization_id: string;
+  actor_id: string | null;
+  actor_email: string;
+  action: string;
+  resource_type: string;
+  resource_id: string | null;
+  severity: "info" | "warning" | "critical";
+  details: string;
+  ip_address: string;
+  created_at: string;
+}
+
+export interface AuditLogListResponse {
+  items: AuditLogItem[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface AuditStats {
+  total_events: number;
+  info_count: number;
+  warning_count: number;
+  critical_count: number;
+}
+
 /**
  * Bytherix EAM Enterprise API Client
  * Connects directly to FastAPI backend at /api/v1
@@ -70,12 +99,107 @@ export interface MessageItem {
   created_at: string;
 }
 
+export interface WorkflowDefinition {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  allowed_tools: string[];
+  has_approval_gate: boolean;
+}
+
+export interface AgentStepTraceItem {
+  id: string;
+  step_number: number;
+  thought: string | null;
+  tool_name: string | null;
+  tool_input: string | null;
+  tool_output: string | null;
+  status: string;
+  requires_approval: boolean;
+  created_at: string;
+}
+
+export interface AgentExecutionSummary {
+  id: string;
+  workflow_name: string;
+  status: "running" | "pending_approval" | "completed" | "failed" | "rejected";
+  input_prompt: string;
+  total_steps: number;
+  has_pending_approval: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AgentExecutionDetail {
+  id: string;
+  workflow_name: string;
+  status: "running" | "pending_approval" | "completed" | "failed" | "rejected";
+  input_prompt: string;
+  final_output: string | null;
+  total_steps: number;
+  pending_tool_name: string | null;
+  pending_tool_args: string | null;
+  traces: AgentStepTraceItem[];
+  created_at: string;
+  updated_at: string;
+}
+
 export interface SessionSummary {
   id: string;
   title: string;
   message_count: number;
   updated_at: string;
   created_at: string;
+}
+
+
+export interface RegisteredModelSummary {
+  id: string;
+  name: string;
+  description?: string;
+  task_type: string;
+  active_version_id?: string;
+  active_version_name?: string;
+  total_versions: number;
+  created_at: string;
+}
+
+export interface ModelVersionDetail {
+  id: string;
+  registered_model_id: string;
+  version: string;
+  lifecycle_stage: string;
+  artifact_checksum: string;
+  input_schema: string;
+  output_schema: string;
+  parameters: string;
+  training_data_ref?: string;
+  accuracy_score?: number;
+  latency_p95_ms?: number;
+  promoted_by?: string;
+  promoted_at?: string;
+  created_at: string;
+}
+
+export interface RegisteredModelDetail {
+  id: string;
+  organization_id: string;
+  name: string;
+  description?: string;
+  task_type: string;
+  active_version_id?: string;
+  created_at: string;
+  versions: ModelVersionDetail[];
+}
+
+export interface PredictionResult {
+  model_name: string;
+  version: string;
+  prediction: string;
+  latency_ms: number;
+  tokens_consumed: number;
+  lifecycle_stage: string;
 }
 
 export interface SessionDetail {
@@ -304,6 +428,33 @@ class ApiClient {
     }
   }
 
+  // Governed Agent Workflows (Section 8.4 & 11)
+  async listWorkflows(): Promise<WorkflowDefinition[]> {
+    return this.request<WorkflowDefinition[]>("/agents/workflows");
+  }
+
+  async startAgentExecution(workflow_name: string, input_prompt: string): Promise<AgentExecutionDetail> {
+    return this.request<AgentExecutionDetail>("/agents/executions", {
+      method: "POST",
+      body: JSON.stringify({ workflow_name, input_prompt }),
+    });
+  }
+
+  async listAgentExecutions(): Promise<AgentExecutionSummary[]> {
+    return this.request<AgentExecutionSummary[]>("/agents/executions");
+  }
+
+  async getAgentExecution(executionId: string): Promise<AgentExecutionDetail> {
+    return this.request<AgentExecutionDetail>(`/agents/executions/${executionId}`);
+  }
+
+  async approveAgentAction(executionId: string, approve: boolean, reason?: string): Promise<AgentExecutionDetail> {
+    return this.request<AgentExecutionDetail>(`/agents/executions/${executionId}/approval`, {
+      method: "POST",
+      body: JSON.stringify({ approve, reason }),
+    });
+  }
+
   // API Key endpoints
   async listApiKeys(): Promise<ApiKeyItem[]> {
     return this.request<ApiKeyItem[]>("/api-keys");
@@ -357,6 +508,86 @@ class ApiClient {
       method: "POST",
       body: JSON.stringify({ token, password, full_name: fullName }),
     });
+  }
+
+  // MLOps Model Registry & Deployment endpoints (Section 9 & 16.1 #4)
+  async listModels(): Promise<RegisteredModelSummary[]> {
+    return this.request<RegisteredModelSummary[]>("/models");
+  }
+
+  async getModel(modelId: string): Promise<RegisteredModelDetail> {
+    return this.request<RegisteredModelDetail>(`/models/${modelId}`);
+  }
+
+  async registerModel(name: string, description?: string, task_type: string = "text-generation"): Promise<RegisteredModelDetail> {
+    return this.request<RegisteredModelDetail>("/models", {
+      method: "POST",
+      body: JSON.stringify({ name, description, task_type }),
+    });
+  }
+
+  async createModelVersion(modelId: string, version: string, parameters?: string, accuracy_score?: number, latency_p95_ms?: number): Promise<ModelVersionDetail> {
+    return this.request<ModelVersionDetail>(`/models/${modelId}/versions`, {
+      method: "POST",
+      body: JSON.stringify({ version, parameters, accuracy_score, latency_p95_ms }),
+    });
+  }
+
+  async promoteModelVersion(versionId: string, target_stage: string): Promise<ModelVersionDetail> {
+    return this.request<ModelVersionDetail>(`/models/versions/${versionId}/promote`, {
+      method: "POST",
+      body: JSON.stringify({ target_stage }),
+    });
+  }
+
+  async rollbackModel(modelId: string, targetVersionId: string): Promise<ModelVersionDetail> {
+    return this.request<ModelVersionDetail>(`/models/${modelId}/rollback/${targetVersionId}`, {
+      method: "POST",
+    });
+  }
+
+  async predictModel(modelName: string, prompt: string, version?: string): Promise<PredictionResult> {
+    return this.request<PredictionResult>(`/models/${modelName}/predict`, {
+      method: "POST",
+      body: JSON.stringify({ prompt, version }),
+    });
+  }
+
+  // Audit & Compliance Trail (Section 10 & 13)
+  async listAuditLogs(params?: {
+    action?: string;
+    severity?: string;
+    resource_type?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<AuditLogListResponse> {
+    const query = new URLSearchParams();
+    if (params?.action) query.set("action", params.action);
+    if (params?.severity) query.set("severity", params.severity);
+    if (params?.resource_type) query.set("resource_type", params.resource_type);
+    if (params?.limit) query.set("limit", String(params.limit));
+    if (params?.offset) query.set("offset", String(params.offset));
+    const qs = query.toString();
+    return this.request<AuditLogListResponse>(`/audit-logs${qs ? `?${qs}` : ""}`);
+  }
+
+  async getAuditStats(): Promise<AuditStats> {
+    return this.request<AuditStats>("/audit-logs/stats");
+  }
+
+  async exportAuditLogsCsv(): Promise<Blob> {
+    const token = this.getToken();
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+    const res = await fetch(`${API_BASE_URL}/audit-logs/export`, {
+      headers,
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to export audit logs: ${res.statusText}`);
+    }
+    return res.blob();
   }
 }
 
