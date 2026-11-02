@@ -432,14 +432,15 @@ def seed_demo_document(db: Session, organization_id: str, user_id: str) -> Docum
     db.refresh(doc)
 
     # Log audit entry
-    AuditService.log(
+    AuditService.record_event(
         db=db,
         organization_id=organization_id,
-        event_type="document.seeded",
-        action="seed_demo",
+        action="document.seeded",
+        resource_type="document",
+        resource_id=doc.id,
         actor_id=user_id,
-        severity="INFO",
-        metadata={
+        severity="info",
+        details={
             "document_id": doc.id,
             "title": doc.title,
             "page_count": doc.page_count,
