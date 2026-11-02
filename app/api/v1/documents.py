@@ -8,9 +8,10 @@ from app.core.permissions import Permission
 from app.core.security import decode_token
 from app.core.tenant_context import TenantContext, require_permission
 from app.db.models.document import Document
+from app.db.models.chunk import DocumentChunk
 from app.db.models.membership import Membership
 from app.db.session import get_db
-from app.schemas.document import DocumentDownloadUrlOut, DocumentOut, DocumentStatusOut
+from app.schemas.document import DocumentChunkOut, DocumentChunksResponse, DocumentDownloadUrlOut, DocumentOut, DocumentStatusOut
 from app.services.document_service import delete_document, upload_document
 from app.services.audit_service import AuditService
 from app.integrations.object_storage.s3 import storage_service
@@ -92,6 +93,56 @@ def get_status(
         status=doc.status,
         page_count=doc.page_count,
         error_message=doc.error_message
+    )
+
+
+@router.get("/{document_id}/chunks", response_model=DocumentChunksResponse)
+def get_document_chunks(
+    document_id: str,
+    context: TenantContext = Depends(require_permission(Permission.DOCUMENTS_READ)),
+    db: Session = Depends(get_db)
+):
+    """
+    Retrieve extracted text chunks and vector embeddings for a document (Sections 8 & 9).
+    Strictly isolated to caller's tenant organization.
+    """
+    doc = db.query(Document).filter(
+        Document.id == document_id,
+        Document.organization_id == context.organization.id,
+        Document.status != "deleting"
+    ).first()
+    if not doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found"
+        )
+
+    chunks = db.query(DocumentChunk).filter(
+        DocumentChunk.document_id == document_id,
+        DocumentChunk.organization_id == context.organization.id
+    ).order_by(DocumentChunk.chunk_index.asc()).all()
+
+    chunk_outs = [
+        DocumentChunkOut(
+            id=c.id,
+            document_id=c.document_id,
+            chunk_index=c.chunk_index,
+            page_number=c.page_number,
+            content=c.content,
+            token_count=c.token_count,
+            metadata_json=c.metadata_json,
+            has_embedding=c.embedding is not None,
+            created_at=c.created_at
+        )
+        for c in chunks
+    ]
+
+    return DocumentChunksResponse(
+        document_id=doc.id,
+        document_title=doc.title,
+        filename=doc.filename,
+        total_chunks=len(chunk_outs),
+        chunks=chunk_outs
     )
 
 

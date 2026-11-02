@@ -610,6 +610,31 @@ class ApiClient {
   async getObservabilityTelemetry(): Promise<ObservabilityTelemetryResponse> {
     return this.request<ObservabilityTelemetryResponse>("/observability/telemetry");
   }
+
+  // Document Chunk Inspection (Sections 8 & 9)
+  async getDocumentChunks(documentId: string): Promise<DocumentChunksResponse> {
+    return this.request<DocumentChunksResponse>(`/documents/${documentId}/chunks`);
+  }
+}
+
+export interface DocumentChunkItem {
+  id: string;
+  document_id: string;
+  chunk_index: number;
+  page_number: number;
+  content: string;
+  token_count: number;
+  metadata_json: string | null;
+  has_embedding: boolean;
+  created_at: string;
+}
+
+export interface DocumentChunksResponse {
+  document_id: string;
+  document_title: string;
+  filename: string;
+  total_chunks: number;
+  chunks: DocumentChunkItem[];
 }
 
 export interface ObservabilityTelemetryResponse {

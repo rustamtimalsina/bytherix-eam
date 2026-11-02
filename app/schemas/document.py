@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 from pydantic import BaseModel, ConfigDict
 
 
@@ -34,3 +34,27 @@ class DocumentDownloadUrlOut(BaseModel):
     download_url: str
     storage_provider: str  # "minio", "s3", or "local"
     expires_in_seconds: int
+
+
+class DocumentChunkOut(BaseModel):
+    """Extracted text chunk with pgvector embedding metadata (Sections 8 & 9)."""
+    id: str
+    document_id: str
+    chunk_index: int
+    page_number: int
+    content: str
+    token_count: int
+    metadata_json: Optional[str] = None
+    has_embedding: bool = True
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DocumentChunksResponse(BaseModel):
+    """Document chunks inspection response contract."""
+    document_id: str
+    document_title: str
+    filename: str
+    total_chunks: int
+    chunks: List[DocumentChunkOut]
