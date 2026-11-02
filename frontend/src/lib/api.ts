@@ -605,6 +605,33 @@ class ApiClient {
     }
     return res.blob();
   }
+
+  // Observability & Prometheus Telemetry (Section 13 & 14.3)
+  async getObservabilityTelemetry(): Promise<ObservabilityTelemetryResponse> {
+    return this.request<ObservabilityTelemetryResponse>("/observability/telemetry");
+  }
+}
+
+export interface ObservabilityTelemetryResponse {
+  uptime_seconds: number;
+  active_requests: number;
+  total_requests: number;
+  requests_per_minute: number;
+  avg_latency_ms: number;
+  p50_latency_ms: number;
+  p95_latency_ms: number;
+  p99_latency_ms: number;
+  error_rate_percentage: number;
+  status_breakdown: {
+    "2xx": number;
+    "4xx": number;
+    "5xx": number;
+    other: number;
+  };
+  top_endpoints: Array<{
+    endpoint: string;
+    requests: number;
+  }>;
 }
 
 export const api = new ApiClient();

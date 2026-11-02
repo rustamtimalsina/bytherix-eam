@@ -1,6 +1,6 @@
 import time
 import uuid
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, Request, Response, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -16,6 +16,8 @@ from app.api.v1.usage import router as usage_router
 from app.api.v1.agents import router as agents_router
 from app.api.v1.models import router as models_router
 from app.api.v1.audit import router as audit_router
+from app.api.v1.observability import router as observability_router
+from app.core.metrics import metrics_registry
 from app.core.config import settings
 from app.db.base import Base
 from app.db.session import engine
@@ -54,17 +56,35 @@ app.add_middleware(
 
 @app.middleware("http")
 async def add_request_id_and_timing(request: Request, call_next):
-    """Correlation ID and latency tracking middleware (Section 10.1 & 14.1)."""
+    """Correlation ID and latency tracking middleware with Prometheus metrics (Section 10.1, 13 & 14.1)."""
     request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
     request.state.request_id = request_id
     start_time = time.time()
     
-    response = await call_next(request)
-    
-    duration = time.time() - start_time
-    response.headers["X-Request-ID"] = request_id
-    response.headers["X-Process-Time"] = f"{duration:.4f}s"
-    return response
+    metrics_registry.inc_active_requests()
+    try:
+        response = await call_next(request)
+        duration = time.time() - start_time
+        metrics_registry.record_request(
+            method=request.method,
+            path=request.url.path,
+            status_code=response.status_code,
+            duration_seconds=duration,
+        )
+        response.headers["X-Request-ID"] = request_id
+        response.headers["X-Process-Time"] = f"{duration:.4f}s"
+        return response
+    except Exception as exc:
+        duration = time.time() - start_time
+        metrics_registry.record_request(
+            method=request.method,
+            path=request.url.path,
+            status_code=500,
+            duration_seconds=duration,
+        )
+        raise exc
+    finally:
+        metrics_registry.dec_active_requests()
 
 
 @app.middleware("http")
@@ -122,6 +142,16 @@ async def rate_limit_middleware(request: Request, call_next):
 app.add_exception_handler(StarletteHTTPException, http_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
+# Prometheus Metrics Exporter (Section 13 & 14.3)
+@app.get("/metrics", tags=["Observability & Telemetry"])
+def prometheus_metrics():
+    """Standard Prometheus text exposition format (v0.0.4) for scrapers."""
+    return Response(
+        content=metrics_registry.generate_prometheus_exposition(),
+        media_type="text/plain; version=0.0.4; charset=utf-8",
+    )
+
+
 # Health Checks (Section 10.2 & 14.3)
 @app.get("/health/live", tags=["Health"])
 def health_live():
@@ -150,3 +180,4 @@ app.include_router(usage_router, prefix=settings.API_V1_STR)
 app.include_router(agents_router, prefix=settings.API_V1_STR)
 app.include_router(models_router, prefix=settings.API_V1_STR)
 app.include_router(audit_router, prefix=settings.API_V1_STR)
+app.include_router(observability_router, prefix=settings.API_V1_STR)

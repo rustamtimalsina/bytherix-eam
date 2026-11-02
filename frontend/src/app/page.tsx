@@ -36,6 +36,9 @@ import {
   Eye,
   ShieldCheck,
   Filter,
+  Activity,
+  BarChart3,
+  ExternalLink,
 } from "lucide-react";
 import {
   api,
@@ -53,6 +56,7 @@ import {
   PredictionResult,
   AuditLogItem,
   AuditStats,
+  ObservabilityTelemetryResponse,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { CosmicThemeToggle } from "@/components/CosmicThemeToggle";
@@ -187,6 +191,11 @@ export default function DashboardPage() {
   const [inspectingAuditLog, setInspectingAuditLog] = useState<AuditLogItem | null>(null);
   const [copiedAuditJson, setCopiedAuditJson] = useState(false);
 
+  // Observability & Prometheus Telemetry state (Section 13 & 14.3)
+  const [telemetry, setTelemetry] = useState<ObservabilityTelemetryResponse | null>(null);
+  const [isLoadingTelemetry, setIsLoadingTelemetry] = useState(false);
+  const [auditSubView, setAuditSubView] = useState<"logs" | "telemetry">("logs");
+
   // Agent Workflows state (Section 8.4 & 11)
   const [workflows, setWorkflows] = useState<WorkflowDefinition[]>([]);
   const [executions, setExecutions] = useState<AgentExecutionSummary[]>([]);
@@ -290,6 +299,18 @@ export default function DashboardPage() {
     }
   };
 
+  const loadTelemetryData = async () => {
+    try {
+      setIsLoadingTelemetry(true);
+      const data = await api.getObservabilityTelemetry();
+      setTelemetry(data);
+    } catch (err) {
+      console.error("Failed to load telemetry data", err);
+    } finally {
+      setIsLoadingTelemetry(false);
+    }
+  };
+
   const handleExportAuditLogsCsv = async () => {
     try {
       setIsExportingAudit(true);
@@ -313,6 +334,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (token && activeTab === "audit") {
       loadAuditData();
+      loadTelemetryData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, activeTab, auditSeverityFilter, auditPage]);
@@ -2476,14 +2498,49 @@ const loadChatSessions = async () => {
           <div className="space-y-6">
             <div className="text-center space-y-1">
               <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center justify-center gap-2">
-                <span>Enterprise Audit & Compliance</span>
+                <span>Enterprise Audit & Observability</span>
                 <ShieldCheck className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
               </h2>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-lg mx-auto">
-                Immutable SOC 2 & ISO 27001 audit trail, cryptographic event logging, and security telemetry.
+                Immutable SOC 2 & ISO 27001 audit trail and live Prometheus telemetry metrics (Section 13 & 14.3).
               </p>
             </div>
 
+            {/* Sub-view Switcher: Audit Trail vs Prometheus Observability */}
+            <div className="flex items-center justify-center">
+              <div className="inline-flex p-1 bg-slate-100 dark:bg-slate-900/80 rounded-xl border border-slate-200/80 dark:border-white/[0.08] shadow-inner">
+                <button
+                  type="button"
+                  onClick={() => setAuditSubView("logs")}
+                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    auditSubView === "logs"
+                      ? "bg-white dark:bg-indigo-600 text-slate-900 dark:text-white shadow-sm"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  Compliance Trail
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuditSubView("telemetry");
+                    loadTelemetryData();
+                  }}
+                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    auditSubView === "telemetry"
+                      ? "bg-white dark:bg-indigo-600 text-slate-900 dark:text-white shadow-sm"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                >
+                  <Activity className="w-3.5 h-3.5 text-emerald-500" />
+                  Live Observability (Prometheus)
+                </button>
+              </div>
+            </div>
+
+            {auditSubView === "logs" ? (
+              <>
             {/* Telemetry Gauge Cards with 3D Tactile Glare */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
               <TiltCard3D maxTilt={9} className="card-depth-3d p-4 sm:p-5 space-y-1 rounded-2xl cursor-default">
@@ -2864,6 +2921,155 @@ const loadChatSessions = async () => {
                     >
                       Close
                     </button>
+                  </div>
+                </div>
+              </div>
+            )}
+              </>
+            ) : (
+              /* PROMETHEUS LIVE OBSERVABILITY VIEW (Section 13 & 14.3) */
+              <div className="space-y-6">
+                {/* 4 Telemetry 3D Gauge Cards */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+                  <TiltCard3D maxTilt={9} className="card-depth-3d p-4 sm:p-5 space-y-1 rounded-2xl cursor-default">
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <Gauge className="w-3.5 h-3.5 text-indigo-500" />
+                      p95 Latency
+                    </span>
+                    <p className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white">
+                      {telemetry?.p95_latency_ms ?? 0} <span className="text-xs font-semibold text-slate-400">ms</span>
+                    </p>
+                    <p className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold">
+                      p50: {telemetry?.p50_latency_ms ?? 0}ms &bull; p99: {telemetry?.p99_latency_ms ?? 0}ms
+                    </p>
+                  </TiltCard3D>
+
+                  <TiltCard3D maxTilt={9} className="card-depth-3d p-4 sm:p-5 space-y-1 rounded-2xl cursor-default">
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <Zap className="w-3.5 h-3.5 text-emerald-500" />
+                      Throughput
+                    </span>
+                    <p className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white">
+                      {telemetry?.requests_per_minute ?? 0} <span className="text-xs font-semibold text-slate-400">req/m</span>
+                    </p>
+                    <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                      Total: {telemetry?.total_requests ?? 0} calls
+                    </p>
+                  </TiltCard3D>
+
+                  <TiltCard3D maxTilt={9} className="card-depth-3d p-4 sm:p-5 space-y-1 rounded-2xl cursor-default">
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <Activity className="w-3.5 h-3.5 text-blue-500" />
+                      Active In-Flight
+                    </span>
+                    <p className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                      {telemetry?.active_requests ?? 0}
+                      <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    </p>
+                    <p className="text-[11px] text-blue-600 dark:text-blue-400 font-semibold">
+                      Concurrent Requests
+                    </p>
+                  </TiltCard3D>
+
+                  <TiltCard3D maxTilt={9} className="card-depth-3d p-4 sm:p-5 space-y-1 rounded-2xl cursor-default">
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-teal-500" />
+                      Platform Health
+                    </span>
+                    <p className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white">
+                      {Math.max(0, 100 - (telemetry?.error_rate_percentage ?? 0)).toFixed(1)}%
+                    </p>
+                    <p className="text-[11px] text-teal-600 dark:text-teal-400 font-semibold">
+                      Uptime: {Math.floor((telemetry?.uptime_seconds ?? 0) / 60)}m {Math.floor((telemetry?.uptime_seconds ?? 0) % 60)}s
+                    </p>
+                  </TiltCard3D>
+                </div>
+
+                {/* Toolbar: Refresh + Prometheus Exporter Link */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 rounded-2xl bg-white/70 dark:bg-[#0c1222]/70 border border-slate-200/80 dark:border-white/[0.08] backdrop-blur-xl">
+                  {/* Status Breakdown Pills */}
+                  <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                      <BarChart3 className="w-3.5 h-3.5" /> Status Breakdown:
+                    </span>
+                    <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
+                      2xx OK: {telemetry?.status_breakdown["2xx"] ?? 0}
+                    </span>
+                    <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20">
+                      4xx Client: {telemetry?.status_breakdown["4xx"] ?? 0}
+                    </span>
+                    <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20">
+                      5xx Server: {telemetry?.status_breakdown["5xx"] ?? 0}
+                    </span>
+                  </div>
+
+                  {/* Actions: Refresh & Open /metrics */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={loadTelemetryData}
+                      disabled={isLoadingTelemetry}
+                      className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-white/[0.06] text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-white/[0.1] transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isLoadingTelemetry ? "animate-spin text-indigo-500" : ""}`} />
+                      Refresh
+                    </button>
+                    <a
+                      href={`${api.getBaseUrl()}/metrics`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors flex items-center gap-1.5 shadow-sm"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      View /metrics
+                    </a>
+                  </div>
+                </div>
+
+                {/* Top Endpoints Table & Prometheus Info */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Top Endpoints */}
+                  <div className="lg:col-span-2 rounded-2xl bg-white/70 dark:bg-[#0c1222]/70 border border-slate-200/80 dark:border-white/[0.08] p-5 backdrop-blur-xl space-y-4">
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <Activity className="w-4 h-4 text-indigo-500" />
+                      High-Volume Endpoints
+                    </h3>
+                    <div className="divide-y divide-slate-100 dark:divide-white/[0.05]">
+                      {telemetry?.top_endpoints && telemetry.top_endpoints.length > 0 ? (
+                        telemetry.top_endpoints.map((ep, idx) => (
+                          <div key={idx} className="py-2.5 flex items-center justify-between text-xs">
+                            <span className="font-mono text-slate-700 dark:text-slate-300 truncate max-w-[280px] sm:max-w-md">
+                              {ep.endpoint}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 dark:bg-white/[0.06] text-slate-600 dark:text-slate-400">
+                              {ep.requests} requests
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="py-4 text-xs text-slate-400 text-center">No endpoint traffic recorded yet.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Prometheus Scraper Config Box */}
+                  <div className="rounded-2xl bg-gradient-to-br from-slate-900 to-indigo-950 border border-indigo-500/20 p-5 text-white space-y-3">
+                    <h3 className="text-sm font-bold flex items-center gap-2 text-indigo-300">
+                      <Terminal className="w-4 h-4" />
+                      Prometheus Exporter
+                    </h3>
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      Compliant with Section 13 & 14.3. External Prometheus servers can scrape standard v0.0.4 metrics directly from the host.
+                    </p>
+                    <div className="p-2.5 rounded-xl bg-black/40 border border-white/10 font-mono text-[11px] text-emerald-300 space-y-1">
+                      <p className="text-slate-400 text-[10px]"># Live Scrape Command</p>
+                      <p>curl -s {api.getBaseUrl()}/metrics</p>
+                    </div>
+                    <div className="text-[11px] text-slate-400 space-y-1">
+                      <p>&bull; Metric Types: Counters, Histograms, Gauges</p>
+                      <p>&bull; Buckets: 5ms &rarr; 10s (+Inf)</p>
+                      <p>&bull; Scrape Target: <code>GET /metrics</code></p>
+                    </div>
                   </div>
                 </div>
               </div>
