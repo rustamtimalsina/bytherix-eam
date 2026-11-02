@@ -2495,7 +2495,7 @@ const loadChatSessions = async () => {
 
         {/* TAB: ENTERPRISE AUDIT & COMPLIANCE TRAIL (Section 10 & 13) */}
         {activeTab === "audit" && (
-          <div className="space-y-6">
+          <div className="space-y-6 pb-20">
             <div className="text-center space-y-1">
               <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center justify-center gap-2">
                 <span>Enterprise Audit & Observability</span>
