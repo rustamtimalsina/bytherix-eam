@@ -615,6 +615,12 @@ class ApiClient {
   async getDocumentChunks(documentId: string): Promise<DocumentChunksResponse> {
     return this.request<DocumentChunksResponse>(`/documents/${documentId}/chunks`);
   }
+
+  // Real-time SSE Notification Stream
+  getNotificationStreamUrl(): string {
+    const token = this.getToken();
+    return `${API_BASE_URL}/notifications/stream?token=${encodeURIComponent(token || "")}`;
+  }
 }
 
 export interface DocumentChunkItem {

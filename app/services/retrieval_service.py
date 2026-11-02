@@ -21,6 +21,7 @@ from app.db.models.document import Document
 from app.integrations.embeddings.provider import embedding_provider
 from app.integrations.llm.provider import llm_provider
 from app.integrations.object_storage.s3 import storage_service
+from app.core.notifications import notification_bus
 from app.schemas.chat import ChatResponse, SourceCitation
 
 STOPWORDS = {
@@ -91,6 +92,17 @@ def parse_and_index_document(document_id: str, db: Session) -> Document:
         doc.status = "ready"
         db.commit()
         db.refresh(doc)
+
+        notification_bus.publish(
+            organization_id=doc.organization_id,
+            event_data={
+                "type": "document_indexed",
+                "document_id": doc.id,
+                "title": "Document Ready",
+                "message": f"'{doc.title}' ({doc.page_count} pages, {total_chunks} chunks) indexed and ready for RAG querying."
+            }
+        )
+
         return doc
 
     except Exception as e:

@@ -12,6 +12,7 @@ from app.db.session import SessionLocal
 from app.integrations.object_storage.s3 import storage_service
 from app.services.retrieval_service import parse_and_index_document
 from app.services.audit_service import AuditService
+from app.core.notifications import notification_bus
 from app.workers.tasks.document_tasks import process_document_task
 
 
@@ -33,8 +34,33 @@ def _run_indexing_thread(document_id: str):
         bg_db = SessionLocal()
         try:
             parse_and_index_document(document_id, bg_db)
-        except Exception:
-            pass
+        except Exception as exc:
+            try:
+                doc = bg_db.query(Document).filter(Document.id == document_id).first()
+                if doc:
+                    doc.status = "failed"
+                    doc.error_message = str(exc)
+                    bg_db.commit()
+                    AuditService.record_event(
+                        db=bg_db,
+                        organization_id=doc.organization_id,
+                        action="document.indexing_failed",
+                        resource_type="document",
+                        resource_id=doc.id,
+                        severity="warning",
+                        details={"error": str(exc), "filename": doc.filename}
+                    )
+                    notification_bus.publish(
+                        organization_id=doc.organization_id,
+                        event_data={
+                            "type": "document_failed",
+                            "document_id": doc.id,
+                            "title": "Document Indexing Failed",
+                            "message": f"Failed to index '{doc.title}': {str(exc)[:100]}"
+                        }
+                    )
+            except Exception:
+                pass
         finally:
             bg_db.close()
 
@@ -64,11 +90,17 @@ def upload_document(
         )
 
     # 1. Read file bytes and validate magic bytes (Must be valid PDF)
+    MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024  # 25 MB enterprise limit
     content = file.file.read()
     if len(content) == 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Uploaded file is empty"
+        )
+    if len(content) > MAX_FILE_SIZE_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Uploaded file exceeds maximum allowable size of {MAX_FILE_SIZE_BYTES // (1024 * 1024)} MB."
         )
 
     # Validate PDF signature (Section 8.1.1 step 3: do not trust MIME type alone)

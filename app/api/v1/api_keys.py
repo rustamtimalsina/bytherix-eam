@@ -21,8 +21,7 @@ def list_api_keys(
 ):
     """List API key metadata for the current organization (Section 7.2 & 10.2)."""
     keys = db.query(APIKey).filter(
-        APIKey.organization_id == context.organization.id,
-        APIKey.is_revoked == False
+        APIKey.organization_id == context.organization.id
     ).order_by(APIKey.created_at.desc()).all()
     return [APIKeyOut.model_validate(k) for k in keys]
 

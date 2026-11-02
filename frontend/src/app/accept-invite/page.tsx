@@ -80,7 +80,7 @@ function AcceptInviteContent() {
               Join Organization
             </h1>
             <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
-              Complete your profile and activate your tenant membership (Section 7.1).
+              Complete your profile and activate your tenant membership.
             </p>
           </div>
 

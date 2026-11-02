@@ -13,6 +13,7 @@ from app.schemas.chat import (
     SessionSummary,
     SessionDetail,
 )
+from app.services.audit_service import AuditService
 from app.services.retrieval_service import query_rag, stream_query_rag
 from app.services.usage_service import check_token_quota, record_usage
 from app.services.conversation_service import (
@@ -59,6 +60,16 @@ def remove_chat_session(
     Delete a conversation thread and its associated message history.
     """
     delete_session(organization_id=context.organization.id, session_id=session_id, db=db)
+    AuditService.record_event(
+        db=db,
+        organization_id=context.organization.id,
+        action="chat.session_deleted",
+        resource_type="chat_session",
+        resource_id=session_id,
+        actor_email=context.user.email if context.user else "user@bytherix.com",
+        severity="info",
+        details={"session_id": session_id}
+    )
     return {"success": True, "message": "Conversation session deleted"}
 
 

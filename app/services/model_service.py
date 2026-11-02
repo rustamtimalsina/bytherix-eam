@@ -144,7 +144,12 @@ class ModelService:
         return model
 
     @staticmethod
-    def register_model(db: Session, organization_id: str, payload: ModelRegisterCreate) -> RegisteredModel:
+    def register_model(
+        db: Session,
+        organization_id: str,
+        payload: ModelRegisterCreate,
+        user_email: str = "admin@bytherix.com"
+    ) -> RegisteredModel:
         existing = db.execute(
             select(RegisteredModel).where(
                 RegisteredModel.organization_id == organization_id,
@@ -167,6 +172,22 @@ class ModelService:
         db.add(model)
         db.commit()
         db.refresh(model)
+
+        AuditService.record_event(
+            db=db,
+            organization_id=organization_id,
+            action="mlops.model_registered",
+            resource_type="model",
+            resource_id=model.id,
+            actor_email=user_email,
+            severity="info",
+            details={
+                "model_name": model.name,
+                "task_type": model.task_type,
+                "description": model.description
+            }
+        )
+
         return model
 
     @staticmethod
@@ -174,7 +195,8 @@ class ModelService:
         db: Session,
         model_id: str,
         organization_id: str,
-        payload: ModelVersionCreate
+        payload: ModelVersionCreate,
+        user_email: str = "admin@bytherix.com"
     ) -> ModelVersion:
         model = ModelService.get_model(db, model_id, organization_id)
 
@@ -212,6 +234,23 @@ class ModelService:
         db.add(version)
         db.commit()
         db.refresh(version)
+
+        AuditService.record_event(
+            db=db,
+            organization_id=organization_id,
+            action="mlops.version_created",
+            resource_type="model_version",
+            resource_id=version.id,
+            actor_email=user_email,
+            severity="info",
+            details={
+                "model_name": model.name,
+                "version": version.version,
+                "checksum": version.artifact_checksum,
+                "lifecycle_stage": version.lifecycle_stage
+            }
+        )
+
         return version
 
     @staticmethod

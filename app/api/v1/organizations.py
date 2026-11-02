@@ -16,6 +16,7 @@ from app.schemas.organization import (
     OrganizationOut,
     UpdateMemberRoleRequest,
 )
+from app.services.audit_service import AuditService
 from app.services.organization_service import (
     accept_invite,
     create_organization_with_owner,
@@ -142,11 +143,29 @@ def update_member_role(
         if owners <= 1:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot demote the sole organization owner")
 
+    old_role = membership.role
     membership.role = data.role
     db.commit()
     db.refresh(membership)
 
     user = db.query(User).filter(User.id == membership.user_id).first()
+    target_email = user.email if user else "unknown"
+
+    AuditService.record_event(
+        db=db,
+        organization_id=organization_id,
+        action="member.role_updated",
+        resource_type="membership",
+        resource_id=membership.id,
+        actor_email=context.user.email if context.user else "admin@bytherix.com",
+        severity="info" if data.role != Role.OWNER.value else "warning",
+        details={
+            "member_email": target_email,
+            "old_role": old_role,
+            "new_role": data.role
+        }
+    )
+
     return MembershipOut(
         id=membership.id,
         user_id=membership.user_id,
@@ -187,8 +206,27 @@ def remove_member(
         if owners <= 1:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot remove the sole organization owner")
 
+    user = db.query(User).filter(User.id == membership.user_id).first()
+    target_email = user.email if user else "unknown"
+    target_role = membership.role
+
     db.delete(membership)
     db.commit()
+
+    AuditService.record_event(
+        db=db,
+        organization_id=organization_id,
+        action="member.removed",
+        resource_type="membership",
+        resource_id=membership_id,
+        actor_email=context.user.email if context.user else "admin@bytherix.com",
+        severity="warning",
+        details={
+            "member_email": target_email,
+            "revoked_role": target_role
+        }
+    )
+
     return {"success": True, "message": "Membership deleted successfully"}
 
 
@@ -199,4 +237,20 @@ def accept_invitation(
 ):
     """Accept an organization invitation, set password, and activate account."""
     user, org = accept_invite(db, data.token, data.password, data.full_name)
+
+    AuditService.record_event(
+        db=db,
+        organization_id=org.id,
+        action="member.joined",
+        resource_type="membership",
+        resource_id=user.id,
+        actor_email=user.email,
+        severity="info",
+        details={
+            "user_email": user.email,
+            "full_name": user.full_name,
+            "organization_name": org.name
+        }
+    )
+
     return {"message": f"Successfully joined {org.name}", "email": user.email, "organization_id": org.id}

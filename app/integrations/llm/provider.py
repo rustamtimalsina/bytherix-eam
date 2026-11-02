@@ -1,19 +1,37 @@
 import json
+import logging
 import re
 import time
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 import httpx
 from app.core.config import settings
+from app.integrations.llm.circuit_breaker import CircuitBreaker, CircuitBreakerOpenException
+
+logger = logging.getLogger(__name__)
 
 
 class LLMProvider:
     """
-    LLM completion adapter with prompt policy grounding and intelligent offline synthesis (Section 8.2 & 12.2).
+    LLM completion adapter with prompt policy grounding, circuit-breaker fault tolerance,
+    and intelligent offline grounded synthesis (Section 8.2 & 14.1).
     """
 
     def __init__(self):
         self.api_key = settings.LLM_API_KEY
         self.model = settings.LLM_MODEL
+        # Resilient Circuit Breaker (3 failures trips to OPEN for 30s cooling window)
+        self.circuit_breaker = CircuitBreaker(
+            name="OpenAI_Gateway",
+            failure_threshold=3,
+            recovery_timeout=30.0,
+            request_timeout=10.0,
+            max_retries=1,
+            initial_backoff=0.3
+        )
+
+    def get_circuit_metrics(self) -> Dict:
+        """Return real-time circuit breaker health metrics."""
+        return self.circuit_breaker.get_metrics()
 
     def generate_grounded_answer(
         self,
@@ -49,10 +67,10 @@ class LLMProvider:
 
         user_prompt = f"Context Information:\n{context_text}\n\nQuestion: {question}\n\nAnswer:"
 
-        # 1. If OpenAI API key is set and valid, call OpenAI
-        if self.api_key and not self.api_key.startswith("your-"):
-            try:
-                with httpx.Client(timeout=45.0) as client:
+        # 1. If OpenAI API key is set and valid, call OpenAI with Circuit Breaker protection
+        if self.api_key and not self.api_key.startswith("your-") and self.circuit_breaker.can_execute():
+            def _call_openai():
+                with httpx.Client(timeout=self.circuit_breaker.request_timeout) as client:
                     resp = client.post(
                         "https://api.openai.com/v1/chat/completions",
                         headers={"Authorization": f"Bearer {self.api_key}"},
@@ -65,13 +83,21 @@ class LLMProvider:
                             "temperature": 0.1
                         }
                     )
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        answer = data["choices"][0]["message"]["content"]
-                        usage = data.get("usage", {})
-                        return answer, usage.get("prompt_tokens", 0), usage.get("completion_tokens", 0)
-            except Exception:
-                pass
+                    if resp.status_code >= 400:
+                        raise httpx.HTTPStatusError(
+                            f"OpenAI error status {resp.status_code}: {resp.text[:200]}",
+                            request=resp.request,
+                            response=resp
+                        )
+                    return resp.json()
+
+            try:
+                data = self.circuit_breaker.execute_with_retry(_call_openai)
+                answer = data["choices"][0]["message"]["content"]
+                usage = data.get("usage", {})
+                return answer, usage.get("prompt_tokens", 0), usage.get("completion_tokens", 0)
+            except Exception as e:
+                logger.warning(f"LLM upstream call bypassed or failed ({e}). Falling back to grounded synthesis.")
 
         # 2. Intelligent Offline Grounded Synthesizer
         best_chunk = context_chunks[0]
@@ -96,7 +122,6 @@ class LLMProvider:
         # B. Video / Creator / YouTube questions
         if any(w in q_lower for w in ["video", "youtube", "tiktok", "viral", "thumbnail", "notebooklm", "caption"]):
             all_content = " ".join(c.get("content", "") for c in context_chunks)
-            # Clean OCR artifacts and extract key principles
             clean_content = re.sub(r"\s+", " ", all_content).strip()
             
             # Find relevant sentences
@@ -116,7 +141,6 @@ class LLMProvider:
             return answer, len(user_prompt.split()), len(answer.split())
 
         # C. General Synthesizer for any document
-        # Extract the most informative, coherent sentences matching the query
         all_text = " ".join(c.get("content", "") for c in context_chunks)
         clean_text = re.sub(r"[\r\n\t]+", " ", all_text)
         clean_text = re.sub(r"\s{2,}", " ", clean_text)
@@ -158,12 +182,12 @@ class LLMProvider:
         context_chunks: List[Dict]
     ):
         """
-        Stream tokens of the grounded answer in real-time.
+        Stream tokens of the grounded answer in real-time with circuit-breaker protection.
         Yields ('token', token_str) during generation.
         Finally yields ('done', (prompt_tokens, completion_tokens)).
         """
-        # 1. If OpenAI streaming is enabled
-        if self.api_key and not self.api_key.startswith("your-"):
+        # 1. If OpenAI streaming is enabled and circuit breaker allows execution:
+        if self.api_key and not self.api_key.startswith("your-") and self.circuit_breaker.can_execute():
             context_text = ""
             for idx, chunk in enumerate(context_chunks):
                 doc_title = chunk.get("doc_title", "Document")
@@ -179,8 +203,9 @@ class LLMProvider:
             )
             user_prompt = f"Context Information:\n{context_text}\n\nQuestion: {question}\n\nAnswer:"
 
+            stream_succeeded = False
             try:
-                with httpx.Client(timeout=45.0) as client:
+                with httpx.Client(timeout=self.circuit_breaker.request_timeout) as client:
                     with client.stream(
                         "POST",
                         "https://api.openai.com/v1/chat/completions",
@@ -210,10 +235,19 @@ class LLMProvider:
                                             yield ("token", delta)
                                     except Exception:
                                         pass
+                            self.circuit_breaker.record_success()
+                            stream_succeeded = True
                             yield ("done", (len(user_prompt.split()), total_comp))
                             return
-            except Exception:
-                pass
+                        else:
+                            raise httpx.HTTPStatusError(
+                                f"Streaming error status {response.status_code}",
+                                request=response.request,
+                                response=response
+                            )
+            except Exception as exc:
+                self.circuit_breaker.record_failure(exc)
+                logger.warning(f"Streaming failed ({exc}). Circuit state: {self.circuit_breaker.state.value}. Fast-falling back.")
 
         # 2. Offline real-time fluid streamer
         full_answer, prompt_toks, comp_toks = self.generate_grounded_answer(question, context_chunks)

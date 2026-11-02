@@ -40,7 +40,8 @@ def register_new_model(
     """
     Register a new model in the catalog (Section 9.2 #1).
     """
-    return ModelService.register_model(db, context.organization.id, payload)
+    user_email = context.user.email if context.user else "admin@bytherix.com"
+    return ModelService.register_model(db, context.organization.id, payload, user_email=user_email)
 
 
 @router.get("/{model_id}", response_model=RegisteredModelResponse, status_code=status.HTTP_200_OK)
@@ -65,7 +66,8 @@ def create_model_version(
     """
     Register a new version with artifact checksum & benchmark parameters (Section 9.2 #2-4).
     """
-    return ModelService.create_version(db, model_id, context.organization.id, payload)
+    user_email = context.user.email if context.user else "admin@bytherix.com"
+    return ModelService.create_version(db, model_id, context.organization.id, payload, user_email=user_email)
 
 
 @router.post("/versions/{version_id}/promote", response_model=ModelVersionResponse, status_code=status.HTTP_200_OK)

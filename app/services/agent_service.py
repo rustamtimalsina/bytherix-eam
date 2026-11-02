@@ -1,4 +1,5 @@
 from app.services.audit_service import AuditService
+from app.core.notifications import notification_bus
 import json
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
@@ -187,6 +188,18 @@ def start_agent_workflow(
         execution.pending_tool_name = "SensitiveExportTool"
         execution.pending_tool_args = json.dumps({"destination": "Enterprise S3 Compliance Archive", "format": "JSON+PDF"})
         db.commit()
+
+        notification_bus.publish(
+            organization_id=organization_id,
+            event_data={
+                "type": "approval_required",
+                "execution_id": execution.id,
+                "workflow_name": matched_wf["name"],
+                "pending_tool_name": execution.pending_tool_name,
+                "title": "Human-In-The-Loop Approval Required",
+                "message": f"Agent workflow '{matched_wf['name']}' is paused awaiting human administrator approval."
+            }
+        )
     else:
         # Step 3: Audit Report Synthesis
         step3 = AgentStepTrace(
@@ -299,6 +312,18 @@ def process_approval(
         actor_id=execution.user_id,
         severity="info" if approve else "warning",
         details={"reason": reason or "", "decision": "approved" if approve else "rejected"}
+    )
+
+    notification_bus.publish(
+        organization_id=organization_id,
+        event_data={
+            "type": "approval_resolved",
+            "execution_id": execution.id,
+            "status": execution.status,
+            "decision": "approved" if approve else "rejected",
+            "title": f"Approval {'Granted' if approve else 'Rejected'}",
+            "message": f"Execution #{execution.id[:8]} was {'authorized' if approve else 'rejected'}."
+        }
     )
 
     return get_execution_detail(organization_id=organization_id, execution_id=execution.id, db=db)

@@ -1,3 +1,4 @@
+import asyncio
 import time
 import uuid
 from fastapi import FastAPI, Request, Response, status
@@ -17,6 +18,8 @@ from app.api.v1.agents import router as agents_router
 from app.api.v1.models import router as models_router
 from app.api.v1.audit import router as audit_router
 from app.api.v1.observability import router as observability_router
+from app.api.v1.notifications import router as notifications_router
+from app.core.notifications import notification_bus
 from app.core.metrics import metrics_registry
 from app.core.config import settings
 from app.db.base import Base
@@ -27,6 +30,7 @@ from contextlib import asynccontextmanager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: initialize tables safely on startup (Section 14.3)."""
+    notification_bus.set_event_loop(asyncio.get_running_loop())
     if settings.APP_ENV != "test":
         try:
             Base.metadata.create_all(bind=engine)
@@ -181,3 +185,4 @@ app.include_router(agents_router, prefix=settings.API_V1_STR)
 app.include_router(models_router, prefix=settings.API_V1_STR)
 app.include_router(audit_router, prefix=settings.API_V1_STR)
 app.include_router(observability_router, prefix=settings.API_V1_STR)
+app.include_router(notifications_router, prefix=settings.API_V1_STR)
