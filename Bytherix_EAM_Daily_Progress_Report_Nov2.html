@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Bytherix EAM — Progress Report</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 1.6cm 1.5cm;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 10pt;
+      line-height: 1.45;
+      color: #1f2937;
+      background: #ffffff;
+      margin: 0;
+      padding: 24px;
+    }
+
+    /* Document Header */
+    .doc-header {
+      border-bottom: 2px solid #1e1b4b;
+      padding-bottom: 12px;
+      margin-bottom: 18px;
+    }
+
+    .doc-title {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 24pt;
+      font-weight: 700;
+      color: #111827;
+      margin: 0 0 4px 0;
+      letter-spacing: -0.01em;
+    }
+
+    .doc-author {
+      font-size: 10pt;
+      color: #4b5563;
+      margin: 0 0 2px 0;
+    }
+
+    .doc-date {
+      font-size: 9.5pt;
+      color: #6b7280;
+      margin: 0;
+    }
+
+    /* Section Headings */
+    h2 {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 13pt;
+      font-weight: 700;
+      color: #111827;
+      margin: 18px 0 8px 0;
+      padding-bottom: 3px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    p {
+      margin: 0 0 10px 0;
+      color: #374151;
+      text-align: justify;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 8px 0 16px 0;
+      font-size: 8.8pt;
+    }
+
+    thead th {
+      background-color: #1e1b4b !important;
+      color: #ffffff !important;
+      text-align: left;
+      padding: 7px 10px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    tbody td {
+      padding: 7px 10px;
+      border: 1px solid #e5e7eb;
+      vertical-align: top;
+      color: #1f2937;
+    }
+
+    tbody tr:nth-child(even) {
+      background-color: #f9fafb;
+    }
+
+    .badge-completed {
+      display: inline-block;
+      font-size: 7.5pt;
+      font-weight: 600;
+      color: #15803d;
+      background-color: #dcfce7;
+      padding: 2px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    /* Lists */
+    ul, ol {
+      margin: 4px 0 12px 0;
+      padding-left: 20px;
+    }
+
+    li {
+      margin-bottom: 6px;
+      color: #374151;
+      line-height: 1.45;
+    }
+
+    li strong {
+      color: #111827;
+    }
+
+    .page-break {
+      page-break-before: always;
+    }
+
+    @media print {
+      body {
+        padding: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <div class="doc-header">
+    <div class="doc-title">Bytherix EAM — Progress Report</div>
+    <div class="doc-author">[Rustam Timalsina]</div>
+    <div class="doc-date">November 2, 2026</div>
+  </div>
+
+  <!-- OVERVIEW -->
+  <h2>Overview</h2>
+  <p>
+    Bytherix EAM is an enterprise AI management and multi-tenant SaaS platform built to govern machine learning model lifecycles, grounded hybrid RAG intelligence, and automated agent workflows. Today's work focused on closing out key operational features from our architecture spec: implementing Prometheus observability metrics, adding an interactive chunk vector inspection modal, building a 1-click enterprise demo seeder to make evaluating the system seamless, hardening LLM resilience with a circuit breaker, and overhauling our cosmic day/night theme toggle and mobile responsiveness.
+  </p>
+
+  <!-- TODAY TABLE -->
+  <h2>Today — November 2</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 28%;">Task</th>
+        <th style="width: 14%;">Status</th>
+        <th style="width: 58%;">Details</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Prometheus Telemetry &amp; Metrics Exposition</strong></td>
+        <td><span class="badge-completed">Completed</span></td>
+        <td>Implemented the standard <code>/metrics</code> endpoint exposing Prometheus gauges and counters for API request counts, active in-flight traffic, and latency percentiles (p50, p95, p99) along with a live frontend telemetry dashboard.</td>
+      </tr>
+      <tr>
+        <td><strong>RAG Chunk Vector Inspection Modal</strong></td>
+        <td><span class="badge-completed">Completed</span></td>
+        <td>Built <code>GET /api/v1/documents/{id}/chunks</code> and an interactive drawer modal allowing users to inspect extracted 500-token chunks, 1536-dim vector embeddings, token counts, and page provenance numbers.</td>
+      </tr>
+      <tr>
+        <td><strong>LLM Circuit Breaker &amp; Fault Tolerance</strong></td>
+        <td><span class="badge-completed">Completed</span></td>
+        <td>Engineered a three-state circuit breaker (<code>CLOSED</code>, <code>OPEN</code>, <code>HALF_OPEN</code>) with exponential backoff and recovery probing to fast-fail downstream requests during upstream OpenAI/LLM outages.</td>
+      </tr>
+      <tr>
+        <td><strong>Server-Sent Events (SSE) Notification Stream</strong></td>
+        <td><span class="badge-completed">Completed</span></td>
+        <td>Added a real-time event streaming bus at <code>/api/v1/notifications/stream</code> to dispatch live approval alerts, model promotion updates, and document indexing notifications directly to connected clients.</td>
+      </tr>
+      <tr>
+        <td><strong>1-Click Enterprise Demo Knowledge Seeder</strong></td>
+        <td><span class="badge-completed">Completed</span></td>
+        <td>Created <code>POST /api/v1/documents/seed-demo</code> with 1-click UI buttons that automatically generate an authentic 5-page enterprise PDF specification and pre-indexes 5 vector chunks for immediate evaluation.</td>
+      </tr>
+      <tr>
+        <td><strong>1-Click Auto-Dispatch RAG Prompt Cards</strong></td>
+        <td><span class="badge-completed">Completed</span></td>
+        <td>Added interactive prompt chips for architecture, subscription quotas, MLOps lifecycles, and governed agents that auto-dispatch into the streaming chat with instant 96% match citations.</td>
+      </tr>
+      <tr>
+        <td><strong>Cosmic Theme Toggle &amp; UI Polish</strong></td>
+        <td><span class="badge-completed">Completed</span></td>
+        <td>Replaced the static moon mask with realistic crater details, rotating solar corona, smooth spring physics, and silky global transitions across all cards and navigation bars.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- TOOLS & TECHNOLOGIES -->
+  <h2>Tools &amp; Technologies Used</h2>
+  <ul>
+    <li><strong>FastAPI / Python 3.12:</strong> Backend REST endpoints, asynchronous event streaming (SSE), Prometheus metrics registry, and circuit breaker logic.</li>
+    <li><strong>PostgreSQL &amp; pgvector:</strong> Multi-tenant schema isolation, vector similarity indexing (1536-dim embeddings), and document metadata storage.</li>
+    <li><strong>Next.js 14 / TypeScript / Tailwind CSS:</strong> Client dashboard, live telemetry charts, cosmic theme animation toggle, and mobile responsive layout.</li>
+    <li><strong>ReportLab:</strong> Dynamic multi-page PDF generation for enterprise specifications with formatted headings, footers, and page numbers.</li>
+    <li><strong>Pytest &amp; Playwright:</strong> End-to-end browser automation and comprehensive test suite (100% passing across 30 automated backend tests).</li>
+  </ul>
+
+  <!-- PAGE BREAK FOR PAGE 2 -->
+  <div class="page-break"></div>
+
+  <!-- CHALLENGES & FINDINGS -->
+  <h2>Challenges &amp; Findings</h2>
+  <ul>
+    <li><strong>CORS Header Dropping on 500 Exceptions:</strong> While testing demo seeding, Starlette dropped CORS headers whenever an unhandled exception occurred (specifically a <code>chunk_count</code> model argument mismatch and an <code>AuditService.log</code> method name typo). In the browser, this presented as a confusing CORS network error. Identified the root cause through direct python probes, renamed the model kwarg to <code>page_count</code>, aligned the audit call to <code>AuditService.record_event()</code>, and verified that <code>HTTP 201 Created</code> is returned with full CORS headers.</li>
+    <li><strong>Mobile Viewport Visibility for Header Telemetry:</strong> On screens smaller than 768px, Tailwind's <code>hidden md:flex</code> completely hid the live AI token quota bar. To make the quota visible for mobile testers without crowding out the user profile, added a dedicated sticky mobile telemetry bar right below the navigation bar.</li>
+    <li><strong>Blank PDF Downloads from In-Memory Generators:</strong> The original synthetic document seeder created blank PDF page frames while indexing text chunks into PostgreSQL, meaning downloading the file yielded empty pages. Integrated ReportLab to compile authentic, styled PDF documents with proper headers, footers, and typography so file downloads match the indexed knowledge chunks.</li>
+    <li><strong>Asynchronous Fixture Scopes in Pytest:</strong> Identified a deprecation warning regarding unset <code>asyncio_default_fixture_loop_scope</code> during full test runs. Cleaned up async test harnesses to ensure consistent fixture tear-down across all 30 tests.</li>
+  </ul>
+
+  <!-- CURRENT STATUS -->
+  <h2>Current Status</h2>
+  <ul>
+    <li>Core multi-tenant authentication and RBAC &mdash; <strong>Completed</strong></li>
+    <li>Grounded Hybrid RAG with streaming responses and citations &mdash; <strong>Completed</strong></li>
+    <li>Governed Agent workflow engine with human approval gates &mdash; <strong>Completed</strong></li>
+    <li>MLOps model registry with promotion, deployment, and rollback &mdash; <strong>Completed</strong></li>
+    <li>Prometheus observability metrics and real-time SSE &mdash; <strong>Completed</strong></li>
+    <li>1-Click demo knowledge seeder and prompt auto-dispatch &mdash; <strong>Completed</strong></li>
+    <li>Mobile responsive navigation and cosmic theme toggle &mdash; <strong>Completed</strong></li>
+    <li>Full automated test suite &mdash; <strong>Completed (30/30 passing tests)</strong></li>
+  </ul>
+
+  <!-- NEXT STEPS -->
+  <h2>Next Steps</h2>
+  <ol>
+    <li>Run stress and concurrency testing on the streaming RAG chat endpoint with multiple simultaneous tenants.</li>
+    <li>Implement full CSV export functionality for compliance audit logs to support SOC 2 compliance reports.</li>
+    <li>Add guided onboarding tooltips for first-time evaluators exploring the governed agent approval gates.</li>
+    <li>Set up automated Docker container health checks and deployment scripts for production staging.</li>
+  </ol>
+
+  <!-- SUMMARY -->
+  <h2>Summary</h2>
+  <p>
+    Today was focused on platform maturity, live observability, and evaluator experience. We brought the platform to a fully testable state with 1-click demo knowledge seeding, live telemetry tracking, circuit breaker protection, and a polished mobile-responsive UI. All 30 automated backend tests pass cleanly, Next.js builds with zero warnings, and the entire platform is stable, auditable, and pushed to <code>main</code>.
+  </p>
+
+</body>
+</html>
