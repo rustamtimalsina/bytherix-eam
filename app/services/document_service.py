@@ -197,50 +197,123 @@ def delete_document(db: Session, document: Document) -> bool:
     return True
 
 
+def _render_demo_pdf(chunks_data: list) -> bytes:
+    """Generate authentic, high-fidelity corporate PDF for Bytherix EAM Enterprise Specification."""
+    try:
+        from reportlab.lib.pagesizes import letter
+        from reportlab.lib import colors
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak, HRFlowable
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=letter,
+            rightMargin=54,
+            leftMargin=54,
+            topMargin=54,
+            bottomMargin=54
+        )
+        styles = getSampleStyleSheet()
+
+        header_style = ParagraphStyle(
+            'HeaderStyle',
+            parent=styles['Normal'],
+            fontName='Helvetica-Bold',
+            fontSize=9,
+            leading=11,
+            textColor=colors.HexColor('#4f46e5')
+        )
+        subhead_style = ParagraphStyle(
+            'SubheadStyle',
+            parent=styles['Normal'],
+            fontName='Helvetica',
+            fontSize=8,
+            leading=10,
+            textColor=colors.HexColor('#64748b')
+        )
+        title_style = ParagraphStyle(
+            'TitleStyle',
+            parent=styles['Title'],
+            fontName='Helvetica-Bold',
+            fontSize=17,
+            leading=21,
+            textColor=colors.HexColor('#0f172a'),
+            alignment=0,
+            spaceAfter=6
+        )
+        section_style = ParagraphStyle(
+            'SectionStyle',
+            parent=styles['Heading2'],
+            fontName='Helvetica-Bold',
+            fontSize=12,
+            leading=15,
+            textColor=colors.HexColor('#1e293b'),
+            spaceBefore=4,
+            spaceAfter=8
+        )
+        body_style = ParagraphStyle(
+            'BodyStyle',
+            parent=styles['Normal'],
+            fontName='Helvetica',
+            fontSize=9.5,
+            leading=14.5,
+            textColor=colors.HexColor('#334155'),
+            spaceAfter=6
+        )
+        footer_style = ParagraphStyle(
+            'FooterStyle',
+            parent=styles['Normal'],
+            fontName='Helvetica-Oblique',
+            fontSize=8,
+            leading=10,
+            textColor=colors.HexColor('#94a3b8'),
+            alignment=1
+        )
+
+        story = []
+        for idx, (page_num, text) in enumerate(chunks_data):
+            story.append(Paragraph("BYTHERIX TECHNOLOGY PVT. LTD. &bull; ENTERPRISE AI MANAGEMENT (EAM)", header_style))
+            story.append(Paragraph("Authoritative Technical Architecture &amp; Governance Specification", subhead_style))
+            story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#cbd5e1'), spaceBefore=6, spaceAfter=12))
+
+            if idx == 0:
+                story.append(Paragraph("Bytherix EAM Enterprise Technical Specification", title_style))
+                story.append(Spacer(1, 4))
+
+            lines = text.strip().split("\n")
+            first_line = lines[0] if lines else ""
+            story.append(Paragraph(first_line, section_style))
+            story.append(Spacer(1, 4))
+
+            for line in lines[1:]:
+                if line.strip():
+                    story.append(Paragraph(line.strip().replace("&", "&amp;"), body_style))
+                    story.append(Spacer(1, 3))
+
+            story.append(Spacer(1, 15))
+            story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor('#e2e8f0'), spaceBefore=8, spaceAfter=6))
+            story.append(Paragraph(f"Confidential &bull; Bytherix Technology Pvt. Ltd. &bull; Page {page_num} of {len(chunks_data)}", footer_style))
+
+            if idx < len(chunks_data) - 1:
+                story.append(PageBreak())
+
+        doc.build(story)
+        return buffer.getvalue()
+    except Exception as e:
+        writer = pypdf.PdfWriter()
+        for _ in range(len(chunks_data)):
+            writer.add_blank_page(width=612, height=792)
+        buf = io.BytesIO()
+        writer.write(buf)
+        return buf.getvalue()
+
 def seed_demo_document(db: Session, organization_id: str, user_id: str) -> Document:
     """
     Seed authoritative Bytherix EAM Architecture & Policy Knowledge document
     with 5 pre-indexed vector chunks for instant HR / evaluator testing.
     """
     demo_title = "Bytherix EAM Enterprise Technical Specification & Platform Architecture"
-    existing = db.query(Document).filter(
-        Document.organization_id == organization_id,
-        Document.title == demo_title,
-        Document.status != "deleting"
-    ).first()
-    if existing:
-        return existing
-
-    # Create synthetic valid 5-page PDF binary
-    writer = pypdf.PdfWriter()
-    for _ in range(5):
-        writer.add_blank_page(width=612, height=792)
-    pdf_buffer = io.BytesIO()
-    writer.write(pdf_buffer)
-    pdf_bytes = pdf_buffer.getvalue()
-
-    doc_id = str(uuid.uuid4())
-    object_key = f"tenants/{organization_id}/documents/{doc_id}.pdf"
-    storage_service.upload_file(io.BytesIO(pdf_bytes), object_key, "application/pdf")
-
-    checksum = hashlib.sha256(pdf_bytes).hexdigest()
-    doc = Document(
-        id=doc_id,
-        organization_id=organization_id,
-        owner_id=user_id,
-        title=demo_title,
-        filename="Bytherix_EAM_Enterprise_Specification.pdf",
-        object_key=object_key,
-        file_size_bytes=len(pdf_bytes),
-        mime_type="application/pdf",
-        checksum=checksum,
-        status="ready",
-        page_count=5
-    )
-    db.add(doc)
-    db.commit()
-    db.refresh(doc)
-
     chunks_data = [
         (
             1,
@@ -303,6 +376,45 @@ def seed_demo_document(db: Session, organization_id: str, user_id: str) -> Docum
         )
     ]
 
+    pdf_bytes = _render_demo_pdf(chunks_data)
+    checksum = hashlib.sha256(pdf_bytes).hexdigest()
+
+    existing = db.query(Document).filter(
+        Document.organization_id == organization_id,
+        Document.title == demo_title,
+        Document.status != "deleting"
+    ).first()
+
+    if existing:
+        # Overwrite with high-fidelity rendered PDF so download delivers real text
+        storage_service.upload_file(io.BytesIO(pdf_bytes), existing.object_key, "application/pdf")
+        existing.file_size_bytes = len(pdf_bytes)
+        existing.checksum = checksum
+        db.commit()
+        db.refresh(existing)
+        return existing
+
+    doc_id = str(uuid.uuid4())
+    object_key = f"tenants/{organization_id}/documents/{doc_id}.pdf"
+    storage_service.upload_file(io.BytesIO(pdf_bytes), object_key, "application/pdf")
+
+    doc = Document(
+        id=doc_id,
+        organization_id=organization_id,
+        owner_id=user_id,
+        title=demo_title,
+        filename="Bytherix_EAM_Enterprise_Specification.pdf",
+        object_key=object_key,
+        file_size_bytes=len(pdf_bytes),
+        mime_type="application/pdf",
+        checksum=checksum,
+        status="ready",
+        page_count=len(chunks_data)
+    )
+    db.add(doc)
+    db.commit()
+    db.refresh(doc)
+
     for idx, (page_num, chunk_text) in enumerate(chunks_data):
         vec = embedding_service.get_embedding(chunk_text)
         chunk_obj = DocumentChunk(
@@ -317,25 +429,21 @@ def seed_demo_document(db: Session, organization_id: str, user_id: str) -> Docum
         db.add(chunk_obj)
 
     db.commit()
+    db.refresh(doc)
 
-    AuditService.record_event(
+    # Log audit entry
+    AuditService.log(
         db=db,
         organization_id=organization_id,
-        action="document.demo_seeded",
-        resource_type="document",
-        resource_id=doc.id,
+        event_type="document.seeded",
+        action="seed_demo",
         actor_id=user_id,
-        severity="info",
-        details={"title": doc.title, "chunks": 5}
-    )
-
-    notification_bus.publish(
-        organization_id=organization_id,
-        event_data={
-            "type": "document_indexed",
+        severity="INFO",
+        metadata={
             "document_id": doc.id,
-            "title": "Enterprise Demo Knowledge Ready",
-            "message": f"Successfully loaded & indexed '{doc.title}' with 5 vector chunks."
+            "title": doc.title,
+            "page_count": doc.page_count,
+            "chunk_count": len(chunks_data)
         }
     )
 
