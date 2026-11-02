@@ -39,6 +39,7 @@ import {
   Activity,
   BarChart3,
   ExternalLink,
+  ArrowRight,
 } from "lucide-react";
 import {
   api,
@@ -265,6 +266,16 @@ export default function DashboardPage() {
   const [createdRawKey, setCreatedRawKey] = useState<string | null>(null);
   const [isCreatingKey, setIsCreatingKey] = useState(false);
   const [copiedKey, setCopiedKey] = useState(false);
+  const [isSeedingDemo, setIsSeedingDemo] = useState(false);
+
+  const showToast = (title: string, message: string, type: "info" | "success" | "error" | "warning" = "info") => {
+    setLiveAlert({
+      id: String(Date.now()),
+      type,
+      title,
+      message,
+    });
+  };
 
   // Auth gate
   useEffect(() => {
@@ -418,6 +429,7 @@ export default function DashboardPage() {
     return () => {
       es.close();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   // Auto-dismiss live alerts after 8 seconds
@@ -474,7 +486,7 @@ export default function DashboardPage() {
       const detail = await api.getModel(id);
       setSelectedModel(detail);
     } catch (err) {
-      alert((err as Error).message || "Failed to load model details");
+      showToast("Operation Notice", (err as Error).message || "Failed to load model details", "error");
     }
   };
 
@@ -489,7 +501,7 @@ export default function DashboardPage() {
       const list = await api.listModels();
       setModels(list);
     } catch (err) {
-      alert((err as Error).message || "Failed to promote version");
+      showToast("Operation Notice", (err as Error).message || "Failed to promote version", "error");
     } finally {
       setIsPromoting(false);
     }
@@ -505,7 +517,7 @@ export default function DashboardPage() {
       const list = await api.listModels();
       setModels(list);
     } catch (err) {
-      alert((err as Error).message || "Failed to rollback version");
+      showToast("Operation Notice", (err as Error).message || "Failed to rollback version", "error");
     } finally {
       setIsPromoting(false);
     }
@@ -530,7 +542,7 @@ export default function DashboardPage() {
       const list = await api.listModels();
       setModels(list);
     } catch (err) {
-      alert((err as Error).message || "Failed to create model version");
+      showToast("Operation Notice", (err as Error).message || "Failed to create model version", "error");
     } finally {
       setIsCreatingVersion(false);
     }
@@ -545,7 +557,7 @@ export default function DashboardPage() {
       setPredictionResult(res);
       await loadUsage();
     } catch (err) {
-      alert((err as Error).message || "Prediction request failed");
+      showToast("Operation Notice", (err as Error).message || "Prediction request failed", "error");
     } finally {
       setIsPredicting(false);
     }
@@ -563,7 +575,7 @@ export default function DashboardPage() {
       await loadModelsData();
       handleSelectModel(created.id);
     } catch (err) {
-      alert((err as Error).message || "Failed to register model");
+      showToast("Operation Notice", (err as Error).message || "Failed to register model", "error");
     } finally {
       setIsCreatingModel(false);
     }
@@ -597,7 +609,7 @@ export default function DashboardPage() {
       await loadAgentData();
       await loadUsage();
     } catch (err) {
-      alert((err as Error).message || "Agent execution failed");
+      showToast("Operation Notice", (err as Error).message || "Agent execution failed", "error");
     } finally {
       setIsAgentExecuting(false);
     }
@@ -608,7 +620,7 @@ export default function DashboardPage() {
       const detail = await api.getAgentExecution(id);
       setSelectedExecution(detail);
     } catch (err) {
-      alert((err as Error).message || "Failed to load execution trace");
+      showToast("Operation Notice", (err as Error).message || "Failed to load execution trace", "error");
     }
   };
 
@@ -621,7 +633,7 @@ export default function DashboardPage() {
       setApprovalReason("");
       await loadAgentData();
     } catch (err) {
-      alert((err as Error).message || "Failed to process approval");
+      showToast("Operation Notice", (err as Error).message || "Failed to process approval", "error");
     } finally {
       setIsApproving(false);
     }
@@ -699,7 +711,7 @@ export default function DashboardPage() {
       await api.removeMember(organizationId, membershipId);
       await loadMembers();
     } catch (err: unknown) {
-      alert((err as Error).message || "Failed to remove member");
+      showToast("Operation Notice", (err as Error).message || "Failed to remove member", "error");
     }
   };
 
@@ -709,7 +721,7 @@ export default function DashboardPage() {
       await api.updateMemberRole(organizationId, membershipId, newRole);
       await loadMembers();
     } catch (err: unknown) {
-      alert((err as Error).message || "Failed to update role");
+      showToast("Operation Notice", (err as Error).message || "Failed to update role", "error");
     }
   };
 
@@ -735,6 +747,20 @@ export default function DashboardPage() {
       setUploadError((err as Error).message || "Failed to upload document");
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleSeedDemoKnowledge = async () => {
+    try {
+      setIsSeedingDemo(true);
+      const doc = await api.seedDemoKnowledge();
+      showToast("Enterprise Knowledge Ready", `Loaded '${doc.title}' with 5 vector chunks.`, "success");
+      await loadDocuments();
+      await loadUsage();
+    } catch (err: unknown) {
+      showToast("Seeding Failed", (err as Error).message || "Failed to load demo document", "error");
+    } finally {
+      setIsSeedingDemo(false);
     }
   };
 
@@ -789,7 +815,7 @@ export default function DashboardPage() {
       }
       window.open(targetUrl, "_blank");
     } catch (err: unknown) {
-      alert((err as Error).message || "Failed to generate document download URL");
+      showToast("Operation Notice", (err as Error).message || "Failed to generate document download URL", "error");
     } finally {
       setDownloadingDocId(null);
     }
@@ -803,7 +829,7 @@ export default function DashboardPage() {
       const res = await api.getDocumentChunks(docId);
       setSelectedDocumentChunks(res);
     } catch (err: unknown) {
-      alert((err as Error).message || "Failed to load document chunks");
+      showToast("Operation Notice", (err as Error).message || "Failed to load document chunks", "error");
       setShowChunksModal(false);
     } finally {
       setIsLoadingChunks(false);
@@ -816,7 +842,7 @@ export default function DashboardPage() {
       await api.deleteDocument(id);
       setDocuments((prev) => prev.filter((d) => d.id !== id));
     } catch (err: unknown) {
-      alert((err as Error).message || "Failed to delete document");
+      showToast("Operation Notice", (err as Error).message || "Failed to delete document", "error");
     }
   };
 
@@ -846,7 +872,7 @@ const loadChatSessions = async () => {
       }));
       setChatMessages(converted);
     } catch (err) {
-      alert((err as Error).message || "Failed to load thread");
+      showToast("Operation Notice", (err as Error).message || "Failed to load thread", "error");
     }
   };
 
@@ -866,15 +892,14 @@ const loadChatSessions = async () => {
         handleNewThread();
       }
     } catch (err) {
-      alert((err as Error).message || "Failed to delete thread");
+      showToast("Operation Notice", (err as Error).message || "Failed to delete thread", "error");
     }
   };
 
-  const handleSendChat = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputQuery.trim() || isQuerying) return;
-
-    const query = inputQuery.trim();
+  const handleSendChat = async (e?: React.FormEvent, customQuery?: string) => {
+    if (e) e.preventDefault();
+    const query = (customQuery || inputQuery).trim();
+    if (!query || isQuerying) return;
     setInputQuery("");
     
     // Append user query and empty streaming assistant response
@@ -993,7 +1018,7 @@ const loadChatSessions = async () => {
       setNewKeyName("");
       await loadApiKeys();
     } catch (err: unknown) {
-      alert((err as Error).message || "Failed to create API key");
+      showToast("Operation Notice", (err as Error).message || "Failed to create API key", "error");
     } finally {
       setIsCreatingKey(false);
     }
@@ -1005,7 +1030,7 @@ const loadChatSessions = async () => {
       await api.revokeApiKey(id);
       await loadApiKeys();
     } catch (err: unknown) {
-      alert((err as Error).message || "Failed to revoke API key");
+      showToast("Operation Notice", (err as Error).message || "Failed to revoke API key", "error");
     }
   };
 
@@ -1055,6 +1080,23 @@ const loadChatSessions = async () => {
               {role ? role.replace("organization_", "") : "owner"}
             </span>
           </div>
+
+          {/* AI Token Quota & Compute Velocity Meter (Tablet & Desktop) */}
+          {usage && (
+            <div className="hidden sm:flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-[10px] sm:text-[11px] font-mono shrink-0" title={`Monthly AI token budget: ${usage.tokens_used.toLocaleString()} / ${usage.token_allowance.toLocaleString()} tokens`}>
+              <Zap className="w-3 h-3 text-amber-500 shrink-0 animate-pulse" />
+              <span className="text-slate-500 dark:text-slate-400 hidden lg:inline">Quota:</span>
+              <span className="font-bold text-slate-800 dark:text-slate-200">
+                {(usage.tokens_used).toLocaleString()} / {(usage.token_allowance).toLocaleString()}
+              </span>
+              <div className="w-10 sm:w-14 h-1.5 bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden shrink-0">
+                <div
+                  className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, Math.max(8, (usage.tokens_used / (usage.token_allowance || 1)) * 100))}%` }}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right Nav Actions - Profile Visible Everywhere */}
@@ -1093,6 +1135,28 @@ const loadChatSessions = async () => {
         </div>
       </header>
 
+      {/* Mobile-Exclusive AI Token Quota Ticker Bar (< sm screens) */}
+      {usage && (
+        <div className="sm:hidden w-full px-3.5 py-1.5 bg-slate-100/95 dark:bg-[#0c1220]/95 border-b border-slate-200 dark:border-white/[0.08] backdrop-blur-xl flex items-center justify-between text-[11px] font-mono sticky top-16 z-30 shadow-xs">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Zap className="w-3.5 h-3.5 text-amber-500 shrink-0 animate-pulse" />
+            <span className="text-slate-500 dark:text-slate-400 font-sans font-bold text-[10px] uppercase tracking-wider">AI Quota:</span>
+            <span className="font-bold text-slate-900 dark:text-white truncate">
+              {(usage.tokens_used).toLocaleString()} / {(usage.token_allowance).toLocaleString()}
+            </span>
+            <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-1.5 py-0.2 rounded-full border border-blue-500/20">
+              {usage.percentage_used ?? Math.round((usage.tokens_used / (usage.token_allowance || 1)) * 100)}%
+            </span>
+          </div>
+          <div className="w-16 h-1.5 bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden shrink-0 ml-2">
+            <div
+              className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 rounded-full transition-all duration-500"
+              style={{ width: `${Math.min(100, Math.max(8, (usage.tokens_used / (usage.token_allowance || 1)) * 100))}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Main Workspace Stage */}
       <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 pb-32 sm:pb-36 space-y-6 sm:space-y-8">
         {/* Living AI Core Centerpiece */}
@@ -1117,23 +1181,23 @@ const loadChatSessions = async () => {
         {/* Real-Time Live Notification Toast Banner */}
         {liveAlert && (
           <div className={`p-4 rounded-2xl border flex items-center justify-between gap-3 shadow-2xl backdrop-blur-xl animate-in slide-in-from-top-4 duration-300 ${
-            liveAlert.type === "approval_required"
+            liveAlert.type === "approval_required" || liveAlert.type === "warning"
               ? "bg-amber-500/15 border-amber-500/40 text-amber-900 dark:text-amber-200"
-              : liveAlert.type === "document_failed"
+              : liveAlert.type === "document_failed" || liveAlert.type === "error"
               ? "bg-red-500/15 border-red-500/40 text-red-900 dark:text-red-200"
               : "bg-emerald-500/15 border-emerald-500/40 text-emerald-900 dark:text-emerald-200"
           }`}>
             <div className="flex items-center gap-3">
               <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
-                liveAlert.type === "approval_required"
+                liveAlert.type === "approval_required" || liveAlert.type === "warning"
                   ? "bg-amber-500/20 text-amber-600 dark:text-amber-400"
-                  : liveAlert.type === "document_failed"
+                  : liveAlert.type === "document_failed" || liveAlert.type === "error"
                   ? "bg-red-500/20 text-red-600 dark:text-red-400"
                   : "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
               }`}>
-                {liveAlert.type === "approval_required" ? (
+                {liveAlert.type === "approval_required" || liveAlert.type === "warning" ? (
                   <AlertTriangle className="w-4 h-4 animate-bounce" />
-                ) : liveAlert.type === "document_failed" ? (
+                ) : liveAlert.type === "document_failed" || liveAlert.type === "error" ? (
                   <X className="w-4 h-4" />
                 ) : (
                   <CheckCircle2 className="w-4 h-4" />
@@ -1276,34 +1340,67 @@ const loadChatSessions = async () => {
                   <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                   <span>Ingested Documents ({documents.length})</span>
                 </div>
-                <button
-                  onClick={loadDocuments}
-                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-mono transition-colors"
-                >
-                  [refresh]
-                </button>
+                <div className="flex items-center gap-2">
+                  {canUploadDocs && (
+                    <button
+                      type="button"
+                      disabled={isSeedingDemo}
+                      onClick={handleSeedDemoKnowledge}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-medium text-xs border border-indigo-500/20 transition-all cursor-pointer"
+                      title="Load authoritative Bytherix EAM technical architecture demo PDF"
+                    >
+                      <Sparkles className={`w-3 h-3 ${isSeedingDemo ? "animate-spin" : ""}`} />
+                      <span>{isSeedingDemo ? "Seeding..." : "⚡ Seed Demo"}</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={loadDocuments}
+                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-mono transition-colors"
+                  >
+                    [refresh]
+                  </button>
+                </div>
               </div>
 
               {documents.length === 0 ? (
-                <div className="p-12 text-center text-slate-500 text-xs">
-                  No documents in your tenant library. Drop a PDF above to begin.
+                <div className="p-8 sm:p-12 text-center text-slate-500 space-y-4">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 mx-auto shadow-sm">
+                    <Sparkles className="w-6 h-6 animate-pulse" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">No documents in your tenant library</h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
+                      Drop an enterprise PDF above, or instantly seed the authoritative Bytherix technical specification.
+                    </p>
+                  </div>
+                  {canUploadDocs && (
+                    <button
+                      type="button"
+                      disabled={isSeedingDemo}
+                      onClick={handleSeedDemoKnowledge}
+                      className="inline-flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md shadow-indigo-500/25 active:scale-95 transition-all cursor-pointer w-full sm:w-auto"
+                    >
+                      <Sparkles className={`w-4 h-4 ${isSeedingDemo ? "animate-spin" : ""}`} />
+                      <span>{isSeedingDemo ? "Seeding & Indexing 5 Chunks..." : "⚡ 1-Click Load Enterprise Demo Knowledge"}</span>
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-2.5">
                   {documents.map((doc) => (
                     <div
                       key={doc.id}
-                      className="p-3.5 rounded-xl bg-slate-50 dark:bg-white/[0.02] hover:bg-slate-100 dark:hover:bg-white/[0.05] border border-slate-200 dark:border-white/[0.06] flex items-center justify-between transition-all duration-200"
+                      className="p-3.5 rounded-xl bg-slate-50 dark:bg-white/[0.02] hover:bg-slate-100 dark:hover:bg-white/[0.05] border border-slate-200 dark:border-white/[0.06] flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all duration-200"
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="w-9 h-9 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
                           <FileCheck2 className="w-4 h-4" />
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-slate-900 dark:text-white truncate max-w-[180px] sm:max-w-sm">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
                             {doc.title || doc.filename}
                           </p>
-                          <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                             <span>{(doc.file_size_bytes / 1024).toFixed(1)} KB</span>
                             <span>•</span>
                             <span>{doc.page_count ? `${doc.page_count} pages` : "Queued"}</span>
@@ -1319,7 +1416,7 @@ const loadChatSessions = async () => {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/60 dark:border-white/[0.06]">
                         <span
                           className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                             doc.status === "indexed"
@@ -1686,18 +1783,61 @@ const loadChatSessions = async () => {
                       Answers are strictly grounded in your ingested documents with verbatim source citations.
                     </p>
 
-                    <div className="flex flex-wrap gap-2 justify-center max-w-md pt-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-lg pt-2 text-left">
                       <button
-                        onClick={() => setInputQuery("What are the core technical requirements for Bytherix EAM?")}
-                        className="text-xs px-3 py-1.5 rounded-full bg-slate-100 dark:bg-white/[0.04] hover:bg-slate-200 dark:hover:bg-white/[0.08] border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 transition-colors"
+                        type="button"
+                        onClick={() => handleSendChat(undefined, "What are the core technical requirements for Bytherix EAM?")}
+                        className="p-3 rounded-xl bg-slate-100/80 dark:bg-white/[0.04] hover:bg-indigo-50 dark:hover:bg-indigo-950/30 border border-slate-200 dark:border-white/10 hover:border-indigo-500/40 text-left transition-all group"
                       >
-                        &quot;What are the core technical requirements for Bytherix EAM?&quot;
+                        <p className="text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 flex items-center justify-between">
+                          <span>Technical Architecture</span>
+                          <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          &quot;What are the core technical requirements for Bytherix EAM?&quot;
+                        </p>
                       </button>
+
                       <button
-                        onClick={() => setInputQuery("What are the subscription plans and quotas?")}
-                        className="text-xs px-3 py-1.5 rounded-full bg-slate-100 dark:bg-white/[0.04] hover:bg-slate-200 dark:hover:bg-white/[0.08] border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 transition-colors"
+                        type="button"
+                        onClick={() => handleSendChat(undefined, "What are the subscription plans and quotas?")}
+                        className="p-3 rounded-xl bg-slate-100/80 dark:bg-white/[0.04] hover:bg-indigo-50 dark:hover:bg-indigo-950/30 border border-slate-200 dark:border-white/10 hover:border-indigo-500/40 text-left transition-all group"
                       >
-                        &quot;What are the subscription plans and quotas?&quot;
+                        <p className="text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 flex items-center justify-between">
+                          <span>Plans & Quotas</span>
+                          <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          &quot;What are the subscription plans and quotas?&quot;
+                        </p>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleSendChat(undefined, "How does the MLOps model promotion and rollback workflow operate?")}
+                        className="p-3 rounded-xl bg-slate-100/80 dark:bg-white/[0.04] hover:bg-indigo-50 dark:hover:bg-indigo-950/30 border border-slate-200 dark:border-white/10 hover:border-indigo-500/40 text-left transition-all group"
+                      >
+                        <p className="text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 flex items-center justify-between">
+                          <span>MLOps Governance</span>
+                          <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          &quot;How does MLOps model promotion & rollback work?&quot;
+                        </p>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleSendChat(undefined, "Explain the human-in-the-loop agent authorization gate.")}
+                        className="p-3 rounded-xl bg-slate-100/80 dark:bg-white/[0.04] hover:bg-indigo-50 dark:hover:bg-indigo-950/30 border border-slate-200 dark:border-white/10 hover:border-indigo-500/40 text-left transition-all group"
+                      >
+                        <p className="text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 flex items-center justify-between">
+                          <span>Governed Agents</span>
+                          <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          &quot;Explain human-in-the-loop agent authorization.&quot;
+                        </p>
                       </button>
                     </div>
                   </div>
@@ -3673,7 +3813,7 @@ const loadChatSessions = async () => {
                             onClick={() => {
                               const link = `${window.location.origin}/accept-invite?token=${m.invitation_token}`;
                               navigator.clipboard.writeText(link);
-                              alert("Invitation link copied to clipboard!");
+                              showToast("Copied", "Invitation link copied to clipboard!", "success");
                             }}
                             title="Copy Invitation Link"
                             className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.06] dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-white/[0.08] transition-all"

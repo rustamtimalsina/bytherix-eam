@@ -322,6 +322,12 @@ class ApiClient {
     return this.request<DocumentItem[]>("/documents");
   }
 
+  async seedDemoKnowledge(): Promise<DocumentItem> {
+    return this.request<DocumentItem>("/documents/seed-demo", {
+      method: "POST",
+    });
+  }
+
   async uploadDocument(file: File, title?: string): Promise<DocumentItem> {
     const formData = new FormData();
     formData.append("file", file);

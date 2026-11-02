@@ -12,7 +12,7 @@ from app.db.models.chunk import DocumentChunk
 from app.db.models.membership import Membership
 from app.db.session import get_db
 from app.schemas.document import DocumentChunkOut, DocumentChunksResponse, DocumentDownloadUrlOut, DocumentOut, DocumentStatusOut
-from app.services.document_service import delete_document, upload_document
+from app.services.document_service import delete_document, upload_document, seed_demo_document
 from app.services.audit_service import AuditService
 from app.integrations.object_storage.s3 import storage_service
 
@@ -49,6 +49,21 @@ def upload(
         user_id=user_id,
         file=file,
         title=title
+    )
+    return DocumentOut.model_validate(doc)
+
+
+@router.post("/seed-demo", response_model=DocumentOut, status_code=status.HTTP_201_CREATED)
+def seed_demo(
+    context: TenantContext = Depends(require_permission(Permission.DOCUMENTS_UPLOAD)),
+    db: Session = Depends(get_db)
+):
+    """Seed the authoritative Bytherix EAM Architecture & Policy Demo Knowledge document."""
+    user_id = context.user.id if context.user else "system"
+    doc = seed_demo_document(
+        db=db,
+        organization_id=context.organization.id,
+        user_id=user_id
     )
     return DocumentOut.model_validate(doc)
 
