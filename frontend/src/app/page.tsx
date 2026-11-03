@@ -1186,7 +1186,7 @@ const loadChatSessions = async () => {
       )}
 
       {/* Main Workspace Stage */}
-      <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 pb-32 sm:pb-36 space-y-6 sm:space-y-8">
+      <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 pb-48 sm:pb-56 space-y-6 sm:space-y-8">
         {/* Living AI Core Centerpiece */}
         <OrbitalCore
           label={
