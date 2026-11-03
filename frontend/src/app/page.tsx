@@ -163,6 +163,9 @@ export default function DashboardPage() {
 
   const canRegisterModels =
     isOwnerOrAdmin || role === "developer" || role === "ai_ml_engineer";
+
+  const canAccessModels =
+    isOwnerOrAdmin || role === "developer" || role === "ai_ml_engineer";
   const [activeTab, setActiveTab] = useState<ActiveTab>("documents");
 
   // MLOps Model Registry state (Section 9 & 14)
@@ -308,10 +311,12 @@ export default function DashboardPage() {
       loadMembers();
       loadChatSessions();
       loadAgentData();
-      loadModelsData();
+      if (canAccessModels) {
+        loadModelsData();
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, organizationId]);
+  }, [token, organizationId, canAccessModels]);
 
   // Load audit trail data
   const loadAuditData = async () => {
@@ -377,11 +382,11 @@ export default function DashboardPage() {
 
   // Re-fetch models when switching to models tab
   useEffect(() => {
-    if (token && activeTab === "models") {
+    if (token && activeTab === "models" && canAccessModels) {
       loadModelsData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, activeTab]);
+  }, [token, activeTab, canAccessModels]);
 
   // Auto-poll document status if any document is processing or queued
   useEffect(() => {
@@ -2356,6 +2361,26 @@ const loadChatSessions = async () => {
 
         {/* TAB: MLOPS MODEL REGISTRY & DEPLOYMENTS (SECTION 9 & 14) */}
         {activeTab === "models" && (
+          !canAccessModels ? (
+            <div className="card-depth-3d p-8 text-center space-y-3 max-w-lg mx-auto my-12">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-500">
+                <ShieldAlert className="w-6 h-6" />
+              </div>
+              <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                MLOps Model Registry Restricted
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-400">
+                Access to the MLOps Model Registry and deployment lifecycle is restricted strictly to AI/ML Engineers, Developers, and Administrators per Section 3.1. Your current role is <span className="font-mono font-bold text-amber-600 dark:text-amber-400">{role || "viewer"}</span>.
+              </p>
+              <button
+                type="button"
+                onClick={() => setActiveTab("documents")}
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all"
+              >
+                Return to Documents
+              </button>
+            </div>
+          ) : (
           <div className="space-y-6">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -2500,56 +2525,82 @@ const loadChatSessions = async () => {
               </div>
             )}
 
-            {/* Model Catalog Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-              {models.map((m) => {
-                const isSelected = selectedModelId === m.id;
-                return (
-                  <div
-                    key={m.id}
-                    onClick={() => handleSelectModel(m.id)}
-                    className={`card-depth-3d relative p-4 rounded-2xl cursor-pointer outline-none focus:outline-none select-none transition-colors duration-150 group border ${
-                      isSelected
-                        ? "!border-indigo-600 dark:!border-indigo-500 ring-2 ring-indigo-600/30 dark:ring-indigo-500/40 !bg-indigo-50/90 dark:!bg-indigo-950/40 shadow-lg shadow-indigo-500/15"
-                        : "border-slate-200/80 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20"
-                    }`}
+            {/* Model Catalog Cards Grid or Empty State */}
+            {models.length === 0 ? (
+              <div className="card-depth-3d p-8 sm:p-12 text-center space-y-4 max-w-lg mx-auto my-8 border border-dashed border-slate-300 dark:border-white/10 rounded-2xl">
+                <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center mx-auto text-indigo-500 shadow-inner">
+                  <Cpu className="w-7 h-7" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                    No Models Registered Yet
+                  </h3>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                    This organization does not have any AI models registered in its MLOps catalog.
+                  </p>
+                </div>
+                {canRegisterModels && (
+                  <button
+                    type="button"
+                    onClick={() => setShowNewModelModal(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md shadow-indigo-500/20 active:scale-95 transition-all"
                   >
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-                        {m.task_type}
-                      </span>
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Register First Model</span>
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                {models.map((m) => {
+                  const isSelected = selectedModelId === m.id;
+                  return (
+                    <div
+                      key={m.id}
+                      onClick={() => handleSelectModel(m.id)}
+                      className={`card-depth-3d relative p-4 rounded-2xl cursor-pointer outline-none focus:outline-none select-none transition-colors duration-150 group border ${
+                        isSelected
+                          ? "!border-indigo-600 dark:!border-indigo-500 ring-2 ring-indigo-600/30 dark:ring-indigo-500/40 !bg-indigo-50/90 dark:!bg-indigo-950/40 shadow-lg shadow-indigo-500/15"
+                          : "border-slate-200/80 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                          {m.task_type}
+                        </span>
 
-                      {isSelected ? (
-                        <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-600 text-white shadow-sm shadow-indigo-600/40 shrink-0">
-                          <CheckCircle2 className="w-3 h-3 text-white" />
-                          <span>Active</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-medium text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 shrink-0 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors">
-                          <span>Select</span>
-                        </div>
-                      )}
+                        {isSelected ? (
+                          <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-600 text-white shadow-sm shadow-indigo-600/40 shrink-0">
+                            <CheckCircle2 className="w-3 h-3 text-white" />
+                            <span>Active</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-medium text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 shrink-0 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors">
+                            <span>Select</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <h3 className={`text-sm mb-1 transition-colors ${isSelected ? "font-extrabold text-indigo-950 dark:text-white" : "font-bold text-slate-900 dark:text-white"}`}>
+                        {m.name}
+                      </h3>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-3 line-clamp-2 leading-relaxed">
+                        {m.description || "Enterprise deployed model."}
+                      </p>
+
+                      <div className="flex items-center justify-between text-[11px] pt-2 border-t border-slate-200/60 dark:border-white/[0.06]">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
+                          {m.active_version_name ? `Prod: ${m.active_version_name}` : "No active release"}
+                        </span>
+                        <span className="text-slate-500 dark:text-slate-400 font-mono text-[10px]">
+                          {m.total_versions} {m.total_versions === 1 ? "version" : "versions"}
+                        </span>
+                      </div>
                     </div>
-
-                    <h3 className={`text-sm mb-1 transition-colors ${isSelected ? "font-extrabold text-indigo-950 dark:text-white" : "font-bold text-slate-900 dark:text-white"}`}>
-                      {m.name}
-                    </h3>
-                    <p className="text-xs text-slate-600 dark:text-slate-400 mb-3 line-clamp-2 leading-relaxed">
-                      {m.description || "Enterprise deployed model."}
-                    </p>
-
-                    <div className="flex items-center justify-between text-[11px] pt-2 border-t border-slate-200/60 dark:border-white/[0.06]">
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
-                        {m.active_version_name ? `Prod: ${m.active_version_name}` : "No active release"}
-                      </span>
-                      <span className="text-slate-500 dark:text-slate-400 font-mono text-[10px]">
-                        {m.total_versions} {m.total_versions === 1 ? "version" : "versions"}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
 
             {/* Dual-Pane Lifecycle History & Prediction Station */}
             {selectedModel && (
@@ -2825,6 +2876,7 @@ const loadChatSessions = async () => {
               </div>
             )}
           </div>
+          )
         )}
 
         {/* TAB 3: API KEYS & DEVELOPER PORTAL (Strict RBAC Guard) */}
@@ -4083,6 +4135,7 @@ const loadChatSessions = async () => {
         apiKeyCount={apiKeys.length}
         canAccessApiKeys={canCreateApiKeys}
         canAccessAudit={canViewAudit}
+        canAccessModels={canAccessModels}
       />
 
       {/* Enterprise DLP Shield & PII Inspector Modal */}

@@ -12,6 +12,7 @@ interface FloatingRocketDockProps {
   apiKeyCount: number;
   canAccessApiKeys?: boolean;
   canAccessAudit?: boolean;
+  canAccessModels?: boolean;
 }
 
 export function FloatingRocketDock({
@@ -21,6 +22,7 @@ export function FloatingRocketDock({
   apiKeyCount,
   canAccessApiKeys = true,
   canAccessAudit = true,
+  canAccessModels = true,
 }: FloatingRocketDockProps) {
   const allTabs = [
     {
@@ -70,6 +72,7 @@ export function FloatingRocketDock({
   const tabs = allTabs.filter((tab) => {
     if (tab.id === "apikeys" && !canAccessApiKeys) return false;
     if (tab.id === "audit" && !canAccessAudit) return false;
+    if (tab.id === "models" && !canAccessModels) return false;
     return true;
   });
 
