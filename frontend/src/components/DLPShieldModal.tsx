@@ -65,7 +65,7 @@ export function DLPShieldModal({ isOpen, onClose }: DLPShieldModalProps) {
 
   const loadSamplePreset = (type: "api_keys" | "cards_db") => {
     if (type === "api_keys") {
-      const sample = `Hello, please verify my OpenAI key sk-live9876543210abcdef9876543210 and AWS access key AKIAIOSFODNN7EXAMPLE. Reach me at devops@bytherix.com.`;
+      const sample = `Hello, please verify my OpenAI key sk-live9876543210abcdef9876543210 and AWS access key AKIAIOSFODNN7EXAMPLE. Reach me at devops@bytherix.com or +1 (555) 234-5678.`;
       setSandboxText(sample);
       handleRunScan(sample);
     } else {

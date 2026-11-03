@@ -67,7 +67,7 @@ class DLPShieldService:
         "SSN": re.compile(r"\b\d{3}-\d{2}-\d{4}\b"),
         "EMAIL": re.compile(r"\b[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+\b"),
         "PHONE_NUMBER": re.compile(
-            r"(?:\+\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b"
+            r"(?<![a-zA-Z0-9])(?:\+\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}(?![a-zA-Z0-9])"
         ),
     }
 
