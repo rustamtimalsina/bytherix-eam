@@ -1625,7 +1625,7 @@ const loadChatSessions = async () => {
 
         {/* TAB 2: RAG AI CHATROOM */}
         {activeTab === "chat" && (
-          <div className="card-depth-3d relative flex flex-col md:flex-row h-[620px] sm:h-[680px] overflow-hidden">
+          <div className="card-depth-3d relative flex flex-col md:flex-row h-[560px] sm:h-[620px] lg:h-[650px] mb-8 overflow-hidden">
             {/* 1. Desktop Left Sidebar: Past Conversations (Always visible & docked on desktop) */}
             <div className="hidden md:flex flex-col w-64 border-r border-slate-200 dark:border-white/[0.08] bg-slate-50/60 dark:bg-black/25 shrink-0">
               <div className="p-3.5 border-b border-slate-200 dark:border-white/[0.08] flex items-center justify-between gap-2">
