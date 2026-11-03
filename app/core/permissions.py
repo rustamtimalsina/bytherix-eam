@@ -109,7 +109,6 @@ ROLE_PERMISSIONS: dict[Role, Set[Permission]] = {
     Role.VIEWER: {
         Permission.ORG_READ,
         Permission.DOCUMENTS_READ,
-        Permission.AUDIT_READ,
     },
 }
 

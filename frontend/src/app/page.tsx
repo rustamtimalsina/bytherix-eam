@@ -159,6 +159,8 @@ export default function DashboardPage() {
   const canCreateApiKeys =
     isOwnerOrAdmin || role === "developer";
 
+  const canViewAudit = isOwnerOrAdmin;
+
   const canRegisterModels =
     isOwnerOrAdmin || role === "developer" || role === "ai_ml_engineer";
   const [activeTab, setActiveTab] = useState<ActiveTab>("documents");
@@ -366,7 +368,7 @@ export default function DashboardPage() {
 
   // Re-fetch audit logs when switching to audit tab or changing filters
   useEffect(() => {
-    if (token && activeTab === "audit") {
+    if (token && activeTab === "audit" && canViewAudit) {
       loadAuditData();
       loadTelemetryData();
     }
@@ -3019,6 +3021,26 @@ const loadChatSessions = async () => {
 
         {/* TAB: ENTERPRISE AUDIT & COMPLIANCE TRAIL (Section 10 & 13) */}
         {activeTab === "audit" && (
+          !canViewAudit ? (
+            <div className="card-depth-3d p-8 text-center space-y-3 max-w-lg mx-auto my-12">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-500">
+                <ShieldAlert className="w-6 h-6" />
+              </div>
+              <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                Audit Trail Restricted
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-400">
+                Immutable compliance and activity audit logs are restricted strictly to organization administrators and owners. Your current role is <span className="font-mono font-bold text-amber-600 dark:text-amber-400">{role || "viewer"}</span>.
+              </p>
+              <button
+                type="button"
+                onClick={() => setActiveTab("documents")}
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all"
+              >
+                Return to Documents
+              </button>
+            </div>
+          ) : (
           <div className="space-y-6 pb-20">
             <div className="text-center space-y-1">
               <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center justify-center gap-2">
@@ -3599,6 +3621,7 @@ const loadChatSessions = async () => {
               </div>
             )}
           </div>
+          )
         )}
 
         {/* TAB 4: TEAM & WORKSPACE */}
@@ -4059,6 +4082,7 @@ const loadChatSessions = async () => {
         documentCount={documents.length}
         apiKeyCount={apiKeys.length}
         canAccessApiKeys={canCreateApiKeys}
+        canAccessAudit={canViewAudit}
       />
 
       {/* Enterprise DLP Shield & PII Inspector Modal */}
