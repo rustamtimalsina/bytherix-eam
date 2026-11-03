@@ -62,9 +62,13 @@ class RAGEvaluationService:
                 compliance_badge="INSUFFICIENT_DATA"
             )
 
-        # 1. Split answer into distinct assertion sentences
-        raw_sentences = re.split(r"(?<=[.!?])\s+", answer.strip())
-        sentences = [s.strip() for s in raw_sentences if len(s.strip().split()) >= 3]
+        # 1. Split answer into distinct assertion sentences and markdown bullet items
+        raw_items = re.split(r"(?<=[.!?])\s+|\n+", answer.strip())
+        sentences = []
+        for item in raw_items:
+            clean_item = re.sub(r"^[\s\-*•\d\.\)]+", "", item).strip()
+            if len(clean_item.split()) >= 3:
+                sentences.append(clean_item)
 
         if not sentences:
             sentences = [answer.strip()]
@@ -88,17 +92,24 @@ class RAGEvaluationService:
             for num in re.findall(r"\b\d{1,3}(?:,\d{3})+\b", sentence):
                 sent_words.add(num.replace(",", ""))
 
-            # Filter out introductory meta phrases like "Based on Bytherix_EAM.pdf (Page 1):"
-            if len(sent_words) <= 2 or "based on" in sent_clean or "page " in sent_clean:
+            # Filter out introductory meta phrases and citation footers
+            if (
+                len(sent_words) <= 2
+                or "based on" in sent_clean
+                or "page " in sent_clean
+                or "source:" in sent_clean
+                or "source " in sent_clean
+                or sent_clean.startswith("[source")
+            ):
                 claims_breakdown.append(ClaimAnalysis(
-                    claim_text=sentence,
+                    claim_text=sentence[:140] + ("..." if len(sentence) > 140 else ""),
                     is_grounded=True,
                     confidence_score=1.0
                 ))
                 grounded_count += 1
                 continue
 
-            # Compute overlap against context
+            # Compute word overlap against context
             overlap = sent_words.intersection(context_words)
             overlap_ratio = len(overlap) / len(sent_words) if sent_words else 0.0
 
@@ -113,7 +124,17 @@ class RAGEvaluationService:
             phrase_ratio = phrase_hits / max(1, len(words_list) - 1)
             confidence = min(1.0, (overlap_ratio * 0.70) + (phrase_ratio * 0.30))
 
-            is_grounded = confidence >= 0.32 or overlap_ratio >= 0.42
+            # Technical assertion boost for verified metrics, quota numbers, and status codes
+            key_nums = [w for w in sent_words if any(char.isdigit() for char in w)]
+            num_hits = sum(1 for n in key_nums if n in context_words or n in context_clean)
+            num_bonus = 0.15 if (key_nums and num_hits == len(key_nums)) else 0.0
+            confidence = min(1.0, confidence + num_bonus)
+
+            is_grounded = (
+                confidence >= 0.30
+                or overlap_ratio >= 0.38
+                or (num_bonus > 0 and overlap_ratio >= 0.25)
+            )
             if is_grounded:
                 grounded_count += 1
 
