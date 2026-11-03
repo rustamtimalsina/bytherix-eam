@@ -1,9 +1,10 @@
 "use client";
+import { BytherixEAMLogo } from "@/components/BytherixEAMLogo";
 
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bot, Building2, Lock, Mail, User, ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
+import { Building2, Lock, Mail, User, ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { CosmicThemeToggle } from "@/components/CosmicThemeToggle";
@@ -45,12 +46,7 @@ export default function SignupPage() {
       {/* Top Navbar with Logo and Cosmic Theme Toggle */}
       <header className="absolute top-0 left-0 right-0 p-4 sm:p-6 flex justify-between items-center max-w-7xl mx-auto z-20">
         <Link href="/" className="flex items-center gap-2.5 opacity-90 hover:opacity-100 transition-opacity">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shadow-md shadow-blue-500/20">
-            <Bot className="w-5 h-5 text-white" />
-          </div>
-          <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">
-            Bytherix <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">EAM</span>
-          </span>
+          <BytherixEAMLogo size="sm" showText={true} />
         </Link>
         <CosmicThemeToggle />
       </header>
@@ -62,6 +58,9 @@ export default function SignupPage() {
       <div className="relative w-full max-w-lg pt-12 sm:pt-0">
         {/* Header branding */}
         <div className="flex flex-col items-center mb-6 text-center">
+          <div className="mb-3">
+            <BytherixEAMLogo size="lg" />
+          </div>
           <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-200/60 dark:bg-slate-900/80 border border-slate-300/60 dark:border-slate-800 text-blue-600 dark:text-blue-400 text-xs font-semibold mb-3 backdrop-blur-sm shadow-sm">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Bytherix Multi-Tenant Provisioning</span>

@@ -1,4 +1,5 @@
 "use client";
+import { BytherixEAMLogo } from "@/components/BytherixEAMLogo";
 
 import React, { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -1053,15 +1054,8 @@ const loadChatSessions = async () => {
       {/* Top Floating Glass Island (Navbar) - Fully Mobile Responsive */}
       <header className="h-16 border-b border-slate-200 dark:border-white/[0.08] bg-white/80 dark:bg-[#090d18]/75 backdrop-blur-2xl px-3 sm:px-6 flex items-center justify-between sticky top-0 z-40 transition-colors duration-300">
         <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-          {/* Brand Mark with Soft Glow */}
-          <div className="flex items-center gap-1">
-            <span className="font-extrabold text-slate-900 dark:text-white text-sm sm:text-lg tracking-tight">
-              Bytherix{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 dark:from-blue-400 dark:via-indigo-300 dark:to-purple-400">
-                EAM
-              </span>
-            </span>
-          </div>
+          {/* Brand Mark with Bytherix EAM Neural Quantum Logo */}
+          <BytherixEAMLogo size="sm" showText={true} />
 
           <div className="h-4 w-px bg-slate-300 dark:bg-white/10 mx-0.5 sm:mx-1.5 hidden md:block" />
 
