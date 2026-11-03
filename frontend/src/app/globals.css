@@ -29,6 +29,12 @@ body, header, main, nav, footer, div.card-depth-3d, .conic-glow-box, input, butt
               box-shadow 0.5s ease;
 }
 
+/* Eliminate Chromium / WebKit default outline ring glitch on buttons */
+button:focus,
+button:focus-visible {
+  outline: none;
+}
+
 html.dark body {
   background-image: 
     radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.15) 0%, transparent 50%),

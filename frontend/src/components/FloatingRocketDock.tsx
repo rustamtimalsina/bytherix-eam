@@ -92,7 +92,7 @@ export function FloatingRocketDock({
             onClick={() => setActiveTab(tab.id)}
             title={tab.label}
             aria-label={tab.label}
-            className={`relative flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 md:px-4 py-1.5 sm:py-2.5 rounded-full text-xs font-semibold whitespace-nowrap outline-none focus:outline-none focus:ring-0 select-none transition-all duration-150 shrink-0 border ${
+            className={`relative flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 md:px-4 py-1.5 sm:py-2.5 rounded-full text-xs font-semibold whitespace-nowrap outline-none focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 select-none transition-all duration-150 shrink-0 border ${
               isActive
                 ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.5)] border-white/20"
                 : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06]"
