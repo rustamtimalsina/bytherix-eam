@@ -379,6 +379,7 @@ class ApiClient {
       onCitations: (citations: SourceCitation[]) => void;
       onDone: (metrics: { prompt_tokens: number; completion_tokens: number; total_tokens: number; model: string; session_id?: string }) => void;
       onSession?: (meta: { session_id: string; title: string }) => void;
+      onDlpShield?: (dlp: { is_masked: boolean; categories?: string[]; entity_count?: number; summary: string }) => void;
       onError?: (error: string) => void;
     },
     sessionId?: string
@@ -435,6 +436,8 @@ class ApiClient {
               callbacks.onCitations(parsed.data);
             } else if (parsed.type === "session") {
               if (callbacks.onSession) callbacks.onSession(parsed);
+            } else if (parsed.type === "dlp_shield") {
+              if (callbacks.onDlpShield) callbacks.onDlpShield(parsed);
             } else if (parsed.type === "done") {
               callbacks.onDone(parsed);
             } else if (parsed.type === "error") {
@@ -627,6 +630,22 @@ class ApiClient {
     const token = this.getToken();
     return `${API_BASE_URL}/notifications/stream?token=${encodeURIComponent(token || "")}`;
   }
+
+  // DLP Security Shield (Sections 12 & 15)
+  async getDlpRules(): Promise<DLPRulesResponse> {
+    return this.request<DLPRulesResponse>("/security/dlp/rules");
+  }
+
+  async getDlpStats(): Promise<DLPStatsResponse> {
+    return this.request<DLPStatsResponse>("/security/dlp/stats");
+  }
+
+  async scanDlp(text: string): Promise<DLPResultResponse> {
+    return this.request<DLPResultResponse>("/security/dlp/scan", {
+      method: "POST",
+      body: JSON.stringify({ text }),
+    });
+  }
 }
 
 export interface DocumentChunkItem {
@@ -672,3 +691,47 @@ export interface ObservabilityTelemetryResponse {
 }
 
 export const api = new ApiClient();
+
+
+export interface DLPEntityItem {
+  category: string;
+  masked_placeholder: string;
+  redacted_preview: string;
+  start_pos: number;
+  end_pos: number;
+}
+
+export interface DLPResultResponse {
+  original_length: number;
+  masked_text: string;
+  is_masked: boolean;
+  entities_detected: DLPEntityItem[];
+  categories: string[];
+  summary: string;
+}
+
+export interface DLPRuleItem {
+  id: string;
+  name: string;
+  description: string;
+  severity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
+  action: string;
+}
+
+export interface DLPRulesResponse {
+  shield_active: boolean;
+  engine_version: string;
+  rules_count: number;
+  rules: DLPRuleItem[];
+}
+
+export interface DLPStatsResponse {
+  total_redaction_events: number;
+  shield_status: string;
+  active_detectors_count: number;
+  recent_categories: Array<{
+    category: string;
+    name: string;
+    severity: string;
+  }>;
+}

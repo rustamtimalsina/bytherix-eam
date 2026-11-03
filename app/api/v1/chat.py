@@ -14,6 +14,7 @@ from app.schemas.chat import (
     SessionDetail,
 )
 from app.services.audit_service import AuditService
+from app.services.dlp_service import DLPShieldService
 from app.services.retrieval_service import query_rag, stream_query_rag
 from app.services.usage_service import check_token_quota, record_usage
 from app.services.conversation_service import (
@@ -85,20 +86,40 @@ def chat_rag(
     # 1. Quota enforcement
     check_token_quota(organization_id=context.organization.id, db=db)
 
-    # 2. Get or create conversation session
+    # 2. Real-Time DLP PII & Secret Redaction (Section 12 & 15)
+    dlp_result = DLPShieldService.scan_and_mask(data.question)
+    effective_question = dlp_result.masked_text if dlp_result.is_masked else data.question
+
+    # 3. Get or create conversation session
     session = get_or_create_session(
         organization_id=context.organization.id,
         user_id=context.user.id if context.user else None,
         session_id=data.session_id,
-        title_seed=data.question,
+        title_seed=effective_question,
         db=db
     )
 
-    # 3. Save user question
+    if dlp_result.is_masked:
+        AuditService.record_event(
+            db=db,
+            organization_id=context.organization.id,
+            action="security.dlp_redaction",
+            resource_type="chat_query",
+            resource_id=session.id,
+            actor_email=context.user.email if context.user else "user@bytherix.com",
+            severity="warning",
+            details={
+                "categories": dlp_result.categories,
+                "entity_count": len(dlp_result.entities_detected),
+                "summary": dlp_result.summary
+            }
+        )
+
+    # 4. Save sanitized user question
     save_message(
         session_id=session.id,
         sender="user",
-        content=data.question,
+        content=effective_question,
         sources=None,
         model=None,
         prompt_tokens=0,
@@ -106,14 +127,15 @@ def chat_rag(
         db=db
     )
 
-    # 4. Execute RAG query
+    # 5. Execute RAG query with sanitized text
     response = query_rag(
         organization_id=context.organization.id,
-        question=data.question,
+        question=effective_question,
         top_k=data.top_k,
         document_ids=data.document_ids,
         db=db
     )
+    response.dlp_shield = dlp_result.model_dump()
 
     # 5. Record metered token usage
     if response.prompt_tokens > 0 or response.completion_tokens > 0:
@@ -155,20 +177,40 @@ def chat_rag_stream(
     # 1. Quota enforcement before starting stream
     check_token_quota(organization_id=context.organization.id, db=db)
 
-    # 2. Get or create session
+    # 2. Real-Time DLP PII & Secret Redaction (Section 12 & 15)
+    dlp_result = DLPShieldService.scan_and_mask(data.question)
+    effective_question = dlp_result.masked_text if dlp_result.is_masked else data.question
+
+    # 3. Get or create session
     session = get_or_create_session(
         organization_id=context.organization.id,
         user_id=context.user.id if context.user else None,
         session_id=data.session_id,
-        title_seed=data.question,
+        title_seed=effective_question,
         db=db
     )
 
-    # 3. Save user question immediately
+    if dlp_result.is_masked:
+        AuditService.record_event(
+            db=db,
+            organization_id=context.organization.id,
+            action="security.dlp_redaction",
+            resource_type="chat_query",
+            resource_id=session.id,
+            actor_email=context.user.email if context.user else "user@bytherix.com",
+            severity="warning",
+            details={
+                "categories": dlp_result.categories,
+                "entity_count": len(dlp_result.entities_detected),
+                "summary": dlp_result.summary
+            }
+        )
+
+    # 4. Save sanitized user question immediately
     save_message(
         session_id=session.id,
         sender="user",
-        content=data.question,
+        content=effective_question,
         sources=None,
         model=None,
         prompt_tokens=0,
@@ -182,10 +224,13 @@ def chat_rag_stream(
         try:
             # First send session meta
             yield f"data: {json.dumps({'type': 'session', 'session_id': session.id, 'title': session.title})}\n\n"
+            
+            # Send real-time DLP Shield telemetry event
+            yield f"data: {json.dumps({'type': 'dlp_shield', 'is_masked': dlp_result.is_masked, 'categories': dlp_result.categories, 'entity_count': len(dlp_result.entities_detected), 'summary': dlp_result.summary, 'session_id': session.id})}\n\n"
 
             for event_type, payload in stream_query_rag(
                 organization_id=context.organization.id,
-                question=data.question,
+                question=effective_question,
                 top_k=data.top_k,
                 document_ids=data.document_ids,
                 db=db

@@ -67,6 +67,7 @@ import { CustomRoleDropdown, ROLE_OPTIONS, INVITE_ROLE_OPTIONS } from "@/compone
 import { FloatingRocketDock, ActiveTab } from "@/components/FloatingRocketDock";
 import { OrbitalCore } from "@/components/OrbitalCore";
 import { TiltCard3D } from "@/components/TiltCard3D";
+import { DLPShieldModal } from "@/components/DLPShieldModal";
 
 function renderFormattedAnswer(text: string) {
   const lines = text.split("\n");
@@ -258,6 +259,13 @@ export default function DashboardPage() {
 
   const [inputQuery, setInputQuery] = useState("");
   const [isQuerying, setIsQuerying] = useState(false);
+  const [isDlpModalOpen, setIsDlpModalOpen] = useState(false);
+  const [activeDlpEvent, setActiveDlpEvent] = useState<{
+    isMasked: boolean;
+    categories?: string[];
+    count?: number;
+    summary: string;
+  } | null>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
   // API Keys state
@@ -919,7 +927,27 @@ const loadChatSessions = async () => {
           onSession: (meta) => {
             setCurrentSessionId(meta.session_id);
             loadChatSessions();
-      loadAgentData();
+            loadAgentData();
+          },
+          onDlpShield: (dlp) => {
+            if (dlp.is_masked) {
+              setActiveDlpEvent({
+                isMasked: true,
+                categories: dlp.categories,
+                count: dlp.entity_count,
+                summary: dlp.summary,
+              });
+              setChatMessages((prev) => {
+                const copy = [...prev];
+                if (copy.length >= 2 && copy[copy.length - 2].sender === "user") {
+                  copy[copy.length - 2] = {
+                    ...copy[copy.length - 2],
+                    text: copy[copy.length - 2].text,
+                  };
+                }
+                return copy;
+              });
+            }
           },
           onToken: (token: string) => {
           setChatMessages((prev) => {
@@ -1751,6 +1779,18 @@ const loadChatSessions = async () => {
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
+                  {/* Real-time DLP Shield Status Pill */}
+                  <button
+                    type="button"
+                    onClick={() => setIsDlpModalOpen(true)}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono font-medium border border-cyan-500/30 bg-cyan-950/40 text-cyan-400 hover:bg-cyan-900/60 transition-colors shadow-xs"
+                    title="Bytherix DLP Shield: Active zero-leak enforcement"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                    <span className="hidden sm:inline">DLP Shield:</span>
+                    <span className="font-semibold text-emerald-400">Enforcing</span>
+                  </button>
+
                   {/* Quick New Thread on mobile */}
                   <button
                     onClick={handleNewThread}
@@ -1912,6 +1952,31 @@ const loadChatSessions = async () => {
                 onSubmit={handleSendChat}
                 className="p-3 sm:p-4 border-t border-slate-200 dark:border-white/[0.08] bg-slate-50/90 dark:bg-[#0d1322]/90 backdrop-blur-md shrink-0"
               >
+                {/* Real-time DLP Redaction Alert Banner */}
+                {activeDlpEvent && activeDlpEvent.isMasked && (
+                  <div className="mb-2.5 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center justify-between animate-in fade-in">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0" />
+                      <span className="truncate">{activeDlpEvent.summary}</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 ml-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsDlpModalOpen(true)}
+                        className="text-[11px] font-mono font-semibold underline hover:text-white"
+                      >
+                        Inspect Shield
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveDlpEvent(null)}
+                        className="p-0.5 text-amber-400 hover:text-white"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
@@ -3949,6 +4014,12 @@ const loadChatSessions = async () => {
         setActiveTab={setActiveTab}
         documentCount={documents.length}
         apiKeyCount={apiKeys.length}
+      />
+
+      {/* Enterprise DLP Shield & PII Inspector Modal */}
+      <DLPShieldModal
+        isOpen={isDlpModalOpen}
+        onClose={() => setIsDlpModalOpen(false)}
       />
     </div>
   );
