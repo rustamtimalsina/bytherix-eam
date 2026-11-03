@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.permissions import Permission
 from app.core.tenant_context import TenantContext, require_permission
 from app.db.session import get_db
+from app.db.models.chunk import DocumentChunk
 from app.schemas.chat import (
     ChatRequest,
     ChatResponse,
@@ -139,7 +140,21 @@ def chat_rag(
     response.dlp_shield = dlp_result.model_dump()
 
     # RAG Grounding & Hallucination Scoreboard (RAG Triad)
-    context_snippets = [src.snippet for src in response.sources] if response.sources else []
+    if response.sources:
+        c_doc_ids = list(set([src.document_id for src in response.sources]))
+        c_indices = list(set([src.chunk_index for src in response.sources]))
+        full_chunks = (
+            db.query(DocumentChunk.content)
+            .filter(
+                DocumentChunk.organization_id == context.organization.id,
+                DocumentChunk.document_id.in_(c_doc_ids),
+                DocumentChunk.chunk_index.in_(c_indices)
+            )
+            .all()
+        )
+        context_snippets = [fc[0] for fc in full_chunks] if full_chunks else [src.snippet for src in response.sources]
+    else:
+        context_snippets = []
     sim_scores = [src.similarity_score for src in response.sources] if response.sources else []
     eval_result = RAGEvaluationService.evaluate(
         question=effective_question,
@@ -260,7 +275,21 @@ def chat_rag_stream(
                 elif event_type == "done":
                     p_toks, c_toks, model_name = payload
                     # Real-time RAG Triad & Hallucination Evaluation
-                    context_snippets = [c.snippet for c in captured_citations]
+                    if captured_citations:
+                        c_doc_ids = list(set([c.document_id for c in captured_citations]))
+                        c_indices = list(set([c.chunk_index for c in captured_citations]))
+                        full_chunks = (
+                            db.query(DocumentChunk.content)
+                            .filter(
+                                DocumentChunk.organization_id == context.organization.id,
+                                DocumentChunk.document_id.in_(c_doc_ids),
+                                DocumentChunk.chunk_index.in_(c_indices)
+                            )
+                            .all()
+                        )
+                        context_snippets = [fc[0] for fc in full_chunks] if full_chunks else [c.snippet for c in captured_citations]
+                    else:
+                        context_snippets = []
                     sim_scores = [c.similarity_score for c in captured_citations]
                     eval_result = RAGEvaluationService.evaluate(
                         question=effective_question,

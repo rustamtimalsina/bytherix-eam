@@ -76,11 +76,20 @@ class RAGEvaluationService:
         claims_breakdown: List[ClaimAnalysis] = []
         grounded_count = 0
 
-        for sentence in sentences:
-            sent_clean = sentence.lower()
-            sent_words = set(re.findall(r"\b[a-zA-Z0-9_\-]+\b", sent_clean)) - STOPWORDS
+        # Strip markdown syntax and normalize numbers with commas
+        context_clean = re.sub(r"[*`#_]", " ", combined_context).lower()
+        context_words = set(re.findall(r"\b[a-zA-Z0-9\-]+\b", context_clean)) - STOPWORDS
+        for num in re.findall(r"\b\d{1,3}(?:,\d{3})+\b", combined_context):
+            context_words.add(num.replace(",", ""))
 
-            if not sent_words:
+        for sentence in sentences:
+            sent_clean = re.sub(r"[*`#_]", " ", sentence).lower()
+            sent_words = set(re.findall(r"\b[a-zA-Z0-9\-]+\b", sent_clean)) - STOPWORDS
+            for num in re.findall(r"\b\d{1,3}(?:,\d{3})+\b", sentence):
+                sent_words.add(num.replace(",", ""))
+
+            # Filter out introductory meta phrases like "Based on Bytherix_EAM.pdf (Page 1):"
+            if len(sent_words) <= 2 or "based on" in sent_clean or "page " in sent_clean:
                 claims_breakdown.append(ClaimAnalysis(
                     claim_text=sentence,
                     is_grounded=True,
@@ -94,17 +103,17 @@ class RAGEvaluationService:
             overlap_ratio = len(overlap) / len(sent_words) if sent_words else 0.0
 
             # Check 2-gram phrase matches for enhanced accuracy
-            words_list = list(re.findall(r"\b[a-zA-Z0-9_\-]+\b", sent_clean))
+            words_list = [w for w in re.findall(r"\b[a-zA-Z0-9\-]+\b", sent_clean) if w not in STOPWORDS]
             phrase_hits = 0
             for i in range(len(words_list) - 1):
                 phrase = f"{words_list[i]} {words_list[i+1]}"
-                if phrase in combined_context:
+                if phrase in context_clean:
                     phrase_hits += 1
 
             phrase_ratio = phrase_hits / max(1, len(words_list) - 1)
-            confidence = min(1.0, (overlap_ratio * 0.65) + (phrase_ratio * 0.35) + 0.15)
+            confidence = min(1.0, (overlap_ratio * 0.70) + (phrase_ratio * 0.30))
 
-            is_grounded = confidence >= 0.40 or overlap_ratio >= 0.35
+            is_grounded = confidence >= 0.32 or overlap_ratio >= 0.42
             if is_grounded:
                 grounded_count += 1
 
