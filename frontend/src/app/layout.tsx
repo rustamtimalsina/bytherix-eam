@@ -18,6 +18,15 @@ const geistMono = localFont({
 export const metadata: Metadata = {
   title: "Bytherix EAM — Enterprise AI Platform",
   description: "Secure Multi-Tenant AI Knowledge Management Platform",
+  icons: {
+    icon: [
+      { url: "/icon-128.png", sizes: "128x128", type: "image/png" },
+      { url: "/bytherix_eam_icon.png", sizes: "512x512", type: "image/png" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+    shortcut: "/icon-128.png",
+    apple: "/bytherix_eam_icon.png",
+  },
 };
 
 export default function RootLayout({
