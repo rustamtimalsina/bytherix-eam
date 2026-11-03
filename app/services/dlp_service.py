@@ -91,12 +91,17 @@ class DLPShieldService:
         masked_text = text
         categories_found = set()
         entity_counters: Dict[str, int] = {}
+        claimed_spans: List[tuple] = []
+
+        def is_claimed(start: int, end: int) -> bool:
+            return any(max(start, cs) < min(end, ce) for cs, ce in claimed_spans)
 
         # 1. Private key blocks (highest priority multiline)
         for match in cls.PATTERNS["PRIVATE_KEY_BLOCK"].finditer(text):
             category = "PRIVATE_KEY"
             categories_found.add(category)
             entity_counters[category] = entity_counters.get(category, 0) + 1
+            claimed_spans.append((match.start(), match.end()))
             placeholder = f"[REDACTED_PRIVATE_KEY_{entity_counters[category]}]"
             masked_text = masked_text.replace(match.group(0), placeholder)
             entities.append(DLPEntity(
@@ -112,6 +117,7 @@ class DLPShieldService:
             category = "DATABASE_URI"
             categories_found.add(category)
             entity_counters[category] = entity_counters.get(category, 0) + 1
+            claimed_spans.append((match.start(), match.end()))
             placeholder = f"[REDACTED_DATABASE_URI_{entity_counters[category]}]"
             masked_text = masked_text.replace(match.group(0), placeholder)
             raw = match.group(0)
@@ -131,6 +137,9 @@ class DLPShieldService:
             ("GITHUB_TOKEN", cls.PATTERNS["GITHUB_TOKEN"]),
         ]:
             for match in pattern.finditer(text):
+                if is_claimed(match.start(), match.end()):
+                    continue
+                claimed_spans.append((match.start(), match.end()))
                 category = "API_KEY"
                 categories_found.add(category)
                 entity_counters[category] = entity_counters.get(category, 0) + 1
@@ -148,6 +157,8 @@ class DLPShieldService:
 
         # 4. Generic Secret and Password Assignments
         for match in cls.PATTERNS["PASSWORD_ASSIGNMENT"].finditer(text):
+            if is_claimed(match.start(), match.end()): continue
+            claimed_spans.append((match.start(), match.end()))
             category = "PASSWORD"
             categories_found.add(category)
             entity_counters[category] = entity_counters.get(category, 0) + 1
@@ -165,6 +176,8 @@ class DLPShieldService:
             ))
 
         for match in cls.PATTERNS["GENERIC_SECRET_ASSIGNMENT"].finditer(text):
+            if is_claimed(match.start(), match.end()): continue
+            claimed_spans.append((match.start(), match.end()))
             category = "API_KEY"
             categories_found.add(category)
             entity_counters[category] = entity_counters.get(category, 0) + 1
@@ -183,12 +196,14 @@ class DLPShieldService:
 
         # 5. Credit Cards (with Luhn check)
         for match in cls.PATTERNS["CREDIT_CARD"].finditer(text):
+            if is_claimed(match.start(), match.end()): continue
             raw = match.group(0)
             cleaned_digits = re.sub(r"[-\s]", "", raw)
             if _luhn_check(cleaned_digits):
                 category = "CREDIT_CARD"
                 categories_found.add(category)
                 entity_counters[category] = entity_counters.get(category, 0) + 1
+                claimed_spans.append((match.start(), match.end()))
                 placeholder = f"[REDACTED_CARD_{entity_counters[category]}]"
                 masked_text = masked_text.replace(raw, placeholder)
                 preview = f"****-****-****-{cleaned_digits[-4:]}"
@@ -202,6 +217,8 @@ class DLPShieldService:
 
         # 6. Social Security Numbers (SSN)
         for match in cls.PATTERNS["SSN"].finditer(text):
+            if is_claimed(match.start(), match.end()): continue
+            claimed_spans.append((match.start(), match.end()))
             raw = match.group(0)
             category = "SSN"
             categories_found.add(category)
@@ -219,6 +236,7 @@ class DLPShieldService:
 
         # 7. Email Addresses
         for match in cls.PATTERNS["EMAIL"].finditer(text):
+            if is_claimed(match.start(), match.end()): continue
             raw = match.group(0)
             # Avoid re-masking already generated placeholders like [REDACTED_...]
             if raw.startswith("[REDACTED"):
@@ -226,6 +244,7 @@ class DLPShieldService:
             category = "EMAIL"
             categories_found.add(category)
             entity_counters[category] = entity_counters.get(category, 0) + 1
+            claimed_spans.append((match.start(), match.end()))
             placeholder = f"[REDACTED_EMAIL_{entity_counters[category]}]"
             masked_text = masked_text.replace(raw, placeholder)
             user_part, domain_part = raw.split("@", 1)
@@ -240,6 +259,7 @@ class DLPShieldService:
 
         # 8. Phone Numbers
         for match in cls.PATTERNS["PHONE_NUMBER"].finditer(text):
+            if is_claimed(match.start(), match.end()): continue
             raw = match.group(0).strip()
             # Must contain at least 7 digits to prevent matching small dates or ratios
             digits_only = re.sub(r"\D", "", raw)
@@ -247,6 +267,7 @@ class DLPShieldService:
                 category = "PHONE_NUMBER"
                 categories_found.add(category)
                 entity_counters[category] = entity_counters.get(category, 0) + 1
+                claimed_spans.append((match.start(), match.end()))
                 placeholder = f"[REDACTED_PHONE_{entity_counters[category]}]"
                 masked_text = masked_text.replace(raw, placeholder)
                 preview = f"***-***-{digits_only[-4:]}"

@@ -64,14 +64,13 @@ export function DLPShieldModal({ isOpen, onClose }: DLPShieldModalProps) {
   };
 
   const loadSamplePreset = (type: "api_keys" | "cards_db") => {
+    setScanResult(null);
     if (type === "api_keys") {
       const sample = `Hello, please verify my OpenAI key sk-live9876543210abcdef9876543210 and AWS access key AKIAIOSFODNN7EXAMPLE. Reach me at devops@bytherix.com or +1 (555) 234-5678.`;
       setSandboxText(sample);
-      handleRunScan(sample);
     } else {
       const sample = `Internal DB connection: postgresql://admin:SuperSecretPass123@prod-db.bytherix.net:5432/eam_core. Corporate Visa card: 4532 0151 1283 0366.`;
       setSandboxText(sample);
-      handleRunScan(sample);
     }
   };
 
