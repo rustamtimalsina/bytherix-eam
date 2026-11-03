@@ -15,6 +15,7 @@ from app.schemas.chat import (
 )
 from app.services.audit_service import AuditService
 from app.services.dlp_service import DLPShieldService
+from app.services.rag_eval_service import RAGEvaluationService
 from app.services.retrieval_service import query_rag, stream_query_rag
 from app.services.usage_service import check_token_quota, record_usage
 from app.services.conversation_service import (
@@ -137,6 +138,17 @@ def chat_rag(
     )
     response.dlp_shield = dlp_result.model_dump()
 
+    # RAG Grounding & Hallucination Scoreboard (RAG Triad)
+    context_snippets = [src.snippet for src in response.sources] if response.sources else []
+    sim_scores = [src.similarity_score for src in response.sources] if response.sources else []
+    eval_result = RAGEvaluationService.evaluate(
+        question=effective_question,
+        answer=response.answer,
+        context_snippets=context_snippets,
+        similarity_scores=sim_scores
+    )
+    response.evaluation = eval_result.model_dump()
+
     # 5. Record metered token usage
     if response.prompt_tokens > 0 or response.completion_tokens > 0:
         record_usage(
@@ -247,6 +259,16 @@ def chat_rag_stream(
                     yield f"data: {json.dumps({'type': 'token', 'token': payload, 'session_id': session.id})}\n\n"
                 elif event_type == "done":
                     p_toks, c_toks, model_name = payload
+                    # Real-time RAG Triad & Hallucination Evaluation
+                    context_snippets = [c.snippet for c in captured_citations]
+                    sim_scores = [c.similarity_score for c in captured_citations]
+                    eval_result = RAGEvaluationService.evaluate(
+                        question=effective_question,
+                        answer=accumulated_answer,
+                        context_snippets=context_snippets,
+                        similarity_scores=sim_scores
+                    )
+                    yield f"data: {json.dumps({'type': 'evaluation', 'data': eval_result.model_dump(), 'session_id': session.id})}\n\n"
                     if p_toks > 0 or c_toks > 0:
                         record_usage(
                             organization_id=context.organization.id,

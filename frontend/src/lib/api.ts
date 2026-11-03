@@ -380,6 +380,7 @@ class ApiClient {
       onDone: (metrics: { prompt_tokens: number; completion_tokens: number; total_tokens: number; model: string; session_id?: string }) => void;
       onSession?: (meta: { session_id: string; title: string }) => void;
       onDlpShield?: (dlp: { is_masked: boolean; categories?: string[]; entity_count?: number; summary: string }) => void;
+      onEvaluation?: (evalData: RAGEvalData) => void;
       onError?: (error: string) => void;
     },
     sessionId?: string
@@ -438,6 +439,8 @@ class ApiClient {
               if (callbacks.onSession) callbacks.onSession(parsed);
             } else if (parsed.type === "dlp_shield") {
               if (callbacks.onDlpShield) callbacks.onDlpShield(parsed);
+            } else if (parsed.type === "evaluation") {
+              if (callbacks.onEvaluation) callbacks.onEvaluation(parsed.data);
             } else if (parsed.type === "done") {
               callbacks.onDone(parsed);
             } else if (parsed.type === "error") {
@@ -734,4 +737,24 @@ export interface DLPStatsResponse {
     name: string;
     severity: string;
   }>;
+}
+
+
+export interface ClaimAnalysisItem {
+  claim_text: string;
+  is_grounded: boolean;
+  confidence_score: number;
+  best_matching_source?: string;
+}
+
+export interface RAGEvalData {
+  faithfulness_score: number;
+  context_relevance_score: number;
+  answer_relevance_score: number;
+  hallucination_risk: "MINIMAL" | "LOW" | "MODERATE" | "HIGH";
+  supported_claims: number;
+  total_claims: number;
+  claims_breakdown: ClaimAnalysisItem[];
+  summary_verdict: string;
+  compliance_badge: string;
 }

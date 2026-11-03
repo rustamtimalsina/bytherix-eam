@@ -68,6 +68,8 @@ import { FloatingRocketDock, ActiveTab } from "@/components/FloatingRocketDock";
 import { OrbitalCore } from "@/components/OrbitalCore";
 import { TiltCard3D } from "@/components/TiltCard3D";
 import { DLPShieldModal } from "@/components/DLPShieldModal";
+import { RAGScoreboardBadge } from "@/components/RAGScoreboardBadge";
+import { RAGEvalData } from "@/lib/api";
 
 function renderFormattedAnswer(text: string) {
   const lines = text.split("\n");
@@ -249,6 +251,7 @@ export default function DashboardPage() {
       sources?: SourceCitation[];
       model?: string;
       isStreaming?: boolean;
+      evaluation?: RAGEvalData;
     }>
   >([]);
   // Conversation Session state (Section 16.1 #6)
@@ -937,17 +940,20 @@ const loadChatSessions = async () => {
                 count: dlp.entity_count,
                 summary: dlp.summary,
               });
-              setChatMessages((prev) => {
-                const copy = [...prev];
-                if (copy.length >= 2 && copy[copy.length - 2].sender === "user") {
-                  copy[copy.length - 2] = {
-                    ...copy[copy.length - 2],
-                    text: copy[copy.length - 2].text,
-                  };
-                }
-                return copy;
-              });
             }
+          },
+          onEvaluation: (evalData: RAGEvalData) => {
+            setChatMessages((prev) => {
+              const copy = [...prev];
+              const last = copy[copy.length - 1];
+              if (last && last.sender === "assistant") {
+                copy[copy.length - 1] = {
+                  ...last,
+                  evaluation: evalData,
+                };
+              }
+              return copy;
+            });
           },
           onToken: (token: string) => {
           setChatMessages((prev) => {
@@ -1903,6 +1909,13 @@ const loadChatSessions = async () => {
                           <div className="flex items-center gap-2 py-1 text-xs text-indigo-600 dark:text-indigo-400">
                             <div className="w-3.5 h-3.5 border-2 border-indigo-600 dark:border-indigo-400 border-t-transparent rounded-full animate-spin" />
                             <span className="font-medium animate-pulse">Consulting vector index & streaming grounded answer...</span>
+                          </div>
+                        )}
+
+                        {/* RAG Triad & Hallucination Scoreboard */}
+                        {msg.evaluation && (
+                          <div className="mt-3 pt-2.5 border-t border-slate-200 dark:border-white/[0.08]">
+                            <RAGScoreboardBadge evaluation={msg.evaluation} />
                           </div>
                         )}
 

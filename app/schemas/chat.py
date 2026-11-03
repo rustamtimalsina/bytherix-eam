@@ -27,6 +27,7 @@ class ChatResponse(BaseModel):
     completion_tokens: int = 0
     session_id: Optional[str] = None
     dlp_shield: Optional[Dict[str, Any]] = None
+    evaluation: Optional[Dict[str, Any]] = None
 
 
 class MessageItem(BaseModel):
