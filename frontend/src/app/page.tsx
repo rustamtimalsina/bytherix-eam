@@ -1783,25 +1783,27 @@ const loadChatSessions = async () => {
                   <button
                     type="button"
                     onClick={() => setIsDlpModalOpen(true)}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono font-medium border border-cyan-500/30 bg-cyan-950/40 text-cyan-400 hover:bg-cyan-900/60 transition-colors shadow-xs"
-                    title="Bytherix DLP Shield: Active zero-leak enforcement"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] sm:text-[11px] font-mono font-semibold border transition-all duration-200 bg-emerald-50 hover:bg-emerald-100/80 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 dark:text-emerald-300 dark:border-emerald-500/30 shadow-xs active:scale-95"
+                    title="Bytherix DLP Shield: Active zero-leak enforcement. Click to inspect."
                   >
-                    <ShieldCheck className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                    <span className="hidden sm:inline">DLP Shield:</span>
-                    <span className="font-semibold text-emerald-400">Enforcing</span>
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span className="text-slate-600 dark:text-slate-400 hidden min-[400px]:inline">DLP Shield:</span>
+                    <span className="font-bold text-emerald-700 dark:text-emerald-400">Enforcing</span>
                   </button>
+
+                  {/* Hybrid Retrieval Badge */}
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] sm:text-[11px] font-mono font-medium border border-slate-200 dark:border-white/[0.08] text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-white/[0.04]">
+                    Hybrid Retrieval
+                  </span>
 
                   {/* Quick New Thread on mobile */}
                   <button
                     onClick={handleNewThread}
                     title="Start fresh thread"
-                    className="md:hidden p-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 transition-colors"
+                    className="md:hidden p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 transition-colors"
                   >
                     <Plus className="w-4 h-4" />
                   </button>
-                  <span className="text-[10px] sm:text-[11px] font-mono text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded bg-slate-200/60 dark:bg-white/[0.05]">
-                    Hybrid Retrieval
-                  </span>
                 </div>
               </div>
 
@@ -1954,23 +1956,23 @@ const loadChatSessions = async () => {
               >
                 {/* Real-time DLP Redaction Alert Banner */}
                 {activeDlpEvent && activeDlpEvent.isMasked && (
-                  <div className="mb-2.5 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center justify-between animate-in fade-in">
+                  <div className="mb-2.5 px-3.5 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 dark:bg-amber-500/15 dark:border-amber-500/30 dark:text-amber-200 text-xs flex items-center justify-between animate-in fade-in shadow-xs">
                     <div className="flex items-center gap-2 min-w-0">
-                      <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0" />
-                      <span className="truncate">{activeDlpEvent.summary}</span>
+                      <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                      <span className="truncate font-medium">{activeDlpEvent.summary}</span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-2">
                       <button
                         type="button"
                         onClick={() => setIsDlpModalOpen(true)}
-                        className="text-[11px] font-mono font-semibold underline hover:text-white"
+                        className="text-[11px] font-mono font-bold text-amber-800 dark:text-amber-300 underline hover:text-slate-900 dark:hover:text-white"
                       >
                         Inspect Shield
                       </button>
                       <button
                         type="button"
                         onClick={() => setActiveDlpEvent(null)}
-                        className="p-0.5 text-amber-400 hover:text-white"
+                        className="p-1 rounded text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-white/10 transition-colors"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
