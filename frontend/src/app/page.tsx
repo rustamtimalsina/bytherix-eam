@@ -71,6 +71,9 @@ import { TiltCard3D } from "@/components/TiltCard3D";
 import { DLPShieldModal } from "@/components/DLPShieldModal";
 import { RAGScoreboardBadge } from "@/components/RAGScoreboardBadge";
 import { DeveloperApiPortal } from "@/components/DeveloperApiPortal";
+import { CommandPaletteModal } from "@/components/CommandPaletteModal";
+import { TelemetrySparkline } from "@/components/TelemetrySparkline";
+import { CitationInspectorDrawer } from "@/components/CitationInspectorDrawer";
 import { RAGEvalData } from "@/lib/api";
 
 function renderFormattedAnswer(text: string) {
@@ -823,6 +826,14 @@ export default function DashboardPage() {
   const [showChunksModal, setShowChunksModal] = useState(false);
   const [chunkSearchQuery, setChunkSearchQuery] = useState("");
   const [copiedChunkId, setCopiedChunkId] = useState<string | null>(null);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [selectedCitation, setSelectedCitation] = useState<SourceCitation | null>(null);
+
+  useEffect(() => {
+    const handleOpenPalette = () => setIsCommandPaletteOpen(true);
+    window.addEventListener("open-command-palette", handleOpenPalette);
+    return () => window.removeEventListener("open-command-palette", handleOpenPalette);
+  }, []);
 
   const handleDownloadDocument = async (docId: string) => {
     try {
@@ -1138,6 +1149,20 @@ const loadChatSessions = async () => {
 
         {/* Right Nav Actions - Profile Visible Everywhere */}
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          {/* Global Command Palette Trigger (Ctrl+K / ⌘K) */}
+          <button
+            type="button"
+            onClick={() => setIsCommandPaletteOpen(true)}
+            className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono text-slate-500 dark:text-slate-400 bg-slate-100 hover:bg-slate-200/80 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] border border-slate-200/80 dark:border-white/[0.08] transition-colors cursor-pointer"
+            title="Search or execute command (Ctrl + K)"
+          >
+            <Search className="w-3.5 h-3.5" />
+            <span className="text-[11px] font-sans">Search</span>
+            <kbd className="text-[9px] bg-white dark:bg-white/10 px-1.5 py-0.5 rounded border border-slate-200 dark:border-white/10 font-bold">
+              ⌘K
+            </kbd>
+          </button>
+
           {/* User Identity Capsule with Email (Always visible on mobile & desktop) */}
           <div className="flex items-center gap-1.5 sm:gap-2 px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-slate-100/90 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 shrink-0">
             <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-[9px] sm:text-[10px] shrink-0 shadow-sm">
@@ -2037,7 +2062,9 @@ const loadChatSessions = async () => {
                               {msg.sources.map((src, sIdx) => (
                                 <div
                                   key={sIdx}
-                                  className="p-2.5 rounded-xl text-[11px] text-slate-800 dark:text-slate-300 bg-slate-50/80 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/[0.06] hover:border-indigo-500/30 transition-all"
+                                  onClick={() => setSelectedCitation(src)}
+                                  className="p-2.5 rounded-xl text-[11px] text-slate-800 dark:text-slate-300 bg-slate-50/80 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/[0.06] hover:border-indigo-500/40 hover:bg-indigo-50/30 dark:hover:bg-indigo-950/20 transition-all cursor-pointer group"
+                                  title="Click to inspect citation in slide-over drawer"
                                 >
                                   <div className="flex items-center justify-between font-medium text-slate-600 dark:text-slate-400 mb-1">
                                     <span className="font-bold text-slate-900 dark:text-white truncate max-w-[220px]">
@@ -3869,6 +3896,11 @@ const loadChatSessions = async () => {
                   </div>
                 </div>
 
+                {/* Real-Time Telemetry Sparkline Curve (Vercel / Datadog tier) */}
+                <TelemetrySparkline
+                  totalTokens={usage?.tokens_used ?? 31464}
+                  queriesCount={usage?.queries_count ?? 55}
+                />
                 {/* Detailed 4-Column Sub-Metrics Grid */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2 border-t border-slate-200/60 dark:border-white/[0.06]">
                   <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200/60 dark:border-white/[0.06] space-y-0.5">
@@ -4268,6 +4300,30 @@ const loadChatSessions = async () => {
       </main>
 
       {/* Floating Rocket Dock Anchored at the Bottom */}
+      {/* Raycast-Style Global Command Palette (⌘K) */}
+      <CommandPaletteModal
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        onSelectTab={(tab) => setActiveTab(tab)}
+        onNewThread={handleNewThread}
+        onSeedDemo={handleSeedDemoKnowledge}
+        onToggleTheme={() => {
+          const toggleBtn = document.querySelector('[data-testid="theme-toggle"]') as HTMLButtonElement;
+          toggleBtn?.click();
+        }}
+        onOpenDLPShield={() => setIsDlpModalOpen(true)}
+        documents={documents}
+        onInspectDocument={(id) => handleInspectChunks(id)}
+      />
+
+      {/* Perplexity-Style Citation Inspector Drawer */}
+      <CitationInspectorDrawer
+        citation={selectedCitation}
+        onClose={() => setSelectedCitation(null)}
+        onInspectDocumentChunks={(id) => handleInspectChunks(id)}
+        onDownloadDocument={(id) => handleDownloadDocument(id)}
+      />
+
       <FloatingRocketDock
         activeTab={activeTab}
         setActiveTab={setActiveTab}
