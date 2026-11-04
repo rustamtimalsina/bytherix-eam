@@ -35,7 +35,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-[#070b14] text-slate-900 dark:text-white transition-colors duration-300 overflow-hidden">
+    <div className="relative min-h-screen flex items-center justify-center p-4 text-slate-900 dark:text-white transition-colors duration-300 overflow-hidden z-10">
       {/* Top Navbar with Logo and Cosmic Theme Toggle */}
       <header className="absolute top-0 left-0 right-0 p-4 sm:p-6 flex justify-between items-center max-w-7xl mx-auto z-20">
         <Link href="/" className="flex items-center gap-2.5 opacity-90 hover:opacity-100 transition-opacity">
@@ -44,9 +44,7 @@ export default function LoginPage() {
         <CosmicThemeToggle />
       </header>
 
-      {/* Background ambient light */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-blue-500/10 dark:bg-blue-600/15 blur-[130px] pointer-events-none rounded-full" />
-      <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[250px] bg-indigo-500/10 dark:bg-indigo-600/10 blur-[100px] pointer-events-none rounded-full" />
+
 
       <div className="relative w-full max-w-md pt-12 sm:pt-0">
         {/* Header branding */}

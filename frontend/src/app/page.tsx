@@ -41,6 +41,8 @@ import {
   BarChart3,
   ExternalLink,
   ArrowRight,
+  Database,
+  Hash,
 } from "lucide-react";
 import {
   api,
@@ -65,7 +67,6 @@ import { useAuth } from "@/lib/auth-context";
 import { CosmicThemeToggle } from "@/components/CosmicThemeToggle";
 import { CustomRoleDropdown, ROLE_OPTIONS, INVITE_ROLE_OPTIONS } from "@/components/CustomRoleDropdown";
 import { FloatingRocketDock, ActiveTab } from "@/components/FloatingRocketDock";
-import { OrbitalCore } from "@/components/OrbitalCore";
 import { TiltCard3D } from "@/components/TiltCard3D";
 import { DLPShieldModal } from "@/components/DLPShieldModal";
 import { RAGScoreboardBadge } from "@/components/RAGScoreboardBadge";
@@ -1194,25 +1195,7 @@ const loadChatSessions = async () => {
       )}
 
       {/* Main Workspace Stage */}
-      <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 pb-48 sm:pb-56 space-y-6 sm:space-y-8">
-        {/* Living AI Core Centerpiece */}
-        <OrbitalCore
-          label={
-            activeTab === "documents"
-              ? "KNOWLEDGE INGESTION STATION"
-              : activeTab === "chat"
-              ? "GROUNDED HYBRID RAG CORE"
-              : activeTab === "agents"
-              ? "GOVERNED AGENT WORKFLOW ENGINE"
-              : activeTab === "models"
-              ? "MLOPS MODEL REGISTRY & DEPLOYMENTS"
-              : activeTab === "apikeys"
-              ? "MACHINE AUTHENTICATION VAULT"
-              : activeTab === "audit"
-              ? "ENTERPRISE AUDIT & COMPLIANCE"
-              : "TENANT WORKSPACE TELEMETRY"
-          }
-        />
+      <main className="relative z-10 flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 pb-48 sm:pb-56 space-y-6 sm:space-y-8">
 
         {/* Real-Time Live Notification Toast Banner */}
         {liveAlert && (
@@ -1266,85 +1249,126 @@ const loadChatSessions = async () => {
           </div>
         )}
 
-        {/* TAB 1: DOCUMENTS HUB */}
+                {/* TAB 1: DOCUMENTS HUB (Enterprise Precision Anti-Slop Redesign) */}
         {activeTab === "documents" && (
           <div className="space-y-6">
-            <div className="text-center space-y-1">
+            {/* Header */}
+            <div className="text-center space-y-1.5">
+              <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-blue-500/10 dark:bg-indigo-500/15 border border-blue-500/20 dark:border-indigo-500/30 text-[11px] font-mono font-bold text-blue-600 dark:text-indigo-400 mb-1">
+                <Database className="w-3 h-3" />
+                <span>KNOWLEDGE INGESTION ENGINE</span>
+              </div>
               <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
                 Enterprise Knowledge Library
               </h2>
-              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto">
-                Validated PDF ingestion with chunk vectors and SHA-256 tenant deduplication.
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-lg mx-auto">
+                Grounded PDF ingestion with 1536-dimensional pgvector embeddings and cryptographic SHA-256 deduplication.
               </p>
             </div>
 
-            {/* Ingestion Dropzone (Restricted to Ingestion-Capable Roles) */}
+            {/* Precision Ingestion Dropzone */}
             {canUploadDocs ? (
-              <div className="conic-glow-box">
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                  className={`conic-glow-inner p-6 sm:p-10 text-center cursor-pointer transition-all duration-300 ${
-                    isDragging ? "bg-blue-50 dark:bg-[#11192d]" : ""
-                  }`}
-                >
-                  <input
-                    type="file"
-                    accept="application/pdf"
-                    ref={fileInputRef}
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                  <div className="flex flex-col items-center">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600/20 to-purple-600/20 border border-blue-500/20 dark:border-white/20 flex items-center justify-center text-blue-600 dark:text-blue-300 mb-3 shadow-[0_0_25px_rgba(59,130,246,0.2)] dark:shadow-[0_0_25px_rgba(59,130,246,0.4)]">
-                      <UploadCloud className="w-7 h-7" />
-                    </div>
-                    {isDragging ? (
-                      <div className="space-y-1">
-                        <p className="text-sm font-bold text-blue-600 dark:text-blue-400 animate-pulse">
-                          Release to launch ingestion sequence
-                        </p>
-                        <p className="text-xs text-blue-500 dark:text-blue-300/80">
-                          File will be validated and queued for background chunking
-                        </p>
-                      </div>
-                    ) : isUploading ? (
-                      <div className="space-y-1">
-                        <p className="text-sm font-bold text-blue-600 dark:text-blue-400">
-                          Ingesting and validating %PDF- header...
-                        </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          Worker thread generating 1536-dim vector embeddings
-                        </p>
-                      </div>
-                    ) : documents.length >= 5 ? (
-                      <div className="space-y-1">
-                        <p className="text-sm font-bold text-amber-600 dark:text-amber-400">
-                          Plan Quota Reached (5/5 Documents)
-                        </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          Free tier cap reached. Delete an existing document below to upload a new one.
-                        </p>
-                      </div>
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={`relative group rounded-2xl border-2 border-dashed transition-all duration-300 cursor-pointer overflow-hidden p-6 sm:p-9 text-center ${
+                  isDragging
+                    ? "border-blue-500 dark:border-indigo-400 bg-blue-50/80 dark:bg-indigo-950/25 scale-[0.99]"
+                    : "border-slate-300/80 dark:border-white/15 hover:border-slate-400 dark:hover:border-white/30 bg-white/90 dark:bg-[#0c1222]/80 backdrop-blur-md hover:bg-white dark:hover:bg-[#0c1222]"
+                }`}
+                style={{
+                  boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.06)",
+                }}
+              >
+                {/* Subtle top spotlight glow on hover */}
+                <div className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-36 bg-gradient-to-b from-blue-500/10 dark:from-indigo-500/15 to-transparent rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+
+                <div className="relative z-10 flex flex-col items-center">
+                  <div
+                    className={`w-12 h-12 rounded-xl flex items-center justify-center mb-3 transition-transform duration-300 group-hover:scale-105 ${
+                      isDragging
+                        ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30 scale-110"
+                        : isUploading
+                        ? "bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 animate-pulse"
+                        : "bg-slate-100 dark:bg-white/[0.05] border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300"
+                    }`}
+                  >
+                    {isUploading ? (
+                      <RefreshCw className="w-5 h-5 animate-spin text-blue-600 dark:text-indigo-400" />
                     ) : (
-                      <div className="space-y-1">
-                        <p className="text-sm font-bold text-slate-900 dark:text-white">
-                          Click or drag & drop PDF files to ingest
-                        </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          Strict <span className="font-mono font-semibold text-blue-600 dark:text-cyan-400">%PDF-</span> magic byte validation with SHA-256 deduplication
-                        </p>
-                      </div>
+                      <UploadCloud className="w-5 h-5" />
                     )}
+                  </div>
+
+                  {isDragging ? (
+                    <div className="space-y-1">
+                      <p className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                        Release to start ingestion
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Header will be validated and queued for chunk vectorization
+                      </p>
+                    </div>
+                  ) : isUploading ? (
+                    <div className="space-y-1">
+                      <p className="text-sm font-bold text-blue-600 dark:text-indigo-400">
+                        Ingesting and validating %PDF- header...
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Generating 1536-dimensional vector embeddings via pgvector
+                      </p>
+                    </div>
+                  ) : documents.length >= 5 ? (
+                    <div className="space-y-1">
+                      <p className="text-sm font-bold text-amber-600 dark:text-amber-400">
+                        Plan Quota Reached (5/5 Documents)
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Free tier limit reached. Remove an existing document below to ingest a new one.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <p className="text-sm font-bold text-slate-900 dark:text-white">
+                        Drop enterprise PDF here, or <span className="text-blue-600 dark:text-indigo-400 underline decoration-indigo-400/40 underline-offset-4">browse files</span>
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Strict <span className="font-mono text-slate-700 dark:text-slate-300 font-semibold">%PDF-</span> magic-byte validation with SHA-256 deduplication
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Micro specification chips */}
+                  <div className="flex flex-wrap items-center justify-center gap-2 mt-4 pt-4 border-t border-slate-200/60 dark:border-white/[0.06] text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                    <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/[0.04] border border-slate-200/80 dark:border-white/[0.06]">
+                      PDF format
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/[0.04] border border-slate-200/80 dark:border-white/[0.06]">
+                      Max 10 MB
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/[0.04] border border-slate-200/80 dark:border-white/[0.06]">
+                      1536-dim pgvector
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/[0.04] border border-slate-200/80 dark:border-white/[0.06]">
+                      SHA-256 Verified
+                    </span>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="p-4 sm:p-5 rounded-2xl bg-slate-100/80 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="card-depth-3d p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-blue-500/10 dark:bg-indigo-500/10 border border-blue-500/20 dark:border-indigo-500/20 flex items-center justify-center text-blue-600 dark:text-indigo-400 shrink-0">
                     <Layers className="w-5 h-5" />
                   </div>
                   <div>
@@ -1352,7 +1376,7 @@ const loadChatSessions = async () => {
                       Read-Only Knowledge Vault
                     </h4>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Your assigned role ({role?.replace(/_/g, " ") || "viewer"}) is restricted to browsing and inspecting verified knowledge assets.
+                      Your role ({role?.replace(/_/g, " ") || "viewer"}) is granted read-only inspection access to verified tenant assets.
                     </p>
                   </div>
                 </div>
@@ -1369,12 +1393,21 @@ const loadChatSessions = async () => {
               </div>
             )}
 
-            {/* Document Library Cards */}
-            <div className="card-depth-3d p-4 sm:p-5 space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-white/[0.08]">
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-300">
-                  <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                  <span>Ingested Documents ({documents.length})</span>
+            {/* Document Library Ledger */}
+            <div className="card-depth-3d p-4 sm:p-6 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200/80 dark:border-white/[0.08]">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-blue-500/10 dark:bg-indigo-500/10 border border-blue-500/20 dark:border-indigo-500/20 flex items-center justify-center text-blue-600 dark:text-indigo-400">
+                    <FileText className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                      Ingested Knowledge Assets
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-100 dark:bg-white/[0.06] text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-white/[0.06]">
+                      {documents.length} / 5
+                    </span>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {canUploadDocs && (
@@ -1382,25 +1415,26 @@ const loadChatSessions = async () => {
                       type="button"
                       disabled={isSeedingDemo}
                       onClick={handleSeedDemoKnowledge}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-medium text-xs border border-indigo-500/20 transition-all cursor-pointer"
-                      title="Load authoritative Bytherix EAM technical architecture demo PDF"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-semibold text-xs border border-indigo-500/20 transition-all cursor-pointer active:scale-95"
+                      title="Seed authoritative Bytherix EAM architecture PDF"
                     >
-                      <Sparkles className={`w-3 h-3 ${isSeedingDemo ? "animate-spin" : ""}`} />
-                      <span>{isSeedingDemo ? "Seeding..." : "⚡ Seed Demo"}</span>
+                      <Sparkles className={`w-3.5 h-3.5 ${isSeedingDemo ? "animate-spin" : ""}`} />
+                      <span>{isSeedingDemo ? "Seeding Spec..." : "⚡ Seed Demo Spec"}</span>
                     </button>
                   )}
                   <button
                     onClick={loadDocuments}
-                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-mono transition-colors"
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[0.05] transition-colors"
+                    title="Refresh document library"
                   >
-                    [refresh]
+                    <RefreshCw className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
 
               {documents.length === 0 ? (
-                <div className="p-8 sm:p-12 text-center text-slate-500 space-y-4">
-                  <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 mx-auto shadow-sm">
+                <div className="p-8 sm:p-12 text-center text-slate-500 space-y-4 rounded-xl border border-dashed border-slate-200 dark:border-white/[0.06] bg-slate-50/30 dark:bg-white/[0.01]">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 mx-auto">
                     <Sparkles className="w-6 h-6 animate-pulse" />
                   </div>
                   <div>
@@ -1426,25 +1460,31 @@ const loadChatSessions = async () => {
                   {documents.map((doc) => (
                     <div
                       key={doc.id}
-                      className="p-3.5 rounded-xl bg-slate-50 dark:bg-white/[0.02] hover:bg-slate-100 dark:hover:bg-white/[0.05] border border-slate-200 dark:border-white/[0.06] flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all duration-200"
+                      className="group p-3.5 rounded-xl bg-slate-50/70 dark:bg-white/[0.02] hover:bg-slate-100/80 dark:hover:bg-white/[0.045] border border-slate-200/80 dark:border-white/[0.06] flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all duration-200"
+                      style={{
+                        boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.04)",
+                      }}
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-9 h-9 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
+                        <div className="w-9 h-9 rounded-lg bg-blue-500/10 dark:bg-indigo-500/10 border border-blue-500/20 dark:border-indigo-500/20 flex items-center justify-center text-blue-600 dark:text-indigo-400 shrink-0">
                           <FileCheck2 className="w-4 h-4" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                          <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
                             {doc.title || doc.filename}
                           </p>
-                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                            <span>{(doc.file_size_bytes / 1024).toFixed(1)} KB</span>
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-mono">
+                            <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/[0.04] text-slate-600 dark:text-slate-300">
+                              {(doc.file_size_bytes / 1024).toFixed(1)} KB
+                            </span>
                             <span>•</span>
                             <span>{doc.page_count ? `${doc.page_count} pages` : "Queued"}</span>
                             {doc.checksum && (
                               <>
                                 <span>•</span>
-                                <span className="font-mono text-slate-600 dark:text-slate-500">
-                                  {doc.checksum.slice(0, 8)}...
+                                <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/[0.04] text-slate-600 dark:text-slate-400 flex items-center gap-1">
+                                  <Hash className="w-3 h-3 text-slate-400" />
+                                  <span>{doc.checksum.slice(0, 10)}...</span>
                                 </span>
                               </>
                             )}
@@ -1452,51 +1492,63 @@ const loadChatSessions = async () => {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/60 dark:border-white/[0.06]">
+                      <div className="flex items-center justify-between sm:justify-end gap-2.5 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/60 dark:border-white/[0.06]">
                         <span
-                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 ${
                             doc.status === "indexed"
-                              ? "bg-emerald-500/15 border border-emerald-500/40 text-emerald-700 dark:text-emerald-400"
+                              ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400"
                               : doc.status === "processing"
-                              ? "bg-amber-500/15 border border-amber-500/40 text-amber-700 dark:text-amber-400 animate-pulse"
-                              : "bg-blue-500/15 border border-blue-500/40 text-blue-700 dark:text-blue-400"
+                              ? "bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 animate-pulse"
+                              : "bg-blue-500/10 border border-blue-500/30 text-blue-700 dark:text-blue-400"
                           }`}
                         >
-                          {doc.status === "indexed" ? "Ready" : doc.status}
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              doc.status === "indexed"
+                                ? "bg-emerald-500"
+                                : doc.status === "processing"
+                                ? "bg-amber-500 animate-ping"
+                                : "bg-blue-500"
+                            }`}
+                          />
+                          <span>{doc.status === "indexed" ? "Ready" : doc.status}</span>
                         </span>
 
-                        {/* Inspect Chunks & Vectors (Sections 8 & 9) */}
-                        <button
-                          onClick={() => handleInspectChunks(doc.id)}
-                          title="Inspect Extracted Chunks & Vector Metadata"
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors"
-                        >
-                          <Layers className="w-3.5 h-3.5" />
-                        </button>
-
-                        {/* Pre-signed S3 / MinIO / Local Download (Section 8.1 & 14) */}
-                        <button
-                          onClick={() => handleDownloadDocument(doc.id)}
-                          disabled={downloadingDocId === doc.id}
-                          title="Download / View Authentic PDF"
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors disabled:opacity-50"
-                        >
-                          {downloadingDocId === doc.id ? (
-                            <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-500" />
-                          ) : (
-                            <Download className="w-3.5 h-3.5" />
-                          )}
-                        </button>
-
-                        {isOwnerOrAdmin && (
+                        {/* Action buttons group with subtle hairline border */}
+                        <div className="flex items-center gap-1 bg-slate-100/80 dark:bg-white/[0.04] p-1 rounded-lg border border-slate-200/60 dark:border-white/[0.06]">
+                          {/* Inspect Chunks & Vectors */}
                           <button
-                            onClick={() => handleDeleteDocument(doc.id)}
-                            title="Delete document"
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                            onClick={() => handleInspectChunks(doc.id)}
+                            title="Inspect Extracted Chunks & Vector Metadata"
+                            className="p-1.5 rounded-md text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300 hover:bg-white dark:hover:bg-white/[0.08] transition-colors"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Layers className="w-3.5 h-3.5" />
                           </button>
-                        )}
+
+                          {/* Pre-signed S3 / MinIO / Local Download */}
+                          <button
+                            onClick={() => handleDownloadDocument(doc.id)}
+                            disabled={downloadingDocId === doc.id}
+                            title="Download / View Authentic PDF"
+                            className="p-1.5 rounded-md text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-300 hover:bg-white dark:hover:bg-white/[0.08] transition-colors disabled:opacity-50"
+                          >
+                            {downloadingDocId === doc.id ? (
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-500" />
+                            ) : (
+                              <Download className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+
+                          {isOwnerOrAdmin && (
+                            <button
+                              onClick={() => handleDeleteDocument(doc.id)}
+                              title="Delete document"
+                              className="p-1.5 rounded-md text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-white dark:hover:bg-white/[0.08] transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -1504,23 +1556,30 @@ const loadChatSessions = async () => {
               )}
             </div>
 
-            {/* RAG CHUNKS & VECTOR INSPECTION MODAL (Sections 8 & 9) */}
+            {/* RAG CHUNKS & VECTOR INSPECTION MODAL */}
             {showChunksModal && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-                <div className="w-full max-w-3xl max-h-[85vh] rounded-2xl bg-white dark:bg-[#0c1222] border border-slate-200 dark:border-white/[0.1] shadow-2xl flex flex-col overflow-hidden">
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
+                <div
+                  className="w-full max-w-3xl max-h-[85vh] rounded-2xl bg-white dark:bg-[#0c1222] border border-slate-200 dark:border-white/[0.1] shadow-2xl flex flex-col overflow-hidden"
+                  style={{
+                    boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.08)",
+                  }}
+                >
                   {/* Modal Header */}
                   <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 dark:border-white/[0.08]">
                     <div className="min-w-0 pr-3">
                       <div className="flex items-center gap-2">
-                        <Layers className="w-4 h-4 text-indigo-500 shrink-0" />
-                        <h3 className="text-base font-bold text-slate-900 dark:text-white truncate">
+                        <div className="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+                          <Layers className="w-4 h-4" />
+                        </div>
+                        <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate">
                           {selectedDocumentChunks?.document_title || "Document Chunks"}
                         </h3>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
                           {selectedDocumentChunks?.total_chunks ?? 0} Chunks
                         </span>
                       </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-mono truncate">
                         {selectedDocumentChunks?.filename} &bull; 1536-dimensional pgvector embeddings
                       </p>
                     </div>
@@ -1544,7 +1603,7 @@ const loadChatSessions = async () => {
                         placeholder="Search text within chunks..."
                         value={chunkSearchQuery}
                         onChange={(e) => setChunkSearchQuery(e.target.value)}
-                        className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl bg-white dark:bg-[#0c1222] border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                        className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl bg-white dark:bg-[#080d1a] border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
                       />
                     </div>
                   </div>
@@ -1554,7 +1613,7 @@ const loadChatSessions = async () => {
                     {isLoadingChunks ? (
                       <div className="py-12 flex flex-col items-center justify-center gap-2 text-slate-400">
                         <RefreshCw className="w-5 h-5 animate-spin text-indigo-500" />
-                        <span className="text-xs">Loading chunk vectors...</span>
+                        <span className="text-xs font-mono">Loading chunk vectors...</span>
                       </div>
                     ) : selectedDocumentChunks?.chunks && selectedDocumentChunks.chunks.length > 0 ? (
                       selectedDocumentChunks.chunks
@@ -1569,6 +1628,9 @@ const loadChatSessions = async () => {
                             <div
                               key={chunk.id}
                               className="p-3.5 rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-white/70 dark:bg-[#0f172a]/60 space-y-2 hover:border-indigo-500/30 transition-all"
+                              style={{
+                                boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.04)",
+                              }}
                             >
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
@@ -1578,14 +1640,14 @@ const loadChatSessions = async () => {
                                   <span className="px-2 py-0.5 rounded-md text-[10px] font-mono text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-white/[0.05]">
                                     Page {chunk.page_number}
                                   </span>
-                                  <span className="text-[11px] text-slate-400">
+                                  <span className="text-[11px] font-mono text-slate-400">
                                     ~{chunk.token_count} tokens
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                                  <span className="text-[10px] font-mono font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                                     <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                                    Vector Indexed
+                                    1536-dim Vector Indexed
                                   </span>
                                   <button
                                     onClick={() => {
@@ -1607,7 +1669,7 @@ const loadChatSessions = async () => {
                           );
                         })
                     ) : (
-                      <div className="py-12 text-center text-xs text-slate-400">
+                      <div className="py-12 text-center text-xs text-slate-400 font-mono">
                         No chunks found for this document.
                       </div>
                     )}
@@ -1620,7 +1682,7 @@ const loadChatSessions = async () => {
                         setShowChunksModal(false);
                         setSelectedDocumentChunks(null);
                       }}
-                      className="px-4 py-1.5 rounded-xl text-xs font-semibold bg-slate-200 dark:bg-white/[0.08] text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-white/[0.12] transition-colors"
+                      className="px-4 py-1.5 rounded-xl text-xs font-semibold bg-slate-200 dark:bg-white/[0.08] text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-white/[0.12] transition-colors cursor-pointer"
                     >
                       Close
                     </button>
@@ -3689,188 +3751,204 @@ const loadChatSessions = async () => {
               </p>
             </div>
 
-            {/* 3 Metrics Cards with 3D Tactile Glare */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <TiltCard3D maxTilt={7} className="card-depth-3d p-5 space-y-1 rounded-2xl cursor-default">
-                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  Subscription Tier
-                </span>
-                <p className="text-2xl font-extrabold text-slate-900 dark:text-white">Starter Free</p>
-                <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">Active Tenant Plan</p>
-              </TiltCard3D>
+            {/* Linear-Style Asymmetric Bento Grid (Section 7 & 16) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+              {/* HERO BENTO TILE (7 cols): Real-Time Token Telemetry Console */}
+              <div className="lg:col-span-7 card-depth-3d p-5 sm:p-6 space-y-5 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between gap-3 border-b border-slate-200/80 dark:border-white/[0.08] pb-3 mb-4">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600/20 to-indigo-600/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 flex items-center justify-center">
+                        <Zap className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                          <span>Token Consumption Telemetry</span>
+                        </h3>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          Real-time metering across RAG queries, prompt contexts & LLM generations
+                        </p>
+                      </div>
+                    </div>
 
-              <TiltCard3D maxTilt={7} className="card-depth-3d p-5 space-y-1 rounded-2xl cursor-default">
-                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  Document Limit
-                </span>
-                <p className="text-2xl font-extrabold text-slate-900 dark:text-white">
-                  {Math.min(documents.length, usage?.documents_limit ?? 5)}{" "}
-                  <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
-                    / {usage?.documents_limit ?? 5} docs
-                  </span>
-                </p>
-                <p
-                  className={`text-[11px] font-semibold ${
-                    documents.length >= (usage?.documents_limit ?? 5)
-                      ? "text-amber-600 dark:text-amber-400"
-                      : "text-slate-600 dark:text-slate-400"
-                  }`}
-                >
-                  {documents.length >= (usage?.documents_limit ?? 5)
-                    ? "● Quota Cap Reached (Free Tier)"
-                    : "PDF Magic Byte Protected"}
-                </p>
-              </TiltCard3D>
-
-              <TiltCard3D maxTilt={7} className="card-depth-3d p-5 space-y-1 rounded-2xl cursor-default">
-                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  Token Allowance
-                </span>
-                <p className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono">
-                  {(usage?.tokens_used ?? 0).toLocaleString()}{" "}
-                  <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
-                    / {(usage?.token_allowance ?? 100000).toLocaleString()}
-                  </span>
-                </p>
-                <p
-                  className={`text-[11px] font-semibold ${
-                    usage?.is_quota_exceeded
-                      ? "text-rose-600 dark:text-rose-400"
-                      : (usage?.percentage_used ?? 0) >= 80
-                      ? "text-amber-600 dark:text-amber-400"
-                      : "text-slate-600 dark:text-slate-400"
-                  }`}
-                >
-                  {usage?.is_quota_exceeded
-                    ? "● Quota Cap Reached"
-                    : `${usage?.percentage_used ?? 0}% utilized this cycle`}
-                </p>
-              </TiltCard3D>
-            </div>
-
-            {/* Real-time Token Metering & Telemetry Console (Section 7.4) */}
-            <div className="card-depth-3d p-5 sm:p-6 space-y-5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-white/[0.08] pb-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-teal-500/10 dark:bg-teal-400/10 flex items-center justify-center text-teal-600 dark:text-teal-400 border border-teal-500/20">
-                    <Zap className="w-4 h-4" />
+                    <button
+                      type="button"
+                      onClick={loadUsage}
+                      disabled={isUsageLoading}
+                      className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.06] dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-white/[0.08] transition-all disabled:opacity-50"
+                      title="Sync live telemetry"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isUsageLoading ? "animate-spin text-indigo-500" : ""}`} />
+                      <span className="hidden sm:inline">Sync</span>
+                    </button>
                   </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                      <span>Token Usage Metering</span>
-                      
-                    </h3>
-                    <p className="text-xs text-slate-600 dark:text-slate-400">
-                      Real-time consumption telemetry across RAG inference & LLM prompts
+
+                  {/* Gauge Progress Bar & Numbers */}
+                  <div className="space-y-2 mb-4">
+                    <div className="flex justify-between items-baseline text-xs font-semibold">
+                      <span className="text-slate-600 dark:text-slate-400">Monthly Quota Consumption</span>
+                      <span className="font-mono text-slate-900 dark:text-white font-bold">
+                        {(usage?.tokens_used ?? 0).toLocaleString()} / {(usage?.token_allowance ?? 100000).toLocaleString()} tokens ({usage?.percentage_used ?? 0}%)
+                      </span>
+                    </div>
+
+                    <div className="h-2.5 w-full rounded-full bg-slate-200 dark:bg-black/60 border border-slate-300 dark:border-white/[0.08] overflow-hidden p-0.5 shadow-inner">
+                      <div
+                        className={`h-full rounded-full transition-all duration-700 ease-out ${
+                          (usage?.percentage_used ?? 0) >= 100
+                            ? "bg-gradient-to-r from-rose-500 to-red-600 shadow-[0_0_12px_rgba(244,63,94,0.6)]"
+                            : (usage?.percentage_used ?? 0) >= 80
+                            ? "bg-gradient-to-r from-amber-500 to-orange-500 shadow-[0_0_12px_rgba(245,158,11,0.5)]"
+                            : "bg-gradient-to-r from-teal-500 via-emerald-400 to-cyan-500 shadow-[0_0_12px_rgba(20,184,166,0.5)]"
+                        }`}
+                        style={{ width: `${Math.min(100, Math.max(usage?.tokens_used ? 2 : 0, usage?.percentage_used ?? 0))}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Detailed 4-Column Sub-Metrics Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2 border-t border-slate-200/60 dark:border-white/[0.06]">
+                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200/60 dark:border-white/[0.06] space-y-0.5">
+                    <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      <Cpu className="w-3 h-3 text-cyan-600 dark:text-cyan-400" />
+                      <span>Prompt</span>
+                    </div>
+                    <p className="text-base font-extrabold text-slate-900 dark:text-white font-mono">
+                      {(usage?.prompt_tokens ?? 0).toLocaleString()}
+                    </p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400">Context tokens</p>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200/60 dark:border-white/[0.06] space-y-0.5">
+                    <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      <Sparkles className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                      <span>Completion</span>
+                    </div>
+                    <p className="text-base font-extrabold text-slate-900 dark:text-white font-mono">
+                      {(usage?.completion_tokens ?? 0).toLocaleString()}
+                    </p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400">Generated text</p>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200/60 dark:border-white/[0.06] space-y-0.5">
+                    <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      <Layers className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                      <span>Queries</span>
+                    </div>
+                    <p className="text-base font-extrabold text-slate-900 dark:text-white font-mono">
+                      {(usage?.queries_count ?? 0).toLocaleString()}
+                    </p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400">RAG calls</p>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200/60 dark:border-white/[0.06] space-y-0.5">
+                    <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      <Gauge className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                      <span>Headroom</span>
+                    </div>
+                    <p className="text-base font-extrabold text-slate-900 dark:text-white font-mono">
+                      {Math.max(0, (usage?.token_allowance ?? 100000) - (usage?.tokens_used ?? 0)).toLocaleString()}
+                    </p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400">Remaining</p>
+                  </div>
+                </div>
+
+                {/* Quota Threshold Warning Banner */}
+                {(usage?.is_quota_exceeded || (usage?.percentage_used ?? 0) >= 80) && (
+                  <div
+                    className={`flex items-start gap-2.5 p-3 rounded-xl border text-xs mt-3 ${
+                      usage?.is_quota_exceeded
+                        ? "bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900/50 text-rose-900 dark:text-rose-200"
+                        : "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900/50 text-amber-900 dark:text-amber-200"
+                    }`}
+                  >
+                    <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
+                    <div>
+                      <span className="font-bold">
+                        {usage?.is_quota_exceeded
+                          ? "Quota Limit Reached:"
+                          : "Approaching Plan Boundary:"}
+                      </span>{" "}
+                      {usage?.is_quota_exceeded
+                        ? "Your organization has consumed all 100,000 free tokens. Further RAG queries will be rejected with HTTP 429 until the next billing cycle."
+                        : `You have consumed ${usage?.percentage_used}% of your monthly allowance.`}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* SECONDARY SIDE BENTO STACK (5 cols) */}
+              <div className="lg:col-span-5 flex flex-col gap-4">
+                {/* Bento Card 1: Subscription Tier & Document Quota */}
+                <div className="card-depth-3d p-5 space-y-3 rounded-2xl flex-1 flex flex-col justify-between">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        Subscription Tier
+                      </span>
+                      <h4 className="text-xl font-extrabold text-slate-900 dark:text-white">Starter Free</h4>
+                    </div>
+                    <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      Active Tenant
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5 pt-2 border-t border-slate-200/60 dark:border-white/[0.06]">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-600 dark:text-slate-400 font-medium">Document Vector Capacity</span>
+                      <span className="font-mono font-bold text-slate-900 dark:text-white">
+                        {Math.min(documents.length, usage?.documents_limit ?? 5)} / {usage?.documents_limit ?? 5} docs
+                      </span>
+                    </div>
+                    <div className="h-2 w-full rounded-full bg-slate-200 dark:bg-black/60 overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500"
+                        style={{ width: `${Math.min(100, (documents.length / (usage?.documents_limit ?? 5)) * 100)}%` }}
+                      />
+                    </div>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center justify-between pt-0.5">
+                      <span>PDF Magic Byte Protected</span>
+                      <span>{Math.round((documents.length / (usage?.documents_limit ?? 5)) * 100)}% filled</span>
                     </p>
                   </div>
                 </div>
 
-                <button
-                  onClick={loadUsage}
-                  disabled={isUsageLoading}
-                  className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.06] dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-white/[0.08] transition-all disabled:opacity-50"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isUsageLoading ? "animate-spin" : ""}`} />
-                  <span>Sync Telemetry</span>
-                </button>
-              </div>
-
-              {/* Gauge Progress Bar */}
-              <div className="space-y-2">
-                <div className="flex justify-between items-baseline text-xs font-semibold">
-                  <span className="text-slate-700 dark:text-slate-300">
-                    Quota Consumption Gauge
-                  </span>
-                  <span className="font-mono text-slate-900 dark:text-white font-bold">
-                    {(usage?.tokens_used ?? 0).toLocaleString()} / {(usage?.token_allowance ?? 100000).toLocaleString()} tokens ({usage?.percentage_used ?? 0}%)
-                  </span>
-                </div>
-
-                {/* Progress Bar Track */}
-                <div className="h-3.5 w-full rounded-full bg-slate-200 dark:bg-black/60 border border-slate-300 dark:border-white/[0.08] overflow-hidden p-0.5 shadow-inner">
-                  <div
-                    className={`h-full rounded-full transition-all duration-700 ease-out ${
-                      (usage?.percentage_used ?? 0) >= 100
-                        ? "bg-gradient-to-r from-rose-500 to-red-600 shadow-[0_0_12px_rgba(244,63,94,0.6)]"
-                        : (usage?.percentage_used ?? 0) >= 80
-                        ? "bg-gradient-to-r from-amber-500 to-orange-500 shadow-[0_0_12px_rgba(245,158,11,0.5)]"
-                        : "bg-gradient-to-r from-teal-500 via-emerald-400 to-cyan-500 shadow-[0_0_12px_rgba(20,184,166,0.5)]"
-                    }`}
-                    style={{ width: `${Math.min(100, Math.max(usage?.tokens_used ? 2 : 0, usage?.percentage_used ?? 0))}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Detailed Telemetry 4-Column Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="p-3 rounded-xl bg-slate-100 dark:bg-black/40 border border-slate-200 dark:border-white/[0.06] space-y-1">
-                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    <Cpu className="w-3 h-3 text-cyan-600 dark:text-cyan-400" />
-                    <span>Prompt Tokens</span>
+                {/* Bento Card 2: Security & Operational Health */}
+                <div className="card-depth-3d p-5 space-y-3 rounded-2xl flex-1 flex flex-col justify-between">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        Operational Posture
+                      </span>
+                      <h4 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                        <span>SOC 2 & ISO 27001</span>
+                        <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      </h4>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20">
+                      Multi-Tenant
+                    </span>
                   </div>
-                  <p className="text-lg font-extrabold text-slate-900 dark:text-white font-mono">
-                    {(usage?.prompt_tokens ?? 0).toLocaleString()}
-                  </p>
-                  <p className="text-[10px] text-slate-600 dark:text-slate-400">Context & RAG prompt</p>
-                </div>
 
-                <div className="p-3 rounded-xl bg-slate-100 dark:bg-black/40 border border-slate-200 dark:border-white/[0.06] space-y-1">
-                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    <Sparkles className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
-                    <span>Completion</span>
+                  <div className="grid grid-cols-2 gap-2 text-[11px] pt-2 border-t border-slate-200/60 dark:border-white/[0.06]">
+                    <div className="p-2 rounded-lg bg-slate-50 dark:bg-white/[0.02] border border-slate-200/60 dark:border-white/[0.04] space-y-0.5">
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400">Circuit Breaker</span>
+                      <p className="font-mono font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        CLOSED
+                      </p>
+                    </div>
+                    <div className="p-2 rounded-lg bg-slate-50 dark:bg-white/[0.02] border border-slate-200/60 dark:border-white/[0.04] space-y-0.5">
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400">Telemetry Bus</span>
+                      <p className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                        Prometheus
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-lg font-extrabold text-slate-900 dark:text-white font-mono">
-                    {(usage?.completion_tokens ?? 0).toLocaleString()}
-                  </p>
-                  <p className="text-[10px] text-slate-600 dark:text-slate-400">Generated answers</p>
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-100 dark:bg-black/40 border border-slate-200 dark:border-white/[0.06] space-y-1">
-                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    <Layers className="w-3 h-3 text-purple-600 dark:text-purple-400" />
-                    <span>RAG Queries</span>
-                  </div>
-                  <p className="text-lg font-extrabold text-slate-900 dark:text-white font-mono">
-                    {(usage?.queries_count ?? 0).toLocaleString()}
-                  </p>
-                  <p className="text-[10px] text-slate-600 dark:text-slate-400">Billable interactions</p>
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-100 dark:bg-black/40 border border-slate-200 dark:border-white/[0.06] space-y-1">
-                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    <Gauge className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                    <span>Remaining</span>
-                  </div>
-                  <p className="text-lg font-extrabold text-slate-900 dark:text-white font-mono">
-                    {Math.max(0, (usage?.token_allowance ?? 100000) - (usage?.tokens_used ?? 0)).toLocaleString()}
-                  </p>
-                  <p className="text-[10px] text-slate-600 dark:text-slate-400">Monthly headroom</p>
                 </div>
               </div>
-
-              {/* Quota Threshold Warning Banner */}
-              {(usage?.is_quota_exceeded || (usage?.percentage_used ?? 0) >= 80) && (
-                <div
-                  className={`flex items-start gap-3 p-3.5 rounded-xl border text-xs ${
-                    usage?.is_quota_exceeded
-                      ? "bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900/50 text-rose-900 dark:text-rose-200"
-                      : "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900/50 text-amber-900 dark:text-amber-200"
-                  }`}
-                >
-                  <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
-                  <div>
-                    <span className="font-bold">
-                      {usage?.is_quota_exceeded
-                        ? "Quota Limit Reached:"
-                        : "Approaching Plan Boundary:"}
-                    </span>{" "}
-                    {usage?.is_quota_exceeded
-                      ? "Your organization has consumed all 100,000 free tokens. Further RAG queries will be rejected with HTTP 429 until the next billing cycle or tier upgrade."
-                      : `You have consumed ${usage?.percentage_used}% of your monthly allowance. Consider upgrading to the Growth Tier for higher allowances.`}
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Workspace Identifiers Table */}

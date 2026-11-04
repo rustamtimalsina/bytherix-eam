@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 import { ThemeProvider } from "@/lib/theme-context";
+import { EnterpriseCanvasBackground } from "@/components/EnterpriseCanvasBackground";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -37,10 +38,13 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen selection:bg-blue-600 selection:text-white transition-colors duration-300`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen selection:bg-blue-600 selection:text-white transition-colors duration-300 relative`}
       >
         <ThemeProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <EnterpriseCanvasBackground />
+            {children}
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
