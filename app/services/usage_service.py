@@ -12,7 +12,7 @@ from app.schemas.usage import UsageSummary
 # Default plan limits (Section 7.3 & 7.4)
 TIER_LIMITS = {
     "starter": {"token_allowance": 100_000, "documents_limit": 5},
-    "growth": {"token_allowance": 1_000_000, "documents_limit": 50},
+    "growth": {"token_allowance": 1_500_000, "documents_limit": 50},
     "enterprise": {"token_allowance": 10_000_000, "documents_limit": 500},
 }
 

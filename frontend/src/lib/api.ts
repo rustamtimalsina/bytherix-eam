@@ -350,10 +350,15 @@ class ApiClient {
   }
 
   // Chat / RAG endpoints
-  async chatQuery(question: string, topK: number = 3, sessionId?: string): Promise<ChatResponse> {
+  async chatQuery(question: string, topK: number = 3, sessionId?: string, documentIds?: string[]): Promise<ChatResponse> {
     return this.request<ChatResponse>("/chat", {
       method: "POST",
-      body: JSON.stringify({ question, top_k: topK, session_id: sessionId }),
+      body: JSON.stringify({
+        question,
+        top_k: topK,
+        session_id: sessionId,
+        document_ids: documentIds && documentIds.length > 0 ? documentIds : undefined,
+      }),
     });
   }
 
@@ -383,7 +388,8 @@ class ApiClient {
       onEvaluation?: (evalData: RAGEvalData) => void;
       onError?: (error: string) => void;
     },
-    sessionId?: string
+    sessionId?: string,
+    documentIds?: string[]
   ): Promise<void> {
     const token = this.getToken();
     const headers: Record<string, string> = {
@@ -396,7 +402,12 @@ class ApiClient {
     const res = await fetch(`${API_BASE_URL}/chat/stream`, {
       method: "POST",
       headers,
-      body: JSON.stringify({ question, top_k: topK, session_id: sessionId }),
+      body: JSON.stringify({
+        question,
+        top_k: topK,
+        session_id: sessionId,
+        document_ids: documentIds && documentIds.length > 0 ? documentIds : undefined,
+      }),
     });
 
     if (!res.ok) {
@@ -649,6 +660,18 @@ class ApiClient {
       body: JSON.stringify({ text }),
     });
   }
+
+  // Subscription & Billing endpoints (Section 7.3)
+  async getBillingPlans(): Promise<BillingPlansResponse> {
+    return this.request<BillingPlansResponse>("/billing/plans");
+  }
+
+  async upgradePlan(planTier: string, paymentMethodId?: string): Promise<UpgradePlanResponse> {
+    return this.request<UpgradePlanResponse>("/billing/upgrade", {
+      method: "POST",
+      body: JSON.stringify({ plan_tier: planTier, payment_method_id: paymentMethodId }),
+    });
+  }
 }
 
 export interface DocumentChunkItem {
@@ -757,4 +780,34 @@ export interface RAGEvalData {
   claims_breakdown: ClaimAnalysisItem[];
   summary_verdict: string;
   compliance_badge: string;
+}
+
+
+export interface PlanDetail {
+  id: string;
+  name: string;
+  price_usd_monthly: number;
+  token_allowance: number;
+  documents_limit: number;
+  rate_limit_per_min: number;
+  features: string[];
+  is_current: boolean;
+}
+
+export interface BillingPlansResponse {
+  organization_id: string;
+  current_plan: string;
+  token_allowance: number;
+  tokens_used: number;
+  plans: PlanDetail[];
+}
+
+export interface UpgradePlanResponse {
+  success: boolean;
+  message: string;
+  organization_id: string;
+  previous_plan: string;
+  current_plan: string;
+  token_allowance: number;
+  documents_limit: number;
 }

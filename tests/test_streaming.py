@@ -62,3 +62,59 @@ def test_streaming_chat_endpoint(client: TestClient, sample_pdf_bytes: bytes):
         assert got_citations, "Stream must yield citations first"
         assert len(full_tokens) > 0, "Stream must yield text tokens"
         assert got_done, "Stream must yield final done event with token accounting"
+
+
+def test_streaming_chat_document_scope_filter(client: TestClient, sample_pdf_bytes: bytes):
+    """
+    Test Section 8.2 Document Scope Filtering.
+    Verifies that passing document_ids restricts vector retrieval strictly to authorized matching documents.
+    """
+    signup_payload = {
+        "email": "scope_user@bytherix.com",
+        "password": "Password123!",
+        "full_name": "Scope Tester",
+        "organization_name": "Scope Org"
+    }
+    resp = client.post("/api/v1/auth/signup", json=signup_payload)
+    assert resp.status_code == 201
+    token = resp.json()["access_token"]
+    org_id = resp.json()["organization_id"]
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "X-Organization-Id": org_id
+    }
+
+    # Upload document 1
+    files = {"file": ("doc_one.pdf", sample_pdf_bytes, "application/pdf")}
+    upload_resp = client.post("/api/v1/documents", files=files, headers=headers)
+    assert upload_resp.status_code == 201
+    doc_1_id = upload_resp.json()["id"]
+
+    # 1. Query with doc_1_id in scope -> returns citations for doc_1_id
+    query_payload = {
+        "question": "What is the quota limit for Starter Free plan?",
+        "document_ids": [doc_1_id],
+        "top_k": 3
+    }
+    with client.stream("POST", "/api/v1/chat/stream", json=query_payload, headers=headers) as stream_resp:
+        assert stream_resp.status_code == 200
+        for line in stream_resp.iter_lines():
+            if line.startswith("data: "):
+                data = json.loads(line[6:].strip())
+                if data.get("type") == "citations":
+                    for c in data.get("data", []):
+                        assert c["document_id"] == doc_1_id
+
+    # 2. Query with an unrelated fake doc_id -> returns zero citations
+    fake_payload = {
+        "question": "What is the quota limit for Starter Free plan?",
+        "document_ids": ["00000000-0000-0000-0000-000000000000"],
+        "top_k": 3
+    }
+    with client.stream("POST", "/api/v1/chat/stream", json=fake_payload, headers=headers) as stream_resp:
+        assert stream_resp.status_code == 200
+        for line in stream_resp.iter_lines():
+            if line.startswith("data: "):
+                data = json.loads(line[6:].strip())
+                if data.get("type") == "citations":
+                    assert len(data.get("data", [])) == 0

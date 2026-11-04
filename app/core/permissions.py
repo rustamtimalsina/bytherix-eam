@@ -64,6 +64,7 @@ ROLE_PERMISSIONS: dict[Role, Set[Permission]] = {
     
     Role.ADMIN: {
         Permission.ORG_READ, Permission.ORG_UPDATE,
+        Permission.BILLING_READ, Permission.BILLING_UPDATE,
         Permission.MEMBERS_READ, Permission.MEMBERS_INVITE, Permission.MEMBERS_UPDATE, Permission.MEMBERS_REMOVE,
         Permission.API_KEYS_READ, Permission.API_KEYS_CREATE, Permission.API_KEYS_REVOKE,
         Permission.DOCUMENTS_READ, Permission.DOCUMENTS_UPLOAD, Permission.DOCUMENTS_DELETE,
@@ -75,7 +76,7 @@ ROLE_PERMISSIONS: dict[Role, Set[Permission]] = {
     },
     
     Role.DEVELOPER: {
-        Permission.ORG_READ,
+        Permission.ORG_READ, Permission.BILLING_READ,
         Permission.API_KEYS_READ, Permission.API_KEYS_CREATE,
         Permission.DOCUMENTS_READ, Permission.DOCUMENTS_UPLOAD,
         Permission.RAG_QUERY,
@@ -85,7 +86,7 @@ ROLE_PERMISSIONS: dict[Role, Set[Permission]] = {
     },
     
     Role.AI_ML_ENGINEER: {
-        Permission.ORG_READ,
+        Permission.ORG_READ, Permission.BILLING_READ,
         Permission.DOCUMENTS_READ, Permission.DOCUMENTS_UPLOAD,
         Permission.RAG_QUERY,
         Permission.MODELS_READ, Permission.MODELS_REGISTER, Permission.MODELS_PROMOTE, Permission.MODELS_ROLLBACK,
@@ -93,7 +94,7 @@ ROLE_PERMISSIONS: dict[Role, Set[Permission]] = {
     },
     
     Role.ANALYST: {
-        Permission.ORG_READ,
+        Permission.ORG_READ, Permission.BILLING_READ,
         Permission.DOCUMENTS_READ,
         Permission.RAG_QUERY,
         Permission.AGENTS_EXECUTE,
@@ -108,6 +109,7 @@ ROLE_PERMISSIONS: dict[Role, Set[Permission]] = {
     
     Role.VIEWER: {
         Permission.ORG_READ,
+        Permission.BILLING_READ,
         Permission.DOCUMENTS_READ,
     },
 }

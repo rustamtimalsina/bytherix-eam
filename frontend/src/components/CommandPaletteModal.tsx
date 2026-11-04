@@ -15,6 +15,7 @@ import {
   SunMoon,
   CornerDownLeft,
   X,
+  Zap,
 } from "lucide-react";
 import { ActiveTab } from "./FloatingRocketDock";
 
@@ -36,6 +37,7 @@ interface CommandPaletteModalProps {
   onSeedDemo?: () => void;
   onToggleTheme?: () => void;
   onOpenDLPShield?: () => void;
+  onOpenUpgradeModal?: () => void;
   documents?: Array<{ id: string; title?: string; filename: string }>;
   onInspectDocument?: (docId: string) => void;
 }
@@ -48,6 +50,7 @@ export function CommandPaletteModal({
   onSeedDemo,
   onToggleTheme,
   onOpenDLPShield,
+  onOpenUpgradeModal,
   documents = [],
   onInspectDocument,
 }: CommandPaletteModalProps) {
@@ -172,6 +175,22 @@ export function CommandPaletteModal({
     },
 
     // 2. Quick Actions
+    ...(onOpenUpgradeModal
+      ? [
+          {
+            id: "act-upgrade-plan",
+            title: "Upgrade Subscription Plan",
+            subtitle: "Elevate monthly tokens, vector capacity, and MLOps limits (§ 7.3)",
+            category: "Quick Actions" as const,
+            shortcut: "U P",
+            icon: <Zap className="w-4 h-4 text-amber-500" />,
+            action: () => {
+              onOpenUpgradeModal();
+              onClose();
+            },
+          },
+        ]
+      : []),
     ...(onSeedDemo
       ? [
           {

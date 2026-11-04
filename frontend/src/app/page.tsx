@@ -74,6 +74,8 @@ import { DeveloperApiPortal } from "@/components/DeveloperApiPortal";
 import { CommandPaletteModal } from "@/components/CommandPaletteModal";
 import { TelemetrySparkline } from "@/components/TelemetrySparkline";
 import { CitationInspectorDrawer } from "@/components/CitationInspectorDrawer";
+import { DocumentScopeSelector } from "@/components/DocumentScopeSelector";
+import { SubscriptionUpgradeModal } from "@/components/SubscriptionUpgradeModal";
 import { RAGEvalData } from "@/lib/api";
 
 function renderFormattedAnswer(text: string) {
@@ -247,6 +249,25 @@ export default function DashboardPage() {
   const [copiedInvite, setCopiedInvite] = useState(false);
 
   // Documents state
+  // Document Scope Filtering State (Section 8.2)
+  const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+
+  const handleToggleDocScope = (id: string) => {
+    setSelectedDocIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAllDocScope = () => {
+    const readyIds = documents.filter((d) => d.status.toLowerCase() === "ready").map((d) => d.id);
+    setSelectedDocIds(readyIds);
+  };
+
+  const handleClearDocScope = () => {
+    setSelectedDocIds([]);
+  };
+
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -438,6 +459,14 @@ export default function DashboardPage() {
             message: data.message
           });
           loadAgentData();
+        } else if (data.type === "plan_upgraded") {
+          setLiveAlert({
+            id: String(Date.now()),
+            type: "plan_upgraded",
+            title: data.title || "Subscription Upgraded",
+            message: data.message
+          });
+          loadUsage();
         } else if (data.type === "document_indexed" || data.type === "document_failed") {
           setLiveAlert({
             id: String(Date.now()),
@@ -1035,7 +1064,7 @@ const loadChatSessions = async () => {
           });
           setIsQuerying(false);
         }
-      }, currentSessionId || undefined);
+      }, currentSessionId || undefined, selectedDocIds.length > 0 ? selectedDocIds : undefined);
     } catch (err: unknown) {
       const errMsg = (err as Error).message || "Unknown error";
       setChatMessages((prev) => {
@@ -1859,26 +1888,29 @@ const loadChatSessions = async () => {
 
             {/* 3. Main Chat Viewport */}
             <div className="flex-1 flex flex-col min-w-0 h-full bg-white/60 dark:bg-[#090d18]/60">
-              {/* Chat Header Bar */}
-              <div className="p-3 sm:p-4 border-b border-slate-200/80 dark:border-white/[0.08] flex items-center justify-between bg-slate-50/80 dark:bg-[#090d18]/80 backdrop-blur-md shrink-0">
-                <div className="flex items-center gap-2.5 min-w-0">
+              {/* Chat Header Bar - Mobile First & Anti-Clash Layout */}
+              <div className="p-2.5 sm:p-3.5 border-b border-slate-200/80 dark:border-white/[0.08] flex items-center justify-between gap-2 bg-slate-50/80 dark:bg-[#090d18]/80 backdrop-blur-md shrink-0 relative z-30">
+                {/* Left: Thread Title & Mobile Drawer Toggle - Guaranteed Never Crushed */}
+                <div className="flex items-center gap-2 min-w-0 flex-1">
                   {/* Mobile Thread Drawer Toggle */}
                   <button
+                    type="button"
                     onClick={() => setIsMobileDrawerOpen(true)}
-                    className="md:hidden flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-200/60 dark:bg-white/[0.06] text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/[0.1] transition-colors shrink-0"
+                    className="md:hidden flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-200/70 dark:bg-white/[0.06] text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/[0.1] transition-colors shrink-0"
+                    title="Open conversations drawer"
                   >
-                    <HistoryIcon className="w-3.5 h-3.5 text-indigo-500" />
-                    <span>Threads ({chatSessions.length})</span>
+                    <HistoryIcon className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                    <span className="font-mono text-[10px]">{chatSessions.length}</span>
                   </button>
 
-                  <div className="hidden sm:flex items-center justify-center w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 shrink-0">
-                    <Sparkles className="w-4 h-4" />
+                  <div className="hidden sm:flex items-center justify-center w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 shrink-0">
+                    <Sparkles className="w-3.5 h-3.5" />
                   </div>
-                  <div className="truncate min-w-0">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white truncate flex items-center gap-2">
-                      <span>Grounded Knowledge QA</span>
+                  <div className="min-w-0 truncate">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white truncate">
+                      Grounded Knowledge QA
                     </h3>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                    <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 truncate">
                       {currentSessionId
                         ? chatSessions.find((s) => s.id === currentSessionId)?.title || "Active Thread"
                         : "New Thread"}
@@ -1886,27 +1918,37 @@ const loadChatSessions = async () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  {/* Model spec pill */}
-                  <span className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-mono text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-white/[0.04] border border-slate-200/80 dark:border-white/[0.06]">
-                    <Bot className="w-3 h-3 text-indigo-500" />
-                    <span>GPT-4o-mini &bull; 1536-dim</span>
-                  </span>
+                {/* Right: Action Pills - Fully Responsive & Non-Overlapping */}
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                  {/* Document Scope Filter Dropdown (Section 8.2) */}
+                  <DocumentScopeSelector
+                    documents={documents}
+                    selectedDocIds={selectedDocIds}
+                    onToggleDoc={handleToggleDocScope}
+                    onSelectAll={handleSelectAllDocScope}
+                    onClearAll={handleClearDocScope}
+                  />
 
                   {/* Real-time DLP Shield Status Pill */}
                   <button
                     type="button"
                     onClick={() => setIsDlpModalOpen(true)}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] sm:text-[11px] font-mono font-semibold border transition-all duration-200 bg-emerald-50 hover:bg-emerald-100/80 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 dark:text-emerald-300 dark:border-emerald-500/30 shadow-xs active:scale-95 cursor-pointer"
+                    className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg text-[10px] sm:text-[11px] font-mono font-semibold border transition-all duration-200 bg-emerald-50 hover:bg-emerald-100/80 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 dark:text-emerald-300 dark:border-emerald-500/30 shadow-xs active:scale-95 cursor-pointer shrink-0"
                     title="Bytherix DLP Shield: Active zero-leak enforcement. Click to inspect."
                   >
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    <span className="text-slate-600 dark:text-slate-400 hidden min-[400px]:inline">DLP Shield:</span>
-                    <span className="font-bold text-emerald-700 dark:text-emerald-400">Enforcing</span>
+                    <span className="font-bold text-emerald-700 dark:text-emerald-400">DLP Shield</span>
+                    <span className="hidden md:inline font-normal text-emerald-600 dark:text-emerald-400/80">&bull; Enforcing</span>
                   </button>
 
-                  {/* Hybrid Retrieval Badge */}
-                  <span className="hidden sm:inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] sm:text-[11px] font-mono font-medium border border-slate-200 dark:border-white/[0.08] text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-white/[0.04]">
+                  {/* Model spec pill (Visible only on Large screens >= 1200px) */}
+                  <span className="hidden xl:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-mono text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-white/[0.04] border border-slate-200/80 dark:border-white/[0.06] shrink-0">
+                    <Bot className="w-3 h-3 text-indigo-500" />
+                    <span>GPT-4o-mini &bull; 1536-dim</span>
+                  </span>
+
+                  {/* Hybrid Retrieval Badge (Visible only on Extra Large screens) */}
+                  <span className="hidden 2xl:inline-flex items-center px-2 py-1 rounded-lg text-[10px] font-mono font-medium border border-slate-200 dark:border-white/[0.08] text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-white/[0.04] shrink-0">
                     Hybrid Retrieval
                   </span>
 
@@ -2094,6 +2136,26 @@ const loadChatSessions = async () => {
                 onSubmit={handleSendChat}
                 className="p-3 sm:p-4 border-t border-slate-200/80 dark:border-white/[0.08] bg-slate-50/90 dark:bg-[#070b14]/90 backdrop-blur-md shrink-0"
               >
+                {/* Active Document Scope Filter Pill */}
+                {selectedDocIds.length > 0 && (
+                  <div className="mb-2.5 px-3 py-1.5 rounded-xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-500/30 text-xs flex items-center justify-between animate-in fade-in">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Filter className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                      <span className="truncate text-slate-700 dark:text-slate-300">
+                        Targeted RAG Scope: <strong className="font-semibold text-indigo-700 dark:text-indigo-300">{selectedDocIds.length}</strong> of {documents.filter(d => d.status.toLowerCase() === 'ready').length} document(s) active
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleClearDocScope}
+                      className="text-[11px] font-mono text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-200 flex items-center gap-1 cursor-pointer"
+                    >
+                      <X className="w-3 h-3" />
+                      <span>Reset to All</span>
+                    </button>
+                  </div>
+                )}
+
                 {/* Real-time DLP Redaction Alert Banner */}
                 {activeDlpEvent && activeDlpEvent.isMasked && (
                   <div className="mb-2.5 px-3.5 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 dark:bg-amber-500/15 dark:border-amber-500/30 dark:text-amber-200 text-xs flex items-center justify-between animate-in fade-in shadow-xs">
@@ -3981,12 +4043,25 @@ const loadChatSessions = async () => {
                       <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                         Subscription Tier
                       </span>
-                      <h4 className="text-xl font-extrabold text-slate-900 dark:text-white">Starter Free</h4>
+                      <h4 className="text-xl font-extrabold text-slate-900 dark:text-white capitalize">
+                        {usage?.plan_tier ? `${usage.plan_tier} Plan` : "Starter Free"}
+                      </h4>
                     </div>
-                    <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      Active Tenant
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        Active Tenant
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setIsUpgradeModalOpen(true)}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-sm shadow-indigo-500/20 active:scale-95 transition-all cursor-pointer"
+                        title="Upgrade subscription tier (Section 7.3)"
+                      >
+                        <Zap className="w-3.5 h-3.5" />
+                        <span>Upgrade</span>
+                      </button>
+                    </div>
                   </div>
 
                   <div className="space-y-1.5 pt-2 border-t border-slate-200/60 dark:border-white/[0.06]">
@@ -4312,6 +4387,7 @@ const loadChatSessions = async () => {
           toggleBtn?.click();
         }}
         onOpenDLPShield={() => setIsDlpModalOpen(true)}
+        onOpenUpgradeModal={() => setIsUpgradeModalOpen(true)}
         documents={documents}
         onInspectDocument={(id) => handleInspectChunks(id)}
       />
@@ -4332,6 +4408,18 @@ const loadChatSessions = async () => {
         canAccessApiKeys={canCreateApiKeys}
         canAccessAudit={canViewAudit}
         canAccessModels={canAccessModels}
+      />
+
+      {/* Interactive Subscription Upgrade Modal (Section 7.3) */}
+      <SubscriptionUpgradeModal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+        currentPlanTier={usage?.plan_tier || "starter"}
+        onPlanUpgraded={(newTier, newAllowance) => {
+          setUsage((prev) => prev ? { ...prev, plan_tier: newTier, token_allowance: newAllowance } : null);
+          loadUsage();
+        }}
+        showToast={showToast}
       />
 
       {/* Enterprise DLP Shield & PII Inspector Modal */}
