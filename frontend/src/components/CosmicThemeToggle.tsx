@@ -7,9 +7,12 @@ export function CosmicThemeToggle() {
   const { isDark, toggleTheme } = useTheme();
   const [isAnimating, setIsAnimating] = useState(false);
 
-  const handleToggle = () => {
+  const handleToggle = (e: React.MouseEvent<HTMLButtonElement>) => {
     setIsAnimating(true);
-    toggleTheme();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    toggleTheme({ x, y });
     setTimeout(() => setIsAnimating(false), 700);
   };
 

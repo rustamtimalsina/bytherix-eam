@@ -76,6 +76,8 @@ import { TelemetrySparkline } from "@/components/TelemetrySparkline";
 import { CitationInspectorDrawer } from "@/components/CitationInspectorDrawer";
 import { DocumentScopeSelector } from "@/components/DocumentScopeSelector";
 import { SubscriptionUpgradeModal } from "@/components/SubscriptionUpgradeModal";
+import { FlowButton } from "@/components/FlowButton";
+import { EnterpriseFooter } from "@/components/EnterpriseFooter";
 import { RAGEvalData } from "@/lib/api";
 
 function renderFormattedAnswer(text: string) {
@@ -1758,13 +1760,14 @@ const loadChatSessions = async () => {
             {/* 1. Desktop Left Sidebar: Past Conversations */}
             <div className="hidden md:flex flex-col w-64 border-r border-slate-200/80 dark:border-white/[0.08] bg-slate-50/80 dark:bg-[#070b14] shrink-0">
               <div className="p-3.5 border-b border-slate-200/80 dark:border-white/[0.08] flex items-center justify-between gap-2">
-                <button
+                <FlowButton
                   onClick={handleNewThread}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-sm shadow-indigo-500/20 transition-all active:scale-95 cursor-pointer"
+                  icon="plus"
+                  className="flex-1 shadow-sm"
+                  title="Start fresh thread"
                 >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>New Thread</span>
-                </button>
+                  New Thread
+                </FlowButton>
               </div>
 
               <div className="flex-1 overflow-y-auto p-2 space-y-1">
@@ -1834,16 +1837,17 @@ const loadChatSessions = async () => {
                   </div>
 
                   <div className="p-2 border-b border-slate-200 dark:border-white/10">
-                    <button
+                    <FlowButton
                       onClick={() => {
                         handleNewThread();
                         setIsMobileDrawerOpen(false);
                       }}
-                      className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-sm transition-all"
+                      icon="plus"
+                      className="w-full shadow-sm"
+                      title="Start fresh thread"
                     >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>New Thread</span>
-                    </button>
+                      New Thread
+                    </FlowButton>
                   </div>
 
                   <div className="flex-1 overflow-y-auto p-2 space-y-1">
@@ -4052,15 +4056,15 @@ const loadChatSessions = async () => {
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                         Active Tenant
                       </span>
-                      <button
-                        type="button"
+                      <FlowButton
                         onClick={() => setIsUpgradeModalOpen(true)}
-                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-sm shadow-indigo-500/20 active:scale-95 transition-all cursor-pointer"
+                        icon="zap"
+                        variant="amber"
+                        size="sm"
                         title="Upgrade subscription tier (Section 7.3)"
                       >
-                        <Zap className="w-3.5 h-3.5" />
-                        <span>Upgrade</span>
-                      </button>
+                        Upgrade
+                      </FlowButton>
                     </div>
                   </div>
 
@@ -4372,6 +4376,14 @@ const loadChatSessions = async () => {
             )}
           </div>
         )}
+
+        {/* Enterprise In-Page Micro-Footer on Management Views (Section 9.2 & SOC 2) */}
+        {activeTab !== "chat" && (
+          <EnterpriseFooter
+            onOpenDLPShield={() => setIsDlpModalOpen(true)}
+            onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+          />
+        )}
       </main>
 
       {/* Floating Rocket Dock Anchored at the Bottom */}
@@ -4390,6 +4402,11 @@ const loadChatSessions = async () => {
         onOpenUpgradeModal={() => setIsUpgradeModalOpen(true)}
         documents={documents}
         onInspectDocument={(id) => handleInspectChunks(id)}
+        canAccessModels={canAccessModels}
+        canAccessApiKeys={canCreateApiKeys}
+        canAccessAudit={canViewAudit}
+        canUpgradePlan={isOwnerOrAdmin}
+        canSeedDemo={canUploadDocs}
       />
 
       {/* Perplexity-Style Citation Inspector Drawer */}

@@ -40,6 +40,11 @@ interface CommandPaletteModalProps {
   onOpenUpgradeModal?: () => void;
   documents?: Array<{ id: string; title?: string; filename: string }>;
   onInspectDocument?: (docId: string) => void;
+  canAccessModels?: boolean;
+  canAccessApiKeys?: boolean;
+  canAccessAudit?: boolean;
+  canUpgradePlan?: boolean;
+  canSeedDemo?: boolean;
 }
 
 export function CommandPaletteModal({
@@ -53,6 +58,11 @@ export function CommandPaletteModal({
   onOpenUpgradeModal,
   documents = [],
   onInspectDocument,
+  canAccessModels = true,
+  canAccessApiKeys = true,
+  canAccessAudit = true,
+  canUpgradePlan = true,
+  canSeedDemo = true,
 }: CommandPaletteModalProps) {
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -137,45 +147,57 @@ export function CommandPaletteModal({
         onClose();
       },
     },
-    {
-      id: "nav-models",
-      title: "MLOps Model Registry",
-      subtitle: "Production version deployments and rollbacks",
-      category: "Navigation",
-      shortcut: "G M",
-      icon: <Cpu className="w-4 h-4 text-cyan-500" />,
-      action: () => {
-        onSelectTab("models");
-        onClose();
-      },
-    },
-    {
-      id: "nav-apikeys",
-      title: "API Keys & Developer Portal",
-      subtitle: "Machine credentials and SDK quickstart",
-      category: "Navigation",
-      shortcut: "G K",
-      icon: <Key className="w-4 h-4 text-amber-500" />,
-      action: () => {
-        onSelectTab("apikeys");
-        onClose();
-      },
-    },
-    {
-      id: "nav-audit",
-      title: "Enterprise Audit & Observability",
-      subtitle: "SOC 2 immutable log and Prometheus bus",
-      category: "Navigation",
-      shortcut: "G L",
-      icon: <ShieldCheck className="w-4 h-4 text-rose-500" />,
-      action: () => {
-        onSelectTab("audit");
-        onClose();
-      },
-    },
+    ...(canAccessModels
+      ? [
+          {
+            id: "nav-models",
+            title: "MLOps Model Registry",
+            subtitle: "Production version deployments and rollbacks",
+            category: "Navigation" as const,
+            shortcut: "G M",
+            icon: <Cpu className="w-4 h-4 text-cyan-500" />,
+            action: () => {
+              onSelectTab("models");
+              onClose();
+            },
+          },
+        ]
+      : []),
+    ...(canAccessApiKeys
+      ? [
+          {
+            id: "nav-apikeys",
+            title: "API Keys & Developer Portal",
+            subtitle: "Machine credentials and SDK quickstart",
+            category: "Navigation" as const,
+            shortcut: "G K",
+            icon: <Key className="w-4 h-4 text-amber-500" />,
+            action: () => {
+              onSelectTab("apikeys");
+              onClose();
+            },
+          },
+        ]
+      : []),
+    ...(canAccessAudit
+      ? [
+          {
+            id: "nav-audit",
+            title: "Enterprise Audit & Observability",
+            subtitle: "SOC 2 immutable log and Prometheus bus",
+            category: "Navigation" as const,
+            shortcut: "G L",
+            icon: <ShieldCheck className="w-4 h-4 text-rose-500" />,
+            action: () => {
+              onSelectTab("audit");
+              onClose();
+            },
+          },
+        ]
+      : []),
 
-    // 2. Quick Actions
-    ...(onOpenUpgradeModal
+    // 2. Quick Actions (RBAC Filtered)
+    ...(onOpenUpgradeModal && canUpgradePlan
       ? [
           {
             id: "act-upgrade-plan",
@@ -191,7 +213,7 @@ export function CommandPaletteModal({
           },
         ]
       : []),
-    ...(onSeedDemo
+    ...(onSeedDemo && canSeedDemo
       ? [
           {
             id: "act-seed-demo",
