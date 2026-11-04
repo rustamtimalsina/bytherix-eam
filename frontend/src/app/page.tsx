@@ -1693,15 +1693,20 @@ const loadChatSessions = async () => {
           </div>
         )}
 
-        {/* TAB 2: RAG AI CHATROOM */}
+        {/* TAB 2: RAG AI CHATROOM (Precision Perplexity-Tier Redesign) */}
         {activeTab === "chat" && (
-          <div className="card-depth-3d relative flex flex-col md:flex-row h-[560px] sm:h-[620px] lg:h-[650px] mb-8 overflow-hidden">
-            {/* 1. Desktop Left Sidebar: Past Conversations (Always visible & docked on desktop) */}
-            <div className="hidden md:flex flex-col w-64 border-r border-slate-200 dark:border-white/[0.08] bg-slate-50/60 dark:bg-black/25 shrink-0">
-              <div className="p-3.5 border-b border-slate-200 dark:border-white/[0.08] flex items-center justify-between gap-2">
+          <div
+            className="card-depth-3d relative flex flex-col md:flex-row h-[580px] sm:h-[640px] lg:h-[680px] mb-8 rounded-2xl overflow-hidden border border-slate-200/80 dark:border-white/[0.08]"
+            style={{
+              boxShadow: "0 20px 40px -15px rgba(0, 0, 0, 0.1), inset 0 1px 0 0 rgba(255, 255, 255, 0.08)",
+            }}
+          >
+            {/* 1. Desktop Left Sidebar: Past Conversations */}
+            <div className="hidden md:flex flex-col w-64 border-r border-slate-200/80 dark:border-white/[0.08] bg-slate-50/80 dark:bg-[#070b14] shrink-0">
+              <div className="p-3.5 border-b border-slate-200/80 dark:border-white/[0.08] flex items-center justify-between gap-2">
                 <button
                   onClick={handleNewThread}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-sm transition-all active:scale-95"
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-sm shadow-indigo-500/20 transition-all active:scale-95 cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>New Thread</span>
@@ -1709,13 +1714,15 @@ const loadChatSessions = async () => {
               </div>
 
               <div className="flex-1 overflow-y-auto p-2 space-y-1">
-                <div className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center justify-between">
-                  <span>Past Threads</span>
-                  <span className="font-mono">{chatSessions.length}</span>
+                <div className="px-2.5 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center justify-between">
+                  <span>Conversation History</span>
+                  <span className="px-1.5 py-0.5 rounded bg-slate-200/60 dark:bg-white/[0.06] text-slate-600 dark:text-slate-400">
+                    {chatSessions.length}
+                  </span>
                 </div>
 
                 {isSessionsLoading ? (
-                  <div className="p-4 text-center text-xs text-slate-400">Loading threads...</div>
+                  <div className="p-4 text-center text-xs text-slate-400 font-mono">Loading threads...</div>
                 ) : chatSessions.length === 0 ? (
                   <div className="p-4 text-center text-xs text-slate-400 italic">No saved threads yet</div>
                 ) : (
@@ -1725,22 +1732,22 @@ const loadChatSessions = async () => {
                       <div
                         key={session.id}
                         onClick={() => handleSelectSession(session.id)}
-                        className={`group relative flex items-center justify-between p-2.5 rounded-xl cursor-pointer text-xs select-none transition-colors duration-150 border outline-none ${
+                        className={`group relative flex items-center justify-between p-2.5 rounded-xl cursor-pointer text-xs select-none transition-all duration-150 border-l-2 outline-none ${
                           isSelected
-                            ? "bg-indigo-50 dark:bg-white/[0.08] text-indigo-700 dark:text-indigo-300 font-semibold border-indigo-200 dark:border-indigo-500/30 shadow-sm"
-                            : "border-transparent text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.04]"
+                            ? "bg-indigo-50/80 dark:bg-white/[0.06] text-indigo-700 dark:text-indigo-300 font-semibold border-l-indigo-600 dark:border-l-indigo-400 border-y-transparent border-r-transparent shadow-xs"
+                            : "border-l-transparent border-y-transparent border-r-transparent text-slate-700 dark:text-slate-300 hover:bg-slate-100/70 dark:hover:bg-white/[0.03]"
                         }`}
                       >
-                        <div className="truncate pr-4 flex-1">
+                        <div className="truncate pr-3 flex-1">
                           <p className="truncate font-medium">{session.title}</p>
-                          <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                          <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500">
                             {session.message_count} messages
                           </span>
                         </div>
                         <button
                           onClick={(e) => handleDeleteSession(e, session.id)}
                           title="Delete thread"
-                          className="opacity-0 group-hover:opacity-100 p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-all"
+                          className="opacity-0 group-hover:opacity-100 p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-all cursor-pointer"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -1755,10 +1762,10 @@ const loadChatSessions = async () => {
             {isMobileDrawerOpen && (
               <div className="md:hidden absolute inset-0 z-30 flex">
                 <div
-                  className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+                  className="fixed inset-0 bg-black/60 backdrop-blur-sm"
                   onClick={() => setIsMobileDrawerOpen(false)}
                 />
-                <div className="relative w-72 max-w-[80%] h-full bg-white dark:bg-[#0d1322] border-r border-slate-200 dark:border-white/10 flex flex-col shadow-2xl z-40">
+                <div className="relative w-72 max-w-[80%] h-full bg-white dark:bg-[#070b14] border-r border-slate-200 dark:border-white/10 flex flex-col shadow-2xl z-40">
                   <div className="p-3.5 border-b border-slate-200 dark:border-white/10 flex items-center justify-between">
                     <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900 dark:text-white">
                       <HistoryIcon className="w-4 h-4 text-indigo-500" />
@@ -1806,7 +1813,7 @@ const loadChatSessions = async () => {
                           >
                             <div className="truncate pr-2 flex-1">
                               <p className="truncate font-medium">{session.title}</p>
-                              <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                              <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500">
                                 {session.message_count} messages
                               </span>
                             </div>
@@ -1826,10 +1833,10 @@ const loadChatSessions = async () => {
             )}
 
             {/* 3. Main Chat Viewport */}
-            <div className="flex-1 flex flex-col min-w-0 h-full">
+            <div className="flex-1 flex flex-col min-w-0 h-full bg-white/60 dark:bg-[#090d18]/60">
               {/* Chat Header Bar */}
-              <div className="p-3 sm:p-4 border-b border-slate-200 dark:border-white/[0.08] flex items-center justify-between bg-slate-50/80 dark:bg-white/[0.02] shrink-0">
-                <div className="flex items-center gap-2 min-w-0">
+              <div className="p-3 sm:p-4 border-b border-slate-200/80 dark:border-white/[0.08] flex items-center justify-between bg-slate-50/80 dark:bg-[#090d18]/80 backdrop-blur-md shrink-0">
+                <div className="flex items-center gap-2.5 min-w-0">
                   {/* Mobile Thread Drawer Toggle */}
                   <button
                     onClick={() => setIsMobileDrawerOpen(true)}
@@ -1839,14 +1846,14 @@ const loadChatSessions = async () => {
                     <span>Threads ({chatSessions.length})</span>
                   </button>
 
-                  <div className="hidden sm:flex items-center justify-center w-7 h-7 rounded-lg bg-indigo-500/10 text-indigo-500 shrink-0">
+                  <div className="hidden sm:flex items-center justify-center w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 shrink-0">
                     <Sparkles className="w-4 h-4" />
                   </div>
                   <div className="truncate min-w-0">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white truncate">
-                      Grounded Knowledge QA
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white truncate flex items-center gap-2">
+                      <span>Grounded Knowledge QA</span>
                     </h3>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
                       {currentSessionId
                         ? chatSessions.find((s) => s.id === currentSessionId)?.title || "Active Thread"
                         : "New Thread"}
@@ -1855,11 +1862,17 @@ const loadChatSessions = async () => {
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
+                  {/* Model spec pill */}
+                  <span className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-mono text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-white/[0.04] border border-slate-200/80 dark:border-white/[0.06]">
+                    <Bot className="w-3 h-3 text-indigo-500" />
+                    <span>GPT-4o-mini &bull; 1536-dim</span>
+                  </span>
+
                   {/* Real-time DLP Shield Status Pill */}
                   <button
                     type="button"
                     onClick={() => setIsDlpModalOpen(true)}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] sm:text-[11px] font-mono font-semibold border transition-all duration-200 bg-emerald-50 hover:bg-emerald-100/80 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 dark:text-emerald-300 dark:border-emerald-500/30 shadow-xs active:scale-95"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] sm:text-[11px] font-mono font-semibold border transition-all duration-200 bg-emerald-50 hover:bg-emerald-100/80 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 dark:text-emerald-300 dark:border-emerald-500/30 shadow-xs active:scale-95 cursor-pointer"
                     title="Bytherix DLP Shield: Active zero-leak enforcement. Click to inspect."
                   >
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
@@ -1868,7 +1881,7 @@ const loadChatSessions = async () => {
                   </button>
 
                   {/* Hybrid Retrieval Badge */}
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] sm:text-[11px] font-mono font-medium border border-slate-200 dark:border-white/[0.08] text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-white/[0.04]">
+                  <span className="hidden sm:inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] sm:text-[11px] font-mono font-medium border border-slate-200 dark:border-white/[0.08] text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-white/[0.04]">
                     Hybrid Retrieval
                   </span>
 
@@ -1887,7 +1900,7 @@ const loadChatSessions = async () => {
               <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
                 {chatMessages.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-3 text-slate-500">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm">
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm">
                       <Sparkles className="w-6 h-6" />
                     </div>
                     <h4 className="text-sm font-bold text-slate-900 dark:text-white">Ask your knowledge library</h4>
@@ -1895,17 +1908,20 @@ const loadChatSessions = async () => {
                       Answers are strictly grounded in your ingested documents with verbatim source citations.
                     </p>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-lg pt-2 text-left">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-w-lg pt-3 text-left">
                       <button
                         type="button"
                         onClick={() => handleSendChat(undefined, "What are the core technical requirements for Bytherix EAM?")}
-                        className="p-3 rounded-xl bg-slate-100/80 dark:bg-white/[0.04] hover:bg-indigo-50 dark:hover:bg-indigo-950/30 border border-slate-200 dark:border-white/10 hover:border-indigo-500/40 text-left transition-all group"
+                        className="p-3.5 rounded-xl bg-white/80 dark:bg-white/[0.03] hover:bg-indigo-50/80 dark:hover:bg-indigo-950/30 border border-slate-200/80 dark:border-white/[0.08] hover:border-indigo-500/40 text-left transition-all group cursor-pointer"
+                        style={{
+                          boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.05)",
+                        }}
                       >
                         <p className="text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 flex items-center justify-between">
                           <span>Technical Architecture</span>
-                          <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-indigo-500" />
                         </p>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
                           &quot;What are the core technical requirements for Bytherix EAM?&quot;
                         </p>
                       </button>
@@ -1913,13 +1929,16 @@ const loadChatSessions = async () => {
                       <button
                         type="button"
                         onClick={() => handleSendChat(undefined, "What are the subscription plans and quotas?")}
-                        className="p-3 rounded-xl bg-slate-100/80 dark:bg-white/[0.04] hover:bg-indigo-50 dark:hover:bg-indigo-950/30 border border-slate-200 dark:border-white/10 hover:border-indigo-500/40 text-left transition-all group"
+                        className="p-3.5 rounded-xl bg-white/80 dark:bg-white/[0.03] hover:bg-indigo-50/80 dark:hover:bg-indigo-950/30 border border-slate-200/80 dark:border-white/[0.08] hover:border-indigo-500/40 text-left transition-all group cursor-pointer"
+                        style={{
+                          boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.05)",
+                        }}
                       >
                         <p className="text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 flex items-center justify-between">
                           <span>Plans & Quotas</span>
-                          <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-indigo-500" />
                         </p>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
                           &quot;What are the subscription plans and quotas?&quot;
                         </p>
                       </button>
@@ -1927,13 +1946,16 @@ const loadChatSessions = async () => {
                       <button
                         type="button"
                         onClick={() => handleSendChat(undefined, "How does the MLOps model promotion and rollback workflow operate?")}
-                        className="p-3 rounded-xl bg-slate-100/80 dark:bg-white/[0.04] hover:bg-indigo-50 dark:hover:bg-indigo-950/30 border border-slate-200 dark:border-white/10 hover:border-indigo-500/40 text-left transition-all group"
+                        className="p-3.5 rounded-xl bg-white/80 dark:bg-white/[0.03] hover:bg-indigo-50/80 dark:hover:bg-indigo-950/30 border border-slate-200/80 dark:border-white/[0.08] hover:border-indigo-500/40 text-left transition-all group cursor-pointer"
+                        style={{
+                          boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.05)",
+                        }}
                       >
                         <p className="text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 flex items-center justify-between">
                           <span>MLOps Governance</span>
-                          <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-indigo-500" />
                         </p>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
                           &quot;How does MLOps model promotion & rollback work?&quot;
                         </p>
                       </button>
@@ -1941,13 +1963,16 @@ const loadChatSessions = async () => {
                       <button
                         type="button"
                         onClick={() => handleSendChat(undefined, "Explain the human-in-the-loop agent authorization gate.")}
-                        className="p-3 rounded-xl bg-slate-100/80 dark:bg-white/[0.04] hover:bg-indigo-50 dark:hover:bg-indigo-950/30 border border-slate-200 dark:border-white/10 hover:border-indigo-500/40 text-left transition-all group"
+                        className="p-3.5 rounded-xl bg-white/80 dark:bg-white/[0.03] hover:bg-indigo-50/80 dark:hover:bg-indigo-950/30 border border-slate-200/80 dark:border-white/[0.08] hover:border-indigo-500/40 text-left transition-all group cursor-pointer"
+                        style={{
+                          boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.05)",
+                        }}
                       >
                         <p className="text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 flex items-center justify-between">
                           <span>Governed Agents</span>
-                          <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-indigo-500" />
                         </p>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
                           &quot;Explain human-in-the-loop agent authorization.&quot;
                         </p>
                       </button>
@@ -1962,9 +1987,14 @@ const loadChatSessions = async () => {
                       <div
                         className={`max-w-2xl rounded-2xl p-4 sm:p-5 text-xs sm:text-sm leading-relaxed transition-all shadow-sm ${
                           msg.sender === "user"
-                            ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md border border-white/20"
-                            : "bg-white/95 dark:bg-[#121829] backdrop-blur-md border border-slate-200 dark:border-white/10 text-slate-900 dark:text-slate-200"
+                            ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-indigo-500/20 border border-white/20 rounded-tr-sm"
+                            : "bg-white dark:bg-[#0d1322] backdrop-blur-md border border-slate-200/80 dark:border-white/[0.08] text-slate-900 dark:text-slate-200 rounded-tl-sm"
                         }`}
+                        style={
+                          msg.sender !== "user"
+                            ? { boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.05)" }
+                            : undefined
+                        }
                       >
                         {msg.sender === "user" ? (
                           <p className="whitespace-pre-wrap font-medium">{msg.text}</p>
@@ -1976,26 +2006,26 @@ const loadChatSessions = async () => {
                             )}
                           </div>
                         ) : (
-                          <div className="flex items-center gap-2 py-1 text-xs text-indigo-600 dark:text-indigo-400">
+                          <div className="flex items-center gap-2 py-1 text-xs text-indigo-600 dark:text-indigo-400 font-mono">
                             <div className="w-3.5 h-3.5 border-2 border-indigo-600 dark:border-indigo-400 border-t-transparent rounded-full animate-spin" />
-                            <span className="font-medium animate-pulse">Consulting vector index & streaming grounded answer...</span>
+                            <span className="font-medium animate-pulse">Consulting 1536-dim vector index & streaming grounded answer...</span>
                           </div>
                         )}
 
                         {/* RAG Triad & Hallucination Scoreboard */}
                         {msg.evaluation && (
-                          <div className="mt-3 pt-2.5 border-t border-slate-200 dark:border-white/[0.08]">
+                          <div className="mt-3 pt-2.5 border-t border-slate-200/80 dark:border-white/[0.08]">
                             <RAGScoreboardBadge evaluation={msg.evaluation} />
                           </div>
                         )}
 
-                        {/* Citations section */}
+                        {/* Perplexity-style Citations section */}
                         {msg.sources && msg.sources.length > 0 && (
-                          <div className="mt-4 pt-3 border-t border-slate-200 dark:border-white/[0.08] space-y-2">
+                          <div className="mt-4 pt-3 border-t border-slate-200/80 dark:border-white/[0.08] space-y-2">
                             <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
+                              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
                                 <FileText className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
-                                Citations & Provenance ({msg.sources.length})
+                                Grounded Sources ({msg.sources.length})
                               </span>
                               {msg.model && (
                                 <span className="text-[9px] font-mono text-slate-400 dark:text-slate-500">
@@ -2007,13 +2037,13 @@ const loadChatSessions = async () => {
                               {msg.sources.map((src, sIdx) => (
                                 <div
                                   key={sIdx}
-                                  className="holo-citation p-2.5 rounded-xl text-[11px] text-slate-800 dark:text-slate-300 transition-all hover:border-indigo-500/30"
+                                  className="p-2.5 rounded-xl text-[11px] text-slate-800 dark:text-slate-300 bg-slate-50/80 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/[0.06] hover:border-indigo-500/30 transition-all"
                                 >
                                   <div className="flex items-center justify-between font-medium text-slate-600 dark:text-slate-400 mb-1">
                                     <span className="font-bold text-slate-900 dark:text-white truncate max-w-[220px]">
                                       {src.document_title || "Document"}
                                     </span>
-                                    <span className="px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 font-mono text-[10px] font-semibold border border-indigo-500/20">
+                                    <span className="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-mono text-[10px] font-semibold border border-indigo-500/20">
                                       Page {src.page_number} • Match: {(src.similarity_score * 100).toFixed(1)}%
                                     </span>
                                   </div>
@@ -2032,10 +2062,10 @@ const loadChatSessions = async () => {
                 <div ref={chatBottomRef} />
               </div>
 
-              {/* 4. Anchored Input Console (Clean flex layout with separate Send button) */}
+              {/* 4. Anchored Input Console */}
               <form
                 onSubmit={handleSendChat}
-                className="p-3 sm:p-4 border-t border-slate-200 dark:border-white/[0.08] bg-slate-50/90 dark:bg-[#0d1322]/90 backdrop-blur-md shrink-0"
+                className="p-3 sm:p-4 border-t border-slate-200/80 dark:border-white/[0.08] bg-slate-50/90 dark:bg-[#070b14]/90 backdrop-blur-md shrink-0"
               >
                 {/* Real-time DLP Redaction Alert Banner */}
                 {activeDlpEvent && activeDlpEvent.isMasked && (
@@ -2055,7 +2085,7 @@ const loadChatSessions = async () => {
                       <button
                         type="button"
                         onClick={() => setActiveDlpEvent(null)}
-                        className="p-1 rounded text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-white/10 transition-colors"
+                        className="p-1 rounded text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
@@ -2063,17 +2093,19 @@ const loadChatSessions = async () => {
                   </div>
                 )}
                 <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={inputQuery}
-                    onChange={(e) => setInputQuery(e.target.value)}
-                    placeholder="Ask a question about your uploaded documents..."
-                    className="flex-1 min-w-0 px-4 py-2.5 sm:py-3 rounded-xl bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder-slate-400 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                  />
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={inputQuery}
+                      onChange={(e) => setInputQuery(e.target.value)}
+                      placeholder="Ask a question about your uploaded documents..."
+                      className="w-full px-4 py-2.5 sm:py-3 rounded-xl bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder-slate-400 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all"
+                    />
+                  </div>
                   <button
                     type="submit"
                     disabled={isQuerying || !inputQuery.trim()}
-                    className="shrink-0 flex items-center justify-center gap-1.5 px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-xs sm:text-sm shadow-md shadow-indigo-500/20 transition-all active:scale-95"
+                    className="shrink-0 flex items-center justify-center gap-1.5 px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-xs sm:text-sm shadow-md shadow-indigo-500/20 transition-all active:scale-95 cursor-pointer"
                   >
                     <span>Send</span>
                     <Send className="w-3.5 h-3.5" />
@@ -2084,22 +2116,24 @@ const loadChatSessions = async () => {
           </div>
         )}
 
-        {/* TAB: GOVERNED AGENT WORKFLOWS (SECTION 8.4 & 11) */}
         {activeTab === "agents" && (
           <div className="space-y-6">
             {/* Header */}
-            <div className="text-center space-y-1">
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center justify-center gap-2">
-                <span>Governed Agent Workflows</span>
-                <Bot className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+            <div className="text-center space-y-1.5">
+              <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-indigo-500/10 dark:bg-indigo-500/15 border border-indigo-500/20 dark:border-indigo-500/30 text-[11px] font-mono font-bold text-indigo-600 dark:text-indigo-400 mb-1">
+                <Bot className="w-3.5 h-3.5" />
+                <span>GOVERNED AGENT ORCHESTRATION</span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                Governed Agent Workflows
               </h2>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-lg mx-auto">
-                Allowlisted tools, bounded step budgets, and human-in-the-loop authorization gates.
+                Allowlisted tools, bounded step budgets, and deterministic human-in-the-loop authorization gates.
               </p>
             </div>
 
             {/* Workflow Catalog Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {(workflows.length > 0 ? workflows : [
                 {
                   id: "Enterprise Knowledge Auditor",
@@ -2132,55 +2166,62 @@ const loadChatSessions = async () => {
                   <div
                     key={wf.id || wfName}
                     onClick={() => setSelectedWfName(wfName)}
-                    className={`card-depth-3d relative p-4 rounded-2xl cursor-pointer outline-none focus:outline-none select-none transition-colors duration-150 group border ${
+                    className={`card-depth-3d relative p-5 rounded-2xl cursor-pointer outline-none focus:outline-none select-none transition-all duration-200 group border flex flex-col justify-between ${
                       isSelected
-                        ? "!border-indigo-600 dark:!border-indigo-500 ring-2 ring-indigo-600/30 dark:ring-indigo-500/40 !bg-indigo-50/90 dark:!bg-indigo-950/40 shadow-lg shadow-indigo-500/15"
-                        : "border-slate-200/80 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20"
+                        ? "!border-indigo-500/80 ring-2 ring-indigo-500/30 !bg-indigo-50/80 dark:!bg-indigo-950/30 shadow-lg shadow-indigo-500/10"
+                        : "border-slate-200/80 dark:border-white/[0.08] hover:border-slate-300 dark:hover:border-white/20 bg-white/70 dark:bg-white/[0.015]"
                     }`}
+                    style={{
+                      boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.06)",
+                    }}
                   >
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`text-[10px] font-bold uppercase tracking-wider ${
-                          isSelected ? "text-indigo-700 dark:text-indigo-300" : "text-indigo-600 dark:text-indigo-400"
-                        }`}>
-                          {wf.category}
-                        </span>
-                        {wf.has_approval_gate && (
-                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1">
-                            <AlertTriangle className="w-2.5 h-2.5" />
-                            Approval Gate
+                    <div>
+                      <div className="flex items-start justify-between gap-2 mb-3">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={`text-[10px] font-mono font-bold uppercase tracking-wider ${
+                            isSelected ? "text-indigo-700 dark:text-indigo-300" : "text-indigo-600 dark:text-indigo-400"
+                          }`}>
+                            {wf.category}
                           </span>
+                          {wf.has_approval_gate && (
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                              <AlertTriangle className="w-2.5 h-2.5" />
+                              Human Gate
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Selected / Active Indicator */}
+                        {isSelected ? (
+                          <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-indigo-600 text-white shadow-sm shadow-indigo-600/40 shrink-0">
+                            <CheckCircle2 className="w-3 h-3 text-white" />
+                            <span>Active</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-medium text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 shrink-0 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors">
+                            <span>Select</span>
+                          </div>
                         )}
                       </div>
 
-                      {/* Explicit Selected / Active indicator */}
-                      {isSelected ? (
-                        <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-600 text-white shadow-sm shadow-indigo-600/40 shrink-0">
-                          <CheckCircle2 className="w-3 h-3 text-white" />
-                          <span>Active</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 shrink-0 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors">
-                          <span>Select</span>
-                        </div>
-                      )}
+                      <h3 className={`text-sm mb-1.5 transition-colors ${
+                        isSelected
+                          ? "font-extrabold text-indigo-950 dark:text-white"
+                          : "font-bold text-slate-900 dark:text-white"
+                      }`}>
+                        {wfName}
+                      </h3>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-4 leading-relaxed">{wf.description}</p>
                     </div>
-                    <h3 className={`text-sm mb-1.5 transition-colors ${
-                      isSelected
-                        ? "font-extrabold text-indigo-950 dark:text-white"
-                        : "font-bold text-slate-900 dark:text-white"
-                    }`}>
-                      {wfName}
-                    </h3>
-                    <p className="text-xs text-slate-600 dark:text-slate-400 mb-3 leading-relaxed">{wf.description}</p>
-                    <div className="flex flex-wrap gap-1">
+
+                    <div className="pt-3 border-t border-slate-200/60 dark:border-white/[0.06] flex flex-wrap gap-1.5">
                       {wf.allowed_tools.map((t, tIdx) => (
                         <span
                           key={tIdx}
-                          className={`px-1.5 py-0.5 rounded text-[9px] font-mono border transition-colors ${
+                          className={`px-2 py-0.5 rounded-md text-[9px] font-mono border transition-colors ${
                             isSelected
                               ? "bg-indigo-100/70 dark:bg-indigo-900/40 text-indigo-800 dark:text-indigo-200 border-indigo-200 dark:border-indigo-800/60"
-                              : "bg-slate-100 dark:bg-white/[0.04] text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-white/10"
+                              : "bg-slate-100 dark:bg-white/[0.04] text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-white/[0.06]"
                           }`}
                         >
                           {t}
@@ -2192,16 +2233,26 @@ const loadChatSessions = async () => {
               })}
             </div>
 
-            {/* Launch Form */}
-            <form onSubmit={handleLaunchAgent} className="card-depth-3d p-4 sm:p-5 rounded-2xl space-y-3">
+            {/* Launch Console Form */}
+            <form
+              onSubmit={handleLaunchAgent}
+              className="card-depth-3d p-4 sm:p-5 rounded-2xl space-y-3 bg-white/80 dark:bg-[#070b14]/80 backdrop-blur-md border border-slate-200/80 dark:border-white/[0.08]"
+              style={{
+                boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.06)",
+              }}
+            >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Terminal className="w-4 h-4 text-indigo-500" />
+                  <div className="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                    <Terminal className="w-3.5 h-3.5" />
+                  </div>
                   <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                     Target Objective: {selectedWfName}
                   </span>
                 </div>
-                <span className="text-[10px] font-mono text-slate-400">Max Step Budget: 5 Steps</span>
+                <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.06]">
+                  Step Budget: 5 Max
+                </span>
               </div>
               <div className="flex flex-col sm:flex-row gap-2">
                 <input
@@ -2210,12 +2261,12 @@ const loadChatSessions = async () => {
                   value={agentPrompt}
                   onChange={(e) => setAgentPrompt(e.target.value)}
                   placeholder="Enter objective for the agent (e.g., Audit knowledge base and verify token usage)..."
-                  className="flex-1 px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder-slate-400 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder-slate-400 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all"
                 />
                 <button
                   type="submit"
                   disabled={isAgentExecuting || !agentPrompt.trim()}
-                  className="shrink-0 flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-40 text-white font-bold text-xs shadow-md shadow-indigo-500/20 active:scale-95 transition-all"
+                  className="shrink-0 flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-40 text-white font-bold text-xs shadow-md shadow-indigo-500/20 active:scale-95 transition-all cursor-pointer"
                 >
                   <Play className="w-3.5 h-3.5 fill-current" />
                   <span>{isAgentExecuting ? "Executing Workflow..." : "Launch Governed Agent"}</span>
@@ -2224,15 +2275,20 @@ const loadChatSessions = async () => {
             </form>
 
             {/* Dual-Pane Execution Trace & History Monitor */}
-            <div className="card-depth-3d flex flex-col md:flex-row h-[600px] rounded-2xl overflow-hidden">
+            <div
+              className="card-depth-3d flex flex-col md:flex-row h-[600px] rounded-2xl overflow-hidden border border-slate-200/80 dark:border-white/[0.08]"
+              style={{
+                boxShadow: "0 20px 40px -15px rgba(0, 0, 0, 0.1), inset 0 1px 0 0 rgba(255, 255, 255, 0.08)",
+              }}
+            >
               {/* Left Column: Execution History */}
-              <div className="w-full md:w-72 border-b md:border-b-0 md:border-r border-slate-200 dark:border-white/[0.08] bg-slate-50/60 dark:bg-black/25 flex flex-col shrink-0">
-                <div className="p-3 border-b border-slate-200 dark:border-white/[0.08] flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              <div className="w-full md:w-72 border-b md:border-b-0 md:border-r border-slate-200/80 dark:border-white/[0.08] bg-slate-50/80 dark:bg-[#070b14] flex flex-col shrink-0">
+                <div className="p-3.5 border-b border-slate-200/80 dark:border-white/[0.08] flex items-center justify-between">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                     Execution Audit Log ({executions.length})
                   </span>
-                  <button onClick={loadAgentData} className="p-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-white">
-                    <RefreshCw className="w-3 h-3" />
+                  <button onClick={loadAgentData} className="p-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors cursor-pointer" title="Refresh executions">
+                    <RefreshCw className="w-3.5 h-3.5" />
                   </button>
                 </div>
                 <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
@@ -2245,24 +2301,27 @@ const loadChatSessions = async () => {
                         <div
                           key={e.id}
                           onClick={() => handleSelectExecution(e.id)}
-                          className={`p-3 rounded-xl cursor-pointer text-xs select-none transition-colors duration-150 border outline-none ${
+                          className={`p-3 rounded-xl cursor-pointer text-xs select-none transition-all duration-150 border-l-2 outline-none ${
                             isSelected
-                              ? "bg-indigo-50 dark:bg-white/[0.08] text-indigo-700 dark:text-indigo-300 font-semibold border-indigo-200 dark:border-indigo-500/30"
-                              : "border-transparent text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.04]"
+                              ? "bg-indigo-50/80 dark:bg-white/[0.06] text-indigo-700 dark:text-indigo-300 font-semibold border-l-indigo-600 dark:border-l-indigo-400 border-y-transparent border-r-transparent shadow-xs"
+                              : "border-l-transparent border-y-transparent border-r-transparent text-slate-700 dark:text-slate-300 hover:bg-slate-100/70 dark:hover:bg-white/[0.03]"
                           }`}
                         >
                           <div className="flex items-center justify-between gap-1 mb-1">
                             <span className="font-bold truncate text-[11px]">{e.workflow_name}</span>
                             <span
-                              className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                              className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 ${
                                 e.status === "completed"
-                                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                                  ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
                                   : e.status === "pending_approval"
-                                  ? "bg-amber-500/20 text-amber-700 dark:text-amber-300 animate-pulse"
-                                  : "bg-red-500/15 text-red-600 dark:text-red-400"
+                                  ? "bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-300 animate-pulse"
+                                  : "bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400"
                               }`}
                             >
-                              {e.status}
+                              <span className={`w-1 h-1 rounded-full ${
+                                e.status === "completed" ? "bg-emerald-500" : e.status === "pending_approval" ? "bg-amber-500" : "bg-red-500"
+                              }`} />
+                              <span>{e.status}</span>
                             </span>
                           </div>
                           <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mb-1">{e.input_prompt}</p>
@@ -2275,39 +2334,39 @@ const loadChatSessions = async () => {
               </div>
 
               {/* Right Column: Step-by-Step Trace & Approval Gate */}
-              <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-[#0d1322] overflow-y-auto p-4 sm:p-6 space-y-4">
+              <div className="flex-1 flex flex-col min-w-0 bg-white/70 dark:bg-[#090d18]/70 overflow-y-auto p-4 sm:p-6 space-y-4">
                 {!selectedExecution ? (
                   <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-2 text-slate-400">
                     <Bot className="w-10 h-10 text-indigo-400/50" />
-                    <p className="text-xs">Select or launch a workflow to view its governed execution trace.</p>
+                    <p className="text-xs font-mono">Select or launch a workflow to view its governed execution trace.</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     {/* Header bar of trace */}
-                    <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-white/10">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-200/80 dark:border-white/[0.08]">
                       <div>
                         <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                           <span>{selectedExecution.workflow_name}</span>
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider ${
                               selectedExecution.status === "completed"
-                                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                                ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
                                 : selectedExecution.status === "pending_approval"
-                                ? "bg-amber-500/20 text-amber-700 dark:text-amber-300 animate-pulse border border-amber-500/30"
-                                : "bg-red-500/15 text-red-600 dark:text-red-400"
+                                ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 animate-pulse border border-amber-500/30"
+                                : "bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400"
                             }`}
                           >
                             {selectedExecution.status}
                           </span>
                         </h4>
-                        <p className="text-xs text-slate-500 mt-0.5">&ldquo;{selectedExecution.input_prompt}&rdquo;</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">&ldquo;{selectedExecution.input_prompt}&rdquo;</p>
                       </div>
                       <span className="text-xs font-mono text-slate-400">{selectedExecution.total_steps} steps executed</span>
                     </div>
 
-                    {/* Human-In-The-Loop Approval Gate Banner (Section 8.4 #6) */}
+                    {/* Human-In-The-Loop Approval Gate Banner */}
                     {selectedExecution.status === "pending_approval" && (
-                      <div className="p-4 rounded-2xl bg-amber-500/10 border-2 border-amber-500/40 space-y-3 shadow-lg shadow-amber-500/5">
+                      <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-3 shadow-lg shadow-amber-500/5">
                         <div className="flex items-start gap-2.5">
                           <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
                           <div>
@@ -2341,7 +2400,7 @@ const loadChatSessions = async () => {
                             type="button"
                             disabled={isApproving}
                             onClick={() => handleProcessApproval(true)}
-                            className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 flex items-center gap-1.5 shadow-md active:scale-95 transition-all"
+                            className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 flex items-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer"
                           >
                             <CheckCircle2 className="w-3.5 h-3.5" />
                             <span>Approve & Execute</span>
@@ -2350,7 +2409,7 @@ const loadChatSessions = async () => {
                             type="button"
                             disabled={isApproving}
                             onClick={() => handleProcessApproval(false)}
-                            className="px-3.5 py-2 rounded-xl text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-500/10 border border-red-500/30 flex items-center gap-1.5 transition-colors"
+                            className="px-3.5 py-2 rounded-xl text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-500/10 border border-red-500/30 flex items-center gap-1.5 transition-colors cursor-pointer"
                           >
                             <XCircle className="w-3.5 h-3.5" />
                             <span>Reject</span>
@@ -2361,23 +2420,26 @@ const loadChatSessions = async () => {
 
                     {/* Step-by-Step Execution Trace Timeline */}
                     <div className="space-y-3">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                         Agent Reasoning & Tool Step Log
                       </span>
                       {selectedExecution.traces.map((trace) => (
                         <div
                           key={trace.id}
-                          className="p-3.5 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-50/50 dark:bg-white/[0.02] space-y-2 text-xs"
+                          className="p-3.5 rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-slate-50/70 dark:bg-white/[0.02] space-y-2 text-xs"
+                          style={{
+                            boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.04)",
+                          }}
                         >
                           <div className="flex items-center justify-between font-mono text-[11px]">
                             <span className="font-bold text-indigo-600 dark:text-indigo-400">Step {trace.step_number}</span>
                             <span
-                              className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                              className={`px-2 py-0.5 rounded text-[9px] font-mono font-bold uppercase tracking-wider ${
                                 trace.status === "completed"
-                                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
                                   : trace.status === "pending_approval"
-                                  ? "bg-amber-500/20 text-amber-700 dark:text-amber-300"
-                                  : "bg-red-500/15 text-red-600 dark:text-red-400"
+                                  ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30"
+                                  : "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20"
                               }`}
                             >
                               {trace.status}
@@ -2391,7 +2453,7 @@ const loadChatSessions = async () => {
                           )}
 
                           {trace.tool_name && (
-                            <div className="p-2.5 rounded-lg bg-slate-100 dark:bg-black/30 font-mono text-[11px] space-y-1">
+                            <div className="p-2.5 rounded-lg bg-slate-100/80 dark:bg-black/40 border border-slate-200/60 dark:border-white/[0.04] font-mono text-[11px] space-y-1">
                               <span className="text-indigo-600 dark:text-indigo-400 font-bold">
                                 🔧 Tool: {trace.tool_name}
                               </span>
@@ -2407,11 +2469,11 @@ const loadChatSessions = async () => {
                     {/* Final Output Card */}
                     {selectedExecution.final_output && (
                       <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-slate-800 dark:text-slate-200 space-y-2">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                           Finalized Workflow Result
                         </span>
-                        <div className="whitespace-pre-wrap leading-relaxed">{selectedExecution.final_output}</div>
+                        <div className="whitespace-pre-wrap leading-relaxed font-sans">{selectedExecution.final_output}</div>
                       </div>
                     )}
                   </div>
