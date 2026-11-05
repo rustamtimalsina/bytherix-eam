@@ -193,17 +193,55 @@ class AuditService:
         }
 
     @staticmethod
-    def export_csv(db: Session, organization_id: str) -> str:
+    def _build_filtered_query(
+        organization_id: str,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        action: Optional[str] = None,
+        severity: Optional[str] = None,
+        actor_email: Optional[str] = None,
+    ):
+        query = select(AuditLog).where(AuditLog.organization_id == organization_id)
+        if start_date:
+            query = query.where(AuditLog.created_at >= start_date)
+        if end_date:
+            query = query.where(AuditLog.created_at <= end_date)
+        if action:
+            if "%" in action or "*" in action:
+                query = query.where(AuditLog.action.like(action.replace("*", "%")))
+            else:
+                query = query.where(AuditLog.action == action)
+        if severity:
+            query = query.where(AuditLog.severity == severity.lower())
+        if actor_email:
+            query = query.where(AuditLog.actor_email == actor_email)
+        return query.order_by(desc(AuditLog.created_at))
+
+    @staticmethod
+    def export_csv(
+        db: Session,
+        organization_id: str,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        action: Optional[str] = None,
+        severity: Optional[str] = None,
+        actor_email: Optional[str] = None,
+    ) -> Tuple[str, int]:
         """
-        Exports the entire tenant audit trail to an RFC 4180 CSV formatted string.
+        Exports filtered tenant audit logs to an RFC 4180 CSV formatted string.
+        Returns a tuple of (csv_string, total_records).
         """
         AuditService.seed_initial_audit_if_empty(db, organization_id)
 
-        logs = db.execute(
-            select(AuditLog)
-            .where(AuditLog.organization_id == organization_id)
-            .order_by(desc(AuditLog.created_at))
-        ).scalars().all()
+        query = AuditService._build_filtered_query(
+            organization_id=organization_id,
+            start_date=start_date,
+            end_date=end_date,
+            action=action,
+            severity=severity,
+            actor_email=actor_email,
+        )
+        logs = db.execute(query).scalars().all()
 
         output = io.StringIO()
         writer = csv.writer(output, quoting=csv.QUOTE_MINIMAL)
@@ -234,4 +272,55 @@ class AuditService:
                 log.details
             ])
 
-        return output.getvalue()
+        return output.getvalue(), len(logs)
+
+    @staticmethod
+    def export_json(
+        db: Session,
+        organization_id: str,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        action: Optional[str] = None,
+        severity: Optional[str] = None,
+        actor_email: Optional[str] = None,
+    ) -> Tuple[str, int]:
+        """
+        Exports filtered tenant audit logs to a JSON string for SIEM ingestion (§ 9.2).
+        Returns a tuple of (json_string, total_records).
+        """
+        AuditService.seed_initial_audit_if_empty(db, organization_id)
+
+        query = AuditService._build_filtered_query(
+            organization_id=organization_id,
+            start_date=start_date,
+            end_date=end_date,
+            action=action,
+            severity=severity,
+            actor_email=actor_email,
+        )
+        logs = db.execute(query).scalars().all()
+
+        records = []
+        for log in logs:
+            details_obj = {}
+            if log.details:
+                try:
+                    details_obj = json.loads(log.details)
+                except Exception:
+                    details_obj = {"raw": log.details}
+
+            records.append({
+                "id": log.id,
+                "organization_id": log.organization_id,
+                "timestamp": log.created_at.isoformat() if log.created_at else "",
+                "actor_email": log.actor_email,
+                "actor_id": log.actor_id,
+                "action": log.action,
+                "resource_type": log.resource_type,
+                "resource_id": log.resource_id,
+                "severity": log.severity,
+                "ip_address": log.ip_address,
+                "details": details_obj,
+            })
+
+        return json.dumps(records, indent=2), len(records)

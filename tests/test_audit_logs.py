@@ -1,5 +1,7 @@
 import csv
 import io
+import json
+import hashlib
 from fastapi.testclient import TestClient
 
 
@@ -112,3 +114,71 @@ def test_audit_logs_lifecycle_and_tenant_isolation(client: TestClient):
         assert item["organization_id"] == org_b_id
         assert item["organization_id"] != org_a_id
         assert "Audit Test Key" not in str(item.get("details", ""))
+
+
+def test_audit_export_compliance_features_and_formats(client: TestClient):
+    """
+    Test Section 9.2 & 10.4:
+    - Cryptographic SHA-256 integrity checksum verification
+    - JSON export for SIEM ingest (Splunk/Datadog)
+    - Filtering by severity and action wildcard
+    - Immutable audit.compliance_exported trail entry
+    """
+    # 1. Sign up Org for Compliance Export Testing
+    resp = client.post("/api/v1/auth/signup", json={
+        "email": "compliance_officer@bytherix.com",
+        "password": "Password123!",
+        "full_name": "Compliance Lead",
+        "organization_name": "Bytherix Compliance Inc"
+    })
+    assert resp.status_code == 201
+    token = resp.json()["access_token"]
+    org_id = resp.json()["organization_id"]
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "X-Organization-Id": org_id
+    }
+
+    # 2. Test CSV Export with Cryptographic Verification
+    csv_resp = client.get("/api/v1/audit-logs/export?format=csv", headers=headers)
+    assert csv_resp.status_code == 200
+    assert "X-Audit-Checksum-SHA256" in csv_resp.headers
+    assert "X-Audit-Record-Count" in csv_resp.headers
+    assert csv_resp.headers["X-Audit-Tenant-ID"] == org_id
+
+    # Verify SHA-256 matches actual response content
+    expected_hash = hashlib.sha256(csv_resp.content).hexdigest()
+    assert csv_resp.headers["X-Audit-Checksum-SHA256"] == expected_hash
+
+    # 3. Test JSON Export for SIEM Ingestion
+    json_resp = client.get("/api/v1/audit-logs/export?format=json", headers=headers)
+    assert json_resp.status_code == 200
+    assert json_resp.headers["content-type"].startswith("application/json")
+    json_data = json_resp.json()
+    assert isinstance(json_data, list)
+    assert len(json_data) >= 1
+    first_entry = json_data[0]
+    assert "id" in first_entry
+    assert "organization_id" in first_entry
+    assert "timestamp" in first_entry
+    assert "actor_email" in first_entry
+    assert "action" in first_entry
+    assert "severity" in first_entry
+    assert "details" in first_entry
+
+    # 4. Test Filtered Export (e.g. Warning Only)
+    filtered_resp = client.get("/api/v1/audit-logs/export?format=json&severity=warning", headers=headers)
+    assert filtered_resp.status_code == 200
+    warn_records = filtered_resp.json()
+    for rec in warn_records:
+        assert rec["severity"].lower() == "warning"
+
+    # 5. Verify that exporting triggered an immutable audit log event
+    logs_resp = client.get("/api/v1/audit-logs", headers=headers)
+    assert logs_resp.status_code == 200
+    actions = [item["action"] for item in logs_resp.json()["items"]]
+    assert "audit.compliance_exported" in actions
+
+    # 6. Test Invalid Format Validation
+    bad_resp = client.get("/api/v1/audit-logs/export?format=xml", headers=headers)
+    assert bad_resp.status_code == 422
