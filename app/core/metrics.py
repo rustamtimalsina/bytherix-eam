@@ -9,14 +9,16 @@ class InMemoryMetricsRegistry:
     """
     Thread-safe Prometheus metrics registry and real-time observability engine
     compliant with Section 13 (Observability & Monitoring) and Section 14.3 (Health & Metrics).
+    Includes Real-Time Latency Budget and SLA Alerting (Section 13.2).
     """
 
     HISTOGRAM_BUCKETS = (0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0)
+    DEFAULT_LATENCY_BUDGET_MS = 2000.0  # 2.0s SLA Budget Target
 
     def __init__(self):
         self._lock = threading.Lock()
         self._start_time = time.time()
-        
+
         # Counters: (name, label_tuple) -> count
         # e.g., ("http_requests_total", (("endpoint", "/api/v1/documents"), ("method", "GET"), ("status", "200"))) -> 12
         self._counters: Dict[Tuple[str, Tuple[Tuple[str, str], ...]], float] = {}
@@ -34,6 +36,10 @@ class InMemoryMetricsRegistry:
         # Internal active requests counter
         self._active_requests = 0
 
+        # Latency Budget SLA (Section 13.2)
+        self.latency_budget_ms = self.DEFAULT_LATENCY_BUDGET_MS
+        self._last_breach_alert_time = 0.0
+
     def reset(self):
         """Reset all metrics state for clean test isolation."""
         with self._lock:
@@ -43,6 +49,7 @@ class InMemoryMetricsRegistry:
             self._histograms.clear()
             self._recent_latencies.clear()
             self._active_requests = 0
+            self._last_breach_alert_time = 0.0
 
     @staticmethod
     def normalize_path(path: str) -> str:
@@ -80,7 +87,7 @@ class InMemoryMetricsRegistry:
         status_code: int,
         duration_seconds: float,
     ):
-        """Record an HTTP request into counters, latency histograms, and recent latency queue."""
+        """Record an HTTP request into counters, latency histograms, recent latency queue, and SLA breach tracking."""
         normalized_path = self.normalize_path(path)
         status_str = str(status_code)
         method_upper = method.upper()
@@ -99,7 +106,16 @@ class InMemoryMetricsRegistry:
             counter_key = ("http_requests_total", labels)
             self._counters[counter_key] = self._counters.get(counter_key, 0.0) + 1.0
 
-            # 2. Record in http_request_duration_seconds histogram
+            # 2. SLA Latency Budget Tracking (Section 13.2)
+            if duration_ms > self.latency_budget_ms:
+                breach_labels = (
+                    ("endpoint", normalized_path),
+                    ("method", method_upper),
+                )
+                breach_key = ("sla_breaches_total", breach_labels)
+                self._counters[breach_key] = self._counters.get(breach_key, 0.0) + 1.0
+
+            # 3. Record in http_request_duration_seconds histogram
             hist_labels = (
                 ("endpoint", normalized_path),
                 ("method", method_upper),
@@ -119,7 +135,7 @@ class InMemoryMetricsRegistry:
                 if duration_seconds <= le:
                     h["buckets"][le] += 1
 
-            # 3. Store in recent latencies (keep up to 1,000 recent samples within the last 5 minutes)
+            # 4. Store in recent latencies (keep up to 1,000 recent samples within the last 5 minutes)
             cutoff = now - 300.0
             self._recent_latencies = [
                 item for item in self._recent_latencies if item[0] > cutoff
@@ -156,7 +172,17 @@ class InMemoryMetricsRegistry:
                     label_str = ",".join(f'{k}="{v}"' for k, v in labels)
                     lines.append(f"{name}{{{label_str}}} {int(count)}")
 
-            # 2. token_usage_total
+            # 2. sla_breaches_total (Section 13.2)
+            has_breaches = any(name == "sla_breaches_total" for name, _ in self._counters.keys())
+            if has_breaches:
+                lines.append("# HELP sla_breaches_total Cumulative requests exceeding the SLA latency budget")
+                lines.append("# TYPE sla_breaches_total counter")
+                for (name, labels), count in sorted(self._counters.items()):
+                    if name == "sla_breaches_total":
+                        label_str = ",".join(f'{k}="{v}"' for k, v in labels)
+                        lines.append(f"{name}{{{label_str}}} {int(count)}")
+
+            # 3. token_usage_total
             has_tokens = any(name == "token_usage_total" for name, _ in self._counters.keys())
             if has_tokens:
                 lines.append("# HELP token_usage_total Cumulative tokens consumed by LLM and MLOps inference")
@@ -166,7 +192,7 @@ class InMemoryMetricsRegistry:
                         label_str = ",".join(f'{k}="{v}"' for k, v in labels)
                         lines.append(f"{name}{{{label_str}}} {int(count)}")
 
-            # 3. http_request_duration_seconds (histogram)
+            # 4. http_request_duration_seconds (histogram)
             lines.append("# HELP http_request_duration_seconds HTTP request duration in seconds")
             lines.append("# TYPE http_request_duration_seconds histogram")
             for (name, labels), data in sorted(self._histograms.items()):
@@ -182,12 +208,12 @@ class InMemoryMetricsRegistry:
                 lines.append(f"{name}_sum{{{base_labels}}} {data['sum']:.6f}")
                 lines.append(f"{name}_count{{{base_labels}}} {data['count']}")
 
-            # 4. active_requests (gauge)
+            # 5. active_requests (gauge)
             lines.append("# HELP active_requests Currently in-flight HTTP requests")
             lines.append("# TYPE active_requests gauge")
             lines.append(f"active_requests {self._active_requests}")
 
-            # 5. system_uptime_seconds (gauge)
+            # 6. system_uptime_seconds (gauge)
             uptime = time.time() - self._start_time
             lines.append("# HELP system_uptime_seconds Application uptime in seconds")
             lines.append("# TYPE system_uptime_seconds gauge")
@@ -200,6 +226,7 @@ class InMemoryMetricsRegistry:
         """
         Generate structured JSON telemetry for the frontend dashboard cards:
         - Latency percentiles (p50, p95, p99)
+        - Latency Budget SLA compliance & breach status (Section 13.2)
         - Throughput (req/min)
         - Error rate (%)
         - Status code distribution (2xx, 4xx, 5xx)
@@ -245,14 +272,29 @@ class InMemoryMetricsRegistry:
             if durations:
                 n = len(durations)
                 avg_lat = sum(durations) / n
-                p50 = durations[int(0.50 * (n - 1))]
-                p95 = durations[int(0.95 * (n - 1))]
-                p99 = durations[int(0.99 * (n - 1))]
+                p50 = durations[min(n - 1, int(round(0.50 * (n - 1))))]
+                p95 = durations[min(n - 1, int(round(0.95 * (n - 1))))]
+                p99 = durations[min(n - 1, int(round(0.99 * (n - 1))))]
             else:
                 avg_lat = 0.0
                 p50 = 0.0
                 p95 = 0.0
                 p99 = 0.0
+
+            # SLA compliance calculation
+            if durations:
+                compliant_samples = sum(1 for d in durations if d <= self.latency_budget_ms)
+                sla_compliance = round((compliant_samples / len(durations)) * 100.0, 1)
+            else:
+                sla_compliance = 100.0
+
+            is_breached = (p95 > self.latency_budget_ms) if durations else False
+            if is_breached:
+                budget_status = "breached"
+            elif durations and (p95 >= (self.latency_budget_ms * 0.75)):
+                budget_status = "warning"
+            else:
+                budget_status = "healthy"
 
             # Error rate
             error_count = status_breakdown["4xx"] + status_breakdown["5xx"]
@@ -274,10 +316,38 @@ class InMemoryMetricsRegistry:
                 "p50_latency_ms": round(p50, 2),
                 "p95_latency_ms": round(p95, 2),
                 "p99_latency_ms": round(p99, 2),
+                "latency_budget_ms": self.latency_budget_ms,
+                "sla_target_ms": self.latency_budget_ms,
+                "sla_compliance_percentage": sla_compliance,
+                "is_latency_budget_breached": is_breached,
+                "latency_budget_status": budget_status,
                 "error_rate_percentage": round(error_rate, 2),
                 "status_breakdown": status_breakdown,
                 "top_endpoints": top_endpoints,
             }
+
+    def check_and_notify_sla_breach(self, organization_id: Optional[str] = None):
+        """Dispatches an SSE notification if rolling p95 latency breaches SLA budget."""
+        telemetry = self.get_dashboard_telemetry()
+        now = time.time()
+        if telemetry["is_latency_budget_breached"] and (now - self._last_breach_alert_time) > 60.0:
+            self._last_breach_alert_time = now
+            if organization_id:
+                try:
+                    from app.core.notifications import notification_bus
+                    notification_bus.publish(
+                        organization_id,
+                        {
+                            "type": "latency_budget_exceeded",
+                            "title": "Latency Budget SLA Alert",
+                            "message": f"Platform p95 latency is {telemetry['p95_latency_ms']}ms, exceeding the {telemetry['latency_budget_ms']}ms SLA threshold.",
+                            "p95_latency_ms": telemetry["p95_latency_ms"],
+                            "latency_budget_ms": telemetry["latency_budget_ms"],
+                            "compliance_percentage": telemetry["sla_compliance_percentage"],
+                        }
+                    )
+                except Exception:
+                    pass
 
 
 # Global metrics registry singleton

@@ -14,3 +14,19 @@ class UsageSummary(BaseModel):
     documents_count: int
     documents_limit: int
     is_quota_exceeded: bool
+    is_quota_warning: bool = False
+    warning_threshold: float = 80.0
+    quota_status: str = "healthy"  # "healthy", "warning", "exceeded"
+
+
+class QuotaAlertItem(BaseModel):
+    """Real-time quota and latency alert schema (Section 6.3 & 13.2)."""
+    alert_type: str  # "quota_warning", "quota_exceeded", "latency_budget_exceeded"
+    severity: str    # "info", "warning", "critical"
+    title: str
+    message: str
+    current_value: float
+    threshold_value: float
+    unit: str
+    action_required: bool
+    action_label: str

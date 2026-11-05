@@ -223,6 +223,21 @@ export interface UsageSummary {
   documents_count: number;
   documents_limit: number;
   is_quota_exceeded: boolean;
+  is_quota_warning?: boolean;
+  warning_threshold?: number;
+  quota_status?: "healthy" | "warning" | "exceeded";
+}
+
+export interface QuotaAlertItem {
+  alert_type: string;
+  severity: "info" | "warning" | "critical";
+  title: string;
+  message: string;
+  current_value: number;
+  threshold_value: number;
+  unit: string;
+  action_required: boolean;
+  action_label: string;
 }
 
 export interface MembershipItem {
@@ -547,6 +562,10 @@ class ApiClient {
     return this.request<UsageSummary>("/usage");
   }
 
+  async getUsageAlerts(): Promise<QuotaAlertItem[]> {
+    return this.request<QuotaAlertItem[]>("/usage/alerts");
+  }
+
   // Member & Organization endpoints (Section 7.1 & 10.2)
   async listMembers(orgId: string): Promise<MembershipItem[]> {
     return this.request<MembershipItem[]>(`/organizations/${orgId}/members`);
@@ -793,6 +812,11 @@ export interface ObservabilityTelemetryResponse {
   p50_latency_ms: number;
   p95_latency_ms: number;
   p99_latency_ms: number;
+  latency_budget_ms?: number;
+  sla_target_ms?: number;
+  sla_compliance_percentage?: number;
+  is_latency_budget_breached?: boolean;
+  latency_budget_status?: "healthy" | "warning" | "breached";
   error_rate_percentage: number;
   status_breakdown: {
     "2xx": number;

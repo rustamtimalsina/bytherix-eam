@@ -579,6 +579,29 @@ export default function DashboardPage() {
             message: data.message
           });
           loadAgentData();
+        } else if (data.type === "quota_warning") {
+          setLiveAlert({
+            id: String(Date.now()),
+            type: "warning",
+            title: data.title || "Token Quota Warning (80% Utilized)",
+            message: data.message || "You have reached 80% of your monthly AI token budget."
+          });
+          loadUsage();
+        } else if (data.type === "quota_exceeded") {
+          setLiveAlert({
+            id: String(Date.now()),
+            type: "error",
+            title: data.title || "Token Quota Exceeded (100% Used)",
+            message: data.message || "Monthly token quota exhausted. Inference requests are blocked."
+          });
+          loadUsage();
+        } else if (data.type === "latency_budget_exceeded") {
+          setLiveAlert({
+            id: String(Date.now()),
+            type: "warning",
+            title: data.title || "Latency SLA Budget Exceeded",
+            message: data.message || "Platform p95 latency is exceeding target SLA budget."
+          });
         } else if (data.type === "plan_upgraded") {
           setLiveAlert({
             id: String(Date.now()),
@@ -1278,21 +1301,54 @@ const loadChatSessions = async () => {
             </span>
           </div>
 
-          {/* AI Token Quota & Compute Velocity Meter (Tablet & Desktop) */}
+          {/* AI Token Quota & Compute Velocity Meter with Warning & Exceeded Alerts (Tablet & Desktop) (Section 6.3) */}
           {usage && (
-            <div className="hidden sm:flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-[10px] sm:text-[11px] font-mono shrink-0" title={`Monthly AI token budget: ${usage.tokens_used.toLocaleString()} / ${usage.token_allowance.toLocaleString()} tokens`}>
-              <Zap className="w-3 h-3 text-amber-500 shrink-0 animate-pulse" />
+            <button
+              type="button"
+              onClick={() => setIsUpgradeModalOpen(true)}
+              className={`hidden sm:flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-mono shrink-0 transition-all cursor-pointer ${
+                usage.is_quota_exceeded
+                  ? "bg-rose-500/15 border border-rose-500/40 text-rose-700 dark:text-rose-300 shadow-sm animate-pulse"
+                  : (usage.is_quota_warning || (usage.percentage_used ?? 0) >= 80)
+                  ? "bg-amber-500/15 border border-amber-500/40 text-amber-800 dark:text-amber-200 shadow-sm"
+                  : "bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 hover:border-blue-500/30"
+              }`}
+              title={`Monthly AI token budget: ${usage.tokens_used.toLocaleString()} / ${usage.token_allowance.toLocaleString()} tokens (${usage.percentage_used ?? 0}% used). Click to upgrade.`}
+            >
+              {usage.is_quota_exceeded ? (
+                <AlertTriangle className="w-3 h-3 text-rose-600 dark:text-rose-400 shrink-0 animate-bounce" />
+              ) : (usage.is_quota_warning || (usage.percentage_used ?? 0) >= 80) ? (
+                <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
+              ) : (
+                <Zap className="w-3 h-3 text-amber-500 shrink-0 animate-pulse" />
+              )}
               <span className="text-slate-500 dark:text-slate-400 hidden lg:inline">Quota:</span>
-              <span className="font-bold text-slate-800 dark:text-slate-200">
+              <span className={`font-bold ${usage.is_quota_exceeded ? "text-rose-700 dark:text-rose-300" : (usage.is_quota_warning || (usage.percentage_used ?? 0) >= 80) ? "text-amber-800 dark:text-amber-200" : "text-slate-800 dark:text-slate-200"}`}>
                 {(usage.tokens_used).toLocaleString()} / {(usage.token_allowance).toLocaleString()}
               </span>
+              {usage.is_quota_exceeded && (
+                <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-rose-600 text-white uppercase tracking-wider">
+                  Exceeded
+                </span>
+              )}
+              {!usage.is_quota_exceeded && (usage.is_quota_warning || (usage.percentage_used ?? 0) >= 80) && (
+                <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-amber-500 text-white uppercase tracking-wider">
+                  80%+
+                </span>
+              )}
               <div className="w-10 sm:w-14 h-1.5 bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden shrink-0">
                 <div
-                  className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500"
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    usage.is_quota_exceeded
+                      ? "bg-rose-500"
+                      : (usage.is_quota_warning || (usage.percentage_used ?? 0) >= 80)
+                      ? "bg-amber-500"
+                      : "bg-gradient-to-r from-blue-500 to-indigo-500"
+                  }`}
                   style={{ width: `${Math.min(100, Math.max(8, (usage.tokens_used / (usage.token_allowance || 1)) * 100))}%` }}
                 />
               </div>
-            </div>
+            </button>
           )}
         </div>
 
@@ -1346,22 +1402,49 @@ const loadChatSessions = async () => {
         </div>
       </header>
 
-      {/* Mobile-Exclusive AI Token Quota Ticker Bar (< sm screens) */}
+      {/* Mobile-Exclusive AI Token Quota Ticker Bar with Warning Alerting (< sm screens) (Section 6.3) */}
       {usage && (
-        <div className="sm:hidden w-full px-3.5 py-1.5 bg-slate-100/95 dark:bg-[#0c1220]/95 border-b border-slate-200 dark:border-white/[0.08] backdrop-blur-xl flex items-center justify-between text-[11px] font-mono sticky top-16 z-30 shadow-xs">
+        <div
+          onClick={() => setIsUpgradeModalOpen(true)}
+          className={`sm:hidden w-full px-3.5 py-1.5 border-b backdrop-blur-xl flex items-center justify-between text-[11px] font-mono sticky top-16 z-30 shadow-xs cursor-pointer ${
+            usage.is_quota_exceeded
+              ? "bg-rose-500/15 border-rose-500/30 text-rose-800 dark:text-rose-200"
+              : (usage.is_quota_warning || (usage.percentage_used ?? 0) >= 80)
+              ? "bg-amber-500/15 border-amber-500/30 text-amber-800 dark:text-amber-200"
+              : "bg-slate-100/95 dark:bg-[#0c1220]/95 border-slate-200 dark:border-white/[0.08]"
+          }`}
+        >
           <div className="flex items-center gap-1.5 min-w-0">
-            <Zap className="w-3.5 h-3.5 text-amber-500 shrink-0 animate-pulse" />
-            <span className="text-slate-500 dark:text-slate-400 font-sans font-bold text-[10px] uppercase tracking-wider">AI Quota:</span>
-            <span className="font-bold text-slate-900 dark:text-white truncate">
+            {usage.is_quota_exceeded ? (
+              <AlertTriangle className="w-3.5 h-3.5 text-rose-500 shrink-0 animate-bounce" />
+            ) : (usage.is_quota_warning || (usage.percentage_used ?? 0) >= 80) ? (
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+            ) : (
+              <Zap className="w-3.5 h-3.5 text-amber-500 shrink-0 animate-pulse" />
+            )}
+            <span className="font-sans font-bold text-[10px] uppercase tracking-wider">Quota:</span>
+            <span className="font-bold truncate">
               {(usage.tokens_used).toLocaleString()} / {(usage.token_allowance).toLocaleString()}
             </span>
-            <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-1.5 py-0.2 rounded-full border border-blue-500/20">
-              {usage.percentage_used ?? Math.round((usage.tokens_used / (usage.token_allowance || 1)) * 100)}%
+            <span className={`text-[10px] font-semibold px-1.5 py-0.2 rounded-full border ${
+              usage.is_quota_exceeded
+                ? "bg-rose-500 text-white border-rose-600"
+                : (usage.is_quota_warning || (usage.percentage_used ?? 0) >= 80)
+                ? "bg-amber-500 text-white border-amber-600"
+                : "text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20"
+            }`}>
+              {usage.is_quota_exceeded ? "EXCEEDED" : `${usage.percentage_used ?? Math.round((usage.tokens_used / (usage.token_allowance || 1)) * 100)}%`}
             </span>
           </div>
           <div className="w-16 h-1.5 bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden shrink-0 ml-2">
             <div
-              className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 rounded-full transition-all duration-500"
+              className={`h-full rounded-full transition-all duration-500 ${
+                usage.is_quota_exceeded
+                  ? "bg-rose-500"
+                  : (usage.is_quota_warning || (usage.percentage_used ?? 0) >= 80)
+                  ? "bg-amber-500"
+                  : "bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"
+              }`}
               style={{ width: `${Math.min(100, Math.max(8, (usage.tokens_used / (usage.token_allowance || 1)) * 100))}%` }}
             />
           </div>
@@ -1420,6 +1503,49 @@ const loadChatSessions = async () => {
                 <X className="w-4 h-4" />
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Real-Time Token Quota Warning & Exceeded Banner (Section 6.3) */}
+        {usage && (usage.is_quota_exceeded || usage.is_quota_warning || (usage.percentage_used ?? 0) >= 80) && (
+          <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg backdrop-blur-xl ${
+            usage.is_quota_exceeded
+              ? "bg-rose-500/10 border-rose-500/30 text-rose-900 dark:text-rose-200"
+              : "bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-200"
+          }`}>
+            <div className="flex items-start sm:items-center gap-3">
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                usage.is_quota_exceeded ? "bg-rose-500/20 text-rose-600 dark:text-rose-400" : "bg-amber-500/20 text-amber-600 dark:text-amber-400"
+              }`}>
+                <AlertTriangle className={`w-4 h-4 ${usage.is_quota_exceeded ? "animate-bounce" : ""}`} />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+                  {usage.is_quota_exceeded ? "Token Quota Exceeded (Inference Blocked)" : "Token Quota Alert (80%+ Consumed)"}
+                  <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono font-bold ${
+                    usage.is_quota_exceeded ? "bg-rose-600 text-white" : "bg-amber-600 text-white"
+                  }`}>
+                    {usage.percentage_used}%
+                  </span>
+                </h4>
+                <p className="text-xs opacity-90 mt-0.5">
+                  {usage.is_quota_exceeded
+                    ? `You have reached ${usage.tokens_used.toLocaleString()} / ${usage.token_allowance.toLocaleString()} monthly tokens. AI chat and RAG execution are temporarily blocked.`
+                    : `You have consumed ${usage.tokens_used.toLocaleString()} of your ${usage.token_allowance.toLocaleString()} tokens (${usage.percentage_used}%). Upgrade before reaching 100% to avoid downtime.`}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsUpgradeModalOpen(true)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 shadow-sm ${
+                usage.is_quota_exceeded
+                  ? "bg-rose-600 hover:bg-rose-500 text-white shadow-rose-500/20"
+                  : "bg-amber-600 hover:bg-amber-500 text-white shadow-amber-500/20"
+              }`}
+            >
+              Upgrade Subscription
+            </button>
           </div>
         )}
 
@@ -3982,8 +4108,8 @@ const loadChatSessions = async () => {
             ) : auditSubView === "telemetry" ? (
               /* PROMETHEUS LIVE OBSERVABILITY VIEW (Section 13 & 14.3) */
               <div className="space-y-6">
-                {/* 4 Telemetry 3D Gauge Cards */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+                {/* 5 Telemetry 3D Gauge Cards with SLA Latency Budget (Section 13.2) */}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
                   <TiltCard3D maxTilt={9} className="card-depth-3d p-4 sm:p-5 space-y-1 rounded-2xl cursor-default">
                     <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                       <Gauge className="w-3.5 h-3.5 text-indigo-500" />
@@ -3994,6 +4120,28 @@ const loadChatSessions = async () => {
                     </p>
                     <p className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold">
                       p50: {telemetry?.p50_latency_ms ?? 0}ms &bull; p99: {telemetry?.p99_latency_ms ?? 0}ms
+                    </p>
+                  </TiltCard3D>
+
+                  <TiltCard3D maxTilt={9} className="card-depth-3d p-4 sm:p-5 space-y-1 rounded-2xl cursor-default">
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-blue-500" />
+                      Latency SLA Budget
+                    </span>
+                    <p className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
+                      {telemetry?.sla_compliance_percentage ?? 100}%
+                      <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full ${
+                        telemetry?.is_latency_budget_breached
+                          ? "bg-rose-500/20 text-rose-500 font-bold"
+                          : (telemetry?.latency_budget_status === "warning")
+                          ? "bg-amber-500/20 text-amber-500 font-bold"
+                          : "bg-emerald-500/20 text-emerald-500 font-bold"
+                      }`}>
+                        {telemetry?.is_latency_budget_breached ? "BREACHED" : telemetry?.latency_budget_status === "warning" ? "WARNING" : "HEALTHY"}
+                      </span>
+                    </p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">
+                      Target Budget: &le; {telemetry?.latency_budget_ms ?? 2000}ms
                     </p>
                   </TiltCard3D>
 
