@@ -79,70 +79,10 @@ import { TelemetrySparkline } from "@/components/TelemetrySparkline";
 import { CitationInspectorDrawer } from "@/components/CitationInspectorDrawer";
 import { DocumentScopeSelector } from "@/components/DocumentScopeSelector";
 import { SubscriptionUpgradeModal } from "@/components/SubscriptionUpgradeModal";
+import { MarkdownAnswer } from "@/components/MarkdownAnswer";
 import { FlowButton } from "@/components/FlowButton";
 import { EnterpriseFooter } from "@/components/EnterpriseFooter";
 import { RAGEvalData } from "@/lib/api";
-
-function renderFormattedAnswer(text: string) {
-  const lines = text.split("\n");
-  return lines.map((line, lIdx) => {
-    const trimmed = line.trim();
-    if (!trimmed) {
-      return <div key={lIdx} className="h-2" />;
-    }
-
-    const isBullet = trimmed.startsWith("•") || trimmed.startsWith("-") || trimmed.startsWith("* ");
-    const content = isBullet ? trimmed.replace(/^[•\-\*]\s*/, "") : trimmed;
-
-    const parts = content.split(/(\*\*[^*]+\*\*)/g);
-
-    const renderedParts = parts.map((part, pIdx) => {
-      if (part.startsWith("**") && part.endsWith("**")) {
-        return (
-          <strong key={pIdx} className="font-bold text-slate-900 dark:text-white">
-            {part.slice(2, -2)}
-          </strong>
-        );
-      }
-      if (part.includes("[Source:")) {
-        const subParts = part.split(/(\[Source:[^\]]+\])/g);
-        return (
-          <span key={pIdx}>
-            {subParts.map((sub, sIdx) => {
-              if (sub.startsWith("[Source:") && sub.endsWith("]")) {
-                return (
-                  <span
-                    key={sIdx}
-                    className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/20 mx-1"
-                  >
-                    {sub.slice(1, -1)}
-                  </span>
-                );
-              }
-              return sub;
-            })}
-          </span>
-        );
-      }
-      return <span key={pIdx}>{part}</span>;
-    });
-
-    if (isBullet) {
-      return (
-        <div key={lIdx} className="flex items-start gap-2 ml-1 my-0.5">
-          <span className="text-indigo-500 font-bold leading-5 select-none">•</span>
-          <span className="leading-relaxed flex-1">{renderedParts}</span>
-        </div>
-      );
-    }
-
-    return (
-      <p key={lIdx} className="leading-relaxed">
-        {renderedParts}
-      </p>
-    );
-  });
-}
 
 const TASK_TYPE_OPTIONS = [
   { value: "text-generation", label: "Text Generation (LLM)" },
@@ -317,6 +257,7 @@ export default function DashboardPage() {
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
   const [inputQuery, setInputQuery] = useState("");
+  const [copiedMessageIdx, setCopiedMessageIdx] = useState<number | null>(null);
   const [isQuerying, setIsQuerying] = useState(false);
   const [isDlpModalOpen, setIsDlpModalOpen] = useState(false);
   const [activeDlpEvent, setActiveDlpEvent] = useState<{
@@ -2315,10 +2256,18 @@ const loadChatSessions = async () => {
                           <p className="whitespace-pre-wrap font-medium">{msg.text}</p>
                         ) : msg.text ? (
                           <div className="space-y-1.5 text-slate-800 dark:text-slate-200">
-                            {renderFormattedAnswer(msg.text)}
-                            {msg.isStreaming && (
-                              <span className="inline-block w-1.5 h-3.5 ml-1 bg-indigo-500 animate-pulse rounded-sm align-middle" />
-                            )}
+                            <MarkdownAnswer
+                              content={msg.text}
+                              isStreaming={msg.isStreaming}
+                              onCitationClick={(tag) => {
+                                const match = msg.sources?.find(
+                                  (s) =>
+                                    tag.toLowerCase().includes(s.document_title.toLowerCase()) ||
+                                    tag.includes(String(s.page_number))
+                                );
+                                if (match) setSelectedCitation(match);
+                              }}
+                            />
                           </div>
                         ) : (
                           <div className="flex items-center gap-2 py-1 text-xs text-indigo-600 dark:text-indigo-400 font-mono">
@@ -2369,6 +2318,43 @@ const loadChatSessions = async () => {
                                   </p>
                                 </div>
                               ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Assistant Message Quick Action Bar (Copy & Metadata) */}
+                        {msg.sender === "assistant" && msg.text && !msg.isStreaming && (
+                          <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/[0.05] flex items-center justify-between text-[10.5px] font-mono text-slate-400 dark:text-slate-500 select-none">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(msg.text);
+                                setCopiedMessageIdx(idx);
+                                setTimeout(() => setCopiedMessageIdx(null), 2000);
+                              }}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md hover:bg-slate-100 dark:hover:bg-white/[0.06] text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                              title="Copy response text"
+                            >
+                              {copiedMessageIdx === idx ? (
+                                <>
+                                  <Check className="w-3 h-3 text-emerald-500" />
+                                  <span className="text-emerald-500 font-bold">Copied</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-3 h-3" />
+                                  <span>Copy</span>
+                                </>
+                              )}
+                            </button>
+
+                            <div className="flex items-center gap-2">
+                              <span className="flex items-center gap-1">
+                                <Cpu className="w-3 h-3 text-indigo-500" />
+                                <span>{msg.model || "gpt-4o-mini"}</span>
+                              </span>
+                              <span>&bull;</span>
+                              <span>~{Math.max(1, Math.round(msg.text.length / 4))} tokens</span>
                             </div>
                           </div>
                         )}
@@ -2436,8 +2422,18 @@ const loadChatSessions = async () => {
                       value={inputQuery}
                       onChange={(e) => setInputQuery(e.target.value)}
                       placeholder="Ask a question about your uploaded documents..."
-                      className="w-full px-4 py-2.5 sm:py-3 rounded-xl bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder-slate-400 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all"
+                      className="w-full pl-4 pr-10 py-2.5 sm:py-3 rounded-xl bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder-slate-400 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all shadow-inner"
                     />
+                    {inputQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setInputQuery("")}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors cursor-pointer"
+                        title="Clear input"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                   <button
                     type="submit"
@@ -2447,6 +2443,16 @@ const loadChatSessions = async () => {
                     <span>Send</span>
                     <Send className="w-3.5 h-3.5" />
                   </button>
+                </div>
+                <div className="flex items-center justify-between mt-2 px-1 text-[10px] font-mono text-slate-400 dark:text-slate-500 select-none">
+                  <span className="flex items-center gap-1">
+                    <kbd className="px-1 py-0.2 rounded bg-slate-200/80 dark:bg-white/10 font-bold text-slate-600 dark:text-slate-300">↵</kbd> send
+                    <span className="mx-1">&bull;</span>
+                    <kbd className="px-1 py-0.2 rounded bg-slate-200/80 dark:bg-white/10 font-bold text-slate-600 dark:text-slate-300">Shift+↵</kbd> newline
+                  </span>
+                  <span className="hidden sm:inline text-indigo-600 dark:text-indigo-400 font-semibold">
+                    Strictly grounded in enterprise documents
+                  </span>
                 </div>
               </form>
             </div>

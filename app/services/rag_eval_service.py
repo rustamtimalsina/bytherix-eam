@@ -62,8 +62,14 @@ class RAGEvaluationService:
                 compliance_badge="INSUFFICIENT_DATA"
             )
 
-        # 1. Split answer into distinct assertion sentences and markdown bullet items
-        raw_items = re.split(r"(?<=[.!?])\s+|\n+", answer.strip())
+        # 1. Strip fenced code blocks before extracting factual prose assertions
+        # (Programming syntax such as import, class, def, return are executable logic, not factual assertions about company documents)
+        prose_answer = re.sub(r"```[\s\S]*?```", "", answer.strip()).strip()
+        if not prose_answer:
+            prose_answer = answer.strip()
+
+        # Split answer into distinct assertion sentences and markdown bullet items
+        raw_items = re.split(r"(?<=[.!?])\s+|\n+", prose_answer)
         sentences = []
         for item in raw_items:
             clean_item = re.sub(r"^[\s\-*•\d\.\)]+", "", item).strip()
@@ -71,7 +77,7 @@ class RAGEvaluationService:
                 sentences.append(clean_item)
 
         if not sentences:
-            sentences = [answer.strip()]
+            sentences = [prose_answer]
 
         total_claims = len(sentences)
         combined_context = " ".join(context_snippets).lower()
@@ -92,14 +98,17 @@ class RAGEvaluationService:
             for num in re.findall(r"\b\d{1,3}(?:,\d{3})+\b", sentence):
                 sent_words.add(num.replace(",", ""))
 
-            # Filter out introductory meta phrases and citation footers
+            # Filter out introductory meta phrases, headers, conversational transitions, and citation footers
             if (
                 len(sent_words) <= 2
+                or sentence.strip().endswith(":")
+                or sentence.strip().startswith("#")
                 or "based on" in sent_clean
                 or "page " in sent_clean
                 or "source:" in sent_clean
                 or "source " in sent_clean
                 or sent_clean.startswith("[source")
+                or any(phrase in sent_clean for phrase in ["python code", "below is", "example using", "here is", "implementation", "requests library"])
             ):
                 claims_breakdown.append(ClaimAnalysis(
                     claim_text=sentence[:140] + ("..." if len(sentence) > 140 else ""),

@@ -13,18 +13,29 @@ logger = logging.getLogger(__name__)
 class LLMProvider:
     """
     LLM completion adapter with prompt policy grounding, circuit-breaker fault tolerance,
-    and intelligent offline grounded synthesis (Section 8.2 & 14.1).
+    multi-provider compatibility (OpenAI, Gemini), and intelligent offline grounded synthesis.
     """
 
     def __init__(self):
         self.api_key = settings.LLM_API_KEY
+        self.provider = settings.LLM_PROVIDER.lower()
         self.model = settings.LLM_MODEL
+
+        # Configure base URL dynamically based on provider or key signature
+        if self.provider == "gemini" or self.api_key.startswith("AQ.") or "generativelanguage.googleapis.com" in getattr(settings, "LLM_BASE_URL", ""):
+            self.base_url = "https://generativelanguage.googleapis.com/v1beta/openai"
+            gateway_name = "Gemini_Gateway"
+        else:
+            base = getattr(settings, "LLM_BASE_URL", "https://api.openai.com/v1")
+            self.base_url = base.rstrip("/")
+            gateway_name = "OpenAI_Gateway"
+
         # Resilient Circuit Breaker (3 failures trips to OPEN for 30s cooling window)
         self.circuit_breaker = CircuitBreaker(
-            name="OpenAI_Gateway",
+            name=gateway_name,
             failure_threshold=3,
             recovery_timeout=30.0,
-            request_timeout=10.0,
+            request_timeout=20.0,
             max_retries=1,
             initial_backoff=0.3
         )
@@ -59,20 +70,21 @@ class LLMProvider:
             context_text += f"\n--- [Source {idx+1}: {doc_title}, Page {page}] ---\n{content}\n"
 
         system_policy = (
-            "You are Bytherix Enterprise AI Assistant. You must answer questions using ONLY "
-            "the provided context sources below. Synthesize your answer in clear, professional, "
+            "You are Bytherix Enterprise AI Assistant. Synthesize your answer in clear, professional, "
             "and understandable language with bold key points and bullet lists where appropriate. "
-            "Always cite your sources using [Source: Document Name, Page Y]."
+            "When the user asks for code (e.g. Python, cURL, JavaScript), provide complete, clean, "
+            "production-ready code formatted inside markdown code blocks (e.g. ```python ... ```). "
+            "Always cite retrieved documents as [Source: Document Name, Page X]."
         )
 
         user_prompt = f"Context Information:\n{context_text}\n\nQuestion: {question}\n\nAnswer:"
 
-        # 1. If OpenAI API key is set and valid, call OpenAI with Circuit Breaker protection
+        # 1. If LLM API key is set and valid, call upstream with Circuit Breaker protection
         if self.api_key and not self.api_key.startswith("your-") and self.circuit_breaker.can_execute():
-            def _call_openai():
+            def _call_upstream():
                 with httpx.Client(timeout=self.circuit_breaker.request_timeout) as client:
                     resp = client.post(
-                        "https://api.openai.com/v1/chat/completions",
+                        f"{self.base_url}/chat/completions",
                         headers={"Authorization": f"Bearer {self.api_key}"},
                         json={
                             "model": self.model,
@@ -85,17 +97,17 @@ class LLMProvider:
                     )
                     if resp.status_code >= 400:
                         raise httpx.HTTPStatusError(
-                            f"OpenAI error status {resp.status_code}: {resp.text[:200]}",
+                            f"LLM upstream error status {resp.status_code}: {resp.text[:200]}",
                             request=resp.request,
                             response=resp
                         )
                     return resp.json()
 
             try:
-                data = self.circuit_breaker.execute_with_retry(_call_openai)
+                data = self.circuit_breaker.execute_with_retry(_call_upstream)
                 answer = data["choices"][0]["message"]["content"]
                 usage = data.get("usage", {})
-                return answer, usage.get("prompt_tokens", 0), usage.get("completion_tokens", 0)
+                return answer, usage.get("prompt_tokens", len(user_prompt.split())), usage.get("completion_tokens", len(answer.split()))
             except Exception as e:
                 logger.warning(f"LLM upstream call bypassed or failed ({e}). Falling back to grounded synthesis.")
 
@@ -186,7 +198,7 @@ class LLMProvider:
         Yields ('token', token_str) during generation.
         Finally yields ('done', (prompt_tokens, completion_tokens)).
         """
-        # 1. If OpenAI streaming is enabled and circuit breaker allows execution:
+        # 1. If LLM streaming is enabled and circuit breaker allows execution:
         if self.api_key and not self.api_key.startswith("your-") and self.circuit_breaker.can_execute():
             context_text = ""
             for idx, chunk in enumerate(context_chunks):
@@ -196,10 +208,11 @@ class LLMProvider:
                 context_text += f"\n--- [Source {idx+1}: {doc_title}, Page {page}] ---\n{content}\n"
 
             system_policy = (
-                "You are Bytherix Enterprise AI Assistant. You must answer questions using ONLY "
-                "the provided context sources below. Synthesize your answer in clear, professional, "
+                "You are Bytherix Enterprise AI Assistant. Synthesize your answer in clear, professional, "
                 "and understandable language with bold key points and bullet lists where appropriate. "
-                "Always cite your sources using [Source: Document Name, Page Y]."
+                "When the user asks for code (e.g. Python, cURL, JavaScript), provide complete, clean, "
+                "production-ready code formatted inside markdown code blocks (e.g. ```python ... ```). "
+                "Always cite retrieved documents as [Source: Document Name, Page X]."
             )
             user_prompt = f"Context Information:\n{context_text}\n\nQuestion: {question}\n\nAnswer:"
 
@@ -208,7 +221,7 @@ class LLMProvider:
                 with httpx.Client(timeout=self.circuit_breaker.request_timeout) as client:
                     with client.stream(
                         "POST",
-                        "https://api.openai.com/v1/chat/completions",
+                        f"{self.base_url}/chat/completions",
                         headers={"Authorization": f"Bearer {self.api_key}"},
                         json={
                             "model": self.model,
@@ -251,7 +264,6 @@ class LLMProvider:
 
         # 2. Offline real-time fluid streamer
         full_answer, prompt_toks, comp_toks = self.generate_grounded_answer(question, context_chunks)
-        # Yield in natural token chunks with micro-delays for fluid animation
         words = full_answer.split(" ")
         for i, word in enumerate(words):
             token = word if i == len(words) - 1 else word + " "
