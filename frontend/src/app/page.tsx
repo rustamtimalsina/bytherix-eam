@@ -64,6 +64,7 @@ import {
   AuditStats,
   ObservabilityTelemetryResponse,
   DocumentChunksResponse,
+  DeadLetterJobItem,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { CosmicThemeToggle } from "@/components/CosmicThemeToggle";
@@ -225,7 +226,18 @@ export default function DashboardPage() {
   // Observability & Prometheus Telemetry state (Section 13 & 14.3)
   const [telemetry, setTelemetry] = useState<ObservabilityTelemetryResponse | null>(null);
   const [isLoadingTelemetry, setIsLoadingTelemetry] = useState(false);
-  const [auditSubView, setAuditSubView] = useState<"logs" | "telemetry">("logs");
+  const [auditSubView, setAuditSubView] = useState<"logs" | "telemetry" | "dlq">("logs");
+
+  // DLQ (Dead-Letter Queue) State (Section 11.3 & 14)
+  const [dlqJobs, setDlqJobs] = useState<DeadLetterJobItem[]>([]);
+  const [dlqTotal, setDlqTotal] = useState(0);
+  const [isLoadingDlq, setIsLoadingDlq] = useState(false);
+  const [dlqStatusFilter, setDlqStatusFilter] = useState<string>("");
+  const [inspectingDlqJob, setInspectingDlqJob] = useState<DeadLetterJobItem | null>(null);
+  const [copiedDlqTrace, setCopiedDlqTrace] = useState(false);
+  const [retryingJobId, setRetryingJobId] = useState<string | null>(null);
+  const [purgingJobId, setPurgingJobId] = useState<string | null>(null);
+  const [dlqActionMessage, setDlqActionMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // Agent Workflows state (Section 8.4 & 11)
   const [workflows, setWorkflows] = useState<WorkflowDefinition[]>([]);
@@ -400,6 +412,60 @@ export default function DashboardPage() {
     }
   };
 
+  const loadDlqData = async () => {
+    try {
+      setIsLoadingDlq(true);
+      const res = await api.listDeadLetterJobs({
+        status: dlqStatusFilter || undefined,
+        limit: 50,
+      });
+      setDlqJobs(res.items);
+      setDlqTotal(res.total);
+    } catch (err) {
+      console.error("Failed to load DLQ data", err);
+    } finally {
+      setIsLoadingDlq(false);
+    }
+  };
+
+  const handleRetryDlqJob = async (jobId: string) => {
+    try {
+      setRetryingJobId(jobId);
+      const res = await api.retryDeadLetterJob(jobId);
+      setDlqActionMessage({ type: "success", text: res.message });
+      setTimeout(() => setDlqActionMessage(null), 5000);
+      loadDlqData();
+      if (inspectingDlqJob?.id === jobId) {
+        setInspectingDlqJob((prev) => (prev ? { ...prev, status: "retrying", retry_count: prev.retry_count + 1 } : null));
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to retry job";
+      setDlqActionMessage({ type: "error", text: msg });
+      setTimeout(() => setDlqActionMessage(null), 5000);
+    } finally {
+      setRetryingJobId(null);
+    }
+  };
+
+  const handlePurgeDlqJob = async (jobId: string) => {
+    try {
+      setPurgingJobId(jobId);
+      const res = await api.purgeDeadLetterJob(jobId);
+      setDlqActionMessage({ type: "success", text: res.message });
+      setTimeout(() => setDlqActionMessage(null), 5000);
+      loadDlqData();
+      if (inspectingDlqJob?.id === jobId) {
+        setInspectingDlqJob(null);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to purge job";
+      setDlqActionMessage({ type: "error", text: msg });
+      setTimeout(() => setDlqActionMessage(null), 5000);
+    } finally {
+      setPurgingJobId(null);
+    }
+  };
+
   const handleExportAuditLogs = async (format: "csv" | "json") => {
     try {
       setIsExportingAudit(true);
@@ -446,12 +512,18 @@ export default function DashboardPage() {
 
   // Re-fetch audit logs when switching to audit tab or changing filters
   useEffect(() => {
-    if (token && activeTab === "audit" && canViewAudit) {
-      loadAuditData();
-      loadTelemetryData();
+    if (token && activeTab === "audit") {
+      if (auditSubView === "logs" && canViewAudit) {
+        loadAuditData();
+        loadTelemetryData();
+      } else if (auditSubView === "telemetry") {
+        loadTelemetryData();
+      } else if (auditSubView === "dlq") {
+        loadDlqData();
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, activeTab, auditSeverityFilter, auditDatePreset, auditPage]);
+  }, [token, activeTab, auditSubView, auditSeverityFilter, auditDatePreset, auditPage, dlqStatusFilter]);
 
   // Re-fetch models when switching to models tab
   useEffect(() => {
@@ -3397,6 +3469,26 @@ const loadChatSessions = async () => {
                   <Activity className="w-3.5 h-3.5 text-emerald-500" />
                   Live Observability (Prometheus)
                 </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuditSubView("dlq");
+                    loadDlqData();
+                  }}
+                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    auditSubView === "dlq"
+                      ? "bg-white dark:bg-rose-600 text-slate-900 dark:text-white shadow-sm"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                >
+                  <AlertTriangle className={`w-3.5 h-3.5 ${dlqTotal > 0 ? "text-rose-500 animate-pulse" : "text-amber-500"}`} />
+                  <span>Dead-Letter Queue (DLQ)</span>
+                  {dlqTotal > 0 && (
+                    <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-rose-500/20 text-rose-600 dark:text-rose-300 font-bold border border-rose-500/30">
+                      {dlqTotal}
+                    </span>
+                  )}
+                </button>
               </div>
             </div>
 
@@ -3887,7 +3979,7 @@ const loadChatSessions = async () => {
               </div>
             )}
               </>
-            ) : (
+            ) : auditSubView === "telemetry" ? (
               /* PROMETHEUS LIVE OBSERVABILITY VIEW (Section 13 & 14.3) */
               <div className="space-y-6">
                 {/* 4 Telemetry 3D Gauge Cards */}
@@ -4033,6 +4125,361 @@ const loadChatSessions = async () => {
                     </div>
                   </div>
                 </div>
+              </div>
+            ) : (
+              /* DEAD-LETTER QUEUE (DLQ) VIEW (Section 11.3 & 14) */
+              <div className="space-y-6">
+                {/* Action Alert Banner */}
+                {dlqActionMessage && (
+                  <div
+                    className={`p-3.5 rounded-2xl border text-xs font-semibold flex items-center justify-between gap-3 shadow-md ${
+                      dlqActionMessage.type === "success"
+                        ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-200"
+                        : "bg-rose-500/10 border-rose-500/30 text-rose-900 dark:text-rose-200"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      {dlqActionMessage.type === "success" ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                      ) : (
+                        <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
+                      )}
+                      <span>{dlqActionMessage.text}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setDlqActionMessage(null)}
+                      className="p-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                {/* DLQ 4 Stat Cards */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+                  <TiltCard3D maxTilt={9} className="card-depth-3d p-4 sm:p-5 space-y-1 rounded-2xl cursor-default">
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
+                      Total DLQ Tasks
+                    </span>
+                    <p className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white">
+                      {dlqTotal}
+                    </p>
+                    <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">
+                      Poison-Pill Quarantined
+                    </p>
+                  </TiltCard3D>
+
+                  <TiltCard3D maxTilt={9} className="card-depth-3d p-4 sm:p-5 space-y-1 rounded-2xl cursor-default">
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <XCircle className="w-3.5 h-3.5 text-rose-500" />
+                      Active Failures
+                    </span>
+                    <p className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white">
+                      {dlqJobs.filter((j) => j.status === "failed").length}
+                    </p>
+                    <p className="text-[11px] text-slate-500 font-semibold">
+                      Awaiting Re-drive / Fix
+                    </p>
+                  </TiltCard3D>
+
+                  <TiltCard3D maxTilt={9} className="card-depth-3d p-4 sm:p-5 space-y-1 rounded-2xl cursor-default">
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <RefreshCw className="w-3.5 h-3.5 text-blue-500" />
+                      Re-driving
+                    </span>
+                    <p className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white">
+                      {dlqJobs.filter((j) => j.status === "retrying").length}
+                    </p>
+                    <p className="text-[11px] text-blue-500 font-semibold">
+                      In-Flight Workers
+                    </p>
+                  </TiltCard3D>
+
+                  <TiltCard3D maxTilt={9} className="card-depth-3d p-4 sm:p-5 space-y-1 rounded-2xl cursor-default">
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <Check className="w-3.5 h-3.5 text-emerald-500" />
+                      Purged / Dismissed
+                    </span>
+                    <p className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white">
+                      {dlqJobs.filter((j) => j.status === "purged").length}
+                    </p>
+                    <p className="text-[11px] text-emerald-500 font-semibold">
+                      Quarantine Resolved
+                    </p>
+                  </TiltCard3D>
+                </div>
+
+                {/* DLQ Toolbar */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 rounded-2xl bg-white/70 dark:bg-[#0c1222]/70 border border-slate-200/80 dark:border-white/[0.08] backdrop-blur-xl">
+                  {/* Status Filter Pills */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 mr-1 flex items-center gap-1">
+                      <Filter className="w-3 h-3" /> Status:
+                    </span>
+                    {(
+                      [
+                        { id: "", label: "All Tasks" },
+                        { id: "failed", label: "Failed" },
+                        { id: "retrying", label: "Retrying" },
+                        { id: "purged", label: "Purged" },
+                      ] as const
+                    ).map((f) => {
+                      const isSel = dlqStatusFilter === f.id;
+                      return (
+                        <button
+                          key={f.id}
+                          type="button"
+                          onClick={() => setDlqStatusFilter(f.id)}
+                          className={`px-3 py-1 rounded-full text-xs font-semibold transition-all duration-150 ${
+                            isSel
+                              ? "bg-rose-600 text-white shadow-sm shadow-rose-500/30"
+                              : "bg-slate-100 dark:bg-white/[0.06] text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/[0.12]"
+                          }`}
+                        >
+                          {f.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={loadDlqData}
+                    disabled={isLoadingDlq}
+                    title="Refresh DLQ"
+                    className="p-1.5 rounded-xl border border-slate-200 dark:border-white/[0.1] bg-white dark:bg-white/[0.05] text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white disabled:opacity-50 transition-colors flex items-center gap-1.5 text-xs px-3 font-semibold self-end sm:self-center"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isLoadingDlq ? "animate-spin text-rose-500" : ""}`} />
+                    <span>Refresh</span>
+                  </button>
+                </div>
+
+                {/* DLQ Table */}
+                <div className="card-depth-3d overflow-hidden rounded-2xl">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-200 dark:border-white/[0.08] bg-slate-50/80 dark:bg-white/[0.02] text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          <th className="py-3 px-4">Task Name</th>
+                          <th className="py-3 px-3">Resource</th>
+                          <th className="py-3 px-4">Error Diagnostics</th>
+                          <th className="py-3 px-3 text-center">Attempts</th>
+                          <th className="py-3 px-3">Status</th>
+                          <th className="py-3 px-4 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-white/[0.05] text-xs">
+                        {isLoadingDlq ? (
+                          <tr>
+                            <td colSpan={6} className="py-12 text-center text-slate-400">
+                              <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-rose-500" />
+                              Loading Dead-Letter Queue items...
+                            </td>
+                          </tr>
+                        ) : dlqJobs.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="py-12 text-center text-slate-400">
+                              <ShieldCheck className="w-8 h-8 text-emerald-500 mx-auto mb-2 opacity-80" />
+                              <p className="font-semibold text-slate-700 dark:text-slate-300">
+                                Dead-Letter Queue is Clean
+                              </p>
+                              <p className="text-xs text-slate-400 mt-0.5">
+                                Zero poisoned or unhandled background jobs quarantined for this tenant.
+                              </p>
+                            </td>
+                          </tr>
+                        ) : (
+                          dlqJobs.map((job) => (
+                            <tr
+                              key={job.id}
+                              className="hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
+                            >
+                              <td className="py-3 px-4">
+                                <div className="font-mono text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                                  <Terminal className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                                  <span>{job.task_name}</span>
+                                </div>
+                                <span className="text-[10px] text-slate-400 block font-mono mt-0.5">
+                                  {new Date(job.created_at).toLocaleString()}
+                                </span>
+                              </td>
+                              <td className="py-3 px-3">
+                                <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-slate-100 dark:bg-white/[0.06] text-slate-600 dark:text-slate-300 capitalize">
+                                  {job.resource_type}
+                                </span>
+                                {job.resource_id && (
+                                  <span className="block text-[10px] text-slate-400 font-mono truncate max-w-[100px] mt-0.5">
+                                    {job.resource_id}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-3 px-4 max-w-xs truncate">
+                                <span className="text-xs text-rose-600 dark:text-rose-400 font-mono block truncate" title={job.error_message}>
+                                  {job.error_message}
+                                </span>
+                              </td>
+                              <td className="py-3 px-3 text-center">
+                                <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-white/5">
+                                  {job.retry_count}
+                                </span>
+                              </td>
+                              <td className="py-3 px-3">
+                                <span
+                                  className={`px-2 py-0.5 text-[10px] font-bold rounded-full capitalize ${
+                                    job.status === "failed"
+                                      ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
+                                      : job.status === "retrying"
+                                      ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20"
+                                      : "bg-slate-100 dark:bg-white/5 text-slate-500 border border-slate-200 dark:border-white/10"
+                                  }`}
+                                >
+                                  {job.status}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => setInspectingDlqJob(job)}
+                                    title="Inspect Error & Stack Trace"
+                                    className="p-1.5 rounded-lg border border-slate-200 dark:border-white/[0.1] bg-white dark:bg-white/[0.05] text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
+                                  >
+                                    <Eye className="w-3.5 h-3.5" />
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRetryDlqJob(job.id)}
+                                    disabled={retryingJobId === job.id || job.status === "purged"}
+                                    title="Re-drive Job into Pipeline"
+                                    className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-40 flex items-center gap-1 transition-colors"
+                                  >
+                                    <RefreshCw className={`w-3 h-3 ${retryingJobId === job.id ? "animate-spin" : ""}`} />
+                                    <span>Re-drive</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handlePurgeDlqJob(job.id)}
+                                    disabled={purgingJobId === job.id || job.status === "purged"}
+                                    title="Purge Task from DLQ"
+                                    className="p-1.5 rounded-lg border border-rose-200 dark:border-rose-900/40 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 disabled:opacity-30 transition-colors"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Inspect DLQ Modal / Drawer */}
+                {inspectingDlqJob && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+                    <div className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-white/[0.1] rounded-2xl max-w-2xl w-full p-6 space-y-4 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+                      <div className="flex items-start justify-between gap-3 border-b border-slate-100 dark:border-white/[0.06] pb-3">
+                        <div>
+                          <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                            <AlertTriangle className="w-4 h-4 text-rose-500" />
+                            Dead-Letter Job Diagnostics
+                          </h3>
+                          <p className="text-xs text-slate-500 font-mono mt-0.5">
+                            Task: {inspectingDlqJob.task_name} &bull; ID: {inspectingDlqJob.id}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setInspectingDlqJob(null)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[0.05]"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="space-y-3 overflow-y-auto pr-1 flex-1 text-xs">
+                        <div>
+                          <span className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                            Error Message
+                          </span>
+                          <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-700 dark:text-rose-300 font-mono text-[11px] select-all">
+                            {inspectingDlqJob.error_message}
+                          </div>
+                        </div>
+
+                        {inspectingDlqJob.stack_trace && (
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="font-bold text-slate-700 dark:text-slate-300">
+                                Python Stack Trace
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(inspectingDlqJob.stack_trace || "");
+                                  setCopiedDlqTrace(true);
+                                  setTimeout(() => setCopiedDlqTrace(false), 2000);
+                                }}
+                                className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+                              >
+                                {copiedDlqTrace ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                                <span>{copiedDlqTrace ? "Copied" : "Copy Trace"}</span>
+                              </button>
+                            </div>
+                            <pre className="p-3 rounded-xl bg-slate-900 text-slate-200 font-mono text-[10px] overflow-x-auto leading-relaxed max-h-48 border border-white/10">
+                              {inspectingDlqJob.stack_trace}
+                            </pre>
+                          </div>
+                        )}
+
+                        {inspectingDlqJob.payload && (
+                          <div>
+                            <span className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                              Task Payload
+                            </span>
+                            <pre className="p-2.5 rounded-xl bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 font-mono text-[10px] overflow-x-auto">
+                              {JSON.stringify(inspectingDlqJob.payload, null, 2)}
+                            </pre>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="pt-3 border-t border-slate-100 dark:border-white/[0.06] flex items-center justify-between gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handlePurgeDlqJob(inspectingDlqJob.id)}
+                          disabled={purgingJobId === inspectingDlqJob.id || inspectingDlqJob.status === "purged"}
+                          className="px-3 py-1.5 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 disabled:opacity-40"
+                        >
+                          Purge Task
+                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setInspectingDlqJob(null)}
+                            className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/10"
+                          >
+                            Close
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRetryDlqJob(inspectingDlqJob.id)}
+                            disabled={retryingJobId === inspectingDlqJob.id || inspectingDlqJob.status === "purged"}
+                            className="px-4 py-1.5 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-40 flex items-center gap-1.5"
+                          >
+                            <RefreshCw className={`w-3.5 h-3.5 ${retryingJobId === inspectingDlqJob.id ? "animate-spin" : ""}`} />
+                            <span>Re-drive Job</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -250,6 +250,36 @@ export interface ApiKeyItem {
   raw_key?: string;
 }
 
+
+export interface DeadLetterJobItem {
+  id: string;
+  organization_id: string;
+  task_name: string;
+  task_id?: string;
+  resource_type: string;
+  resource_id?: string;
+  payload?: Record<string, unknown>;
+  error_message: string;
+  stack_trace?: string;
+  retry_count: number;
+  status: "failed" | "retrying" | "resolved" | "purged";
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DeadLetterJobListResponse {
+  items: DeadLetterJobItem[];
+  total: number;
+  page: number;
+  pages: number;
+}
+
+export interface DeadLetterJobActionResponse {
+  status: string;
+  message: string;
+  job_id: string;
+}
+
 class ApiClient {
   public getToken(): string | null {
     if (typeof window === "undefined") return null;
@@ -659,6 +689,35 @@ class ApiClient {
     const res = await this.exportAuditLogs({ format: "csv" });
     return res.blob;
   }
+
+  // Dead-Letter Queue (DLQ) & Poison-Pill Resilience (Section 11.3 & 14)
+  async listDeadLetterJobs(params?: {
+    status?: string;
+    resource_type?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<DeadLetterJobListResponse> {
+    const query = new URLSearchParams();
+    if (params?.status) query.set("status", params.status);
+    if (params?.resource_type) query.set("resource_type", params.resource_type);
+    if (params?.limit !== undefined) query.set("limit", String(params.limit));
+    if (params?.offset !== undefined) query.set("offset", String(params.offset));
+    const qs = query.toString();
+    return this.request<DeadLetterJobListResponse>(`/jobs/dlq${qs ? `?${qs}` : ""}`);
+  }
+
+  async retryDeadLetterJob(jobId: string): Promise<DeadLetterJobActionResponse> {
+    return this.request<DeadLetterJobActionResponse>(`/jobs/dlq/${jobId}/retry`, {
+      method: "POST",
+    });
+  }
+
+  async purgeDeadLetterJob(jobId: string): Promise<DeadLetterJobActionResponse> {
+    return this.request<DeadLetterJobActionResponse>(`/jobs/dlq/${jobId}`, {
+      method: "DELETE",
+    });
+  }
+
 
   // Observability & Prometheus Telemetry (Section 13 & 14.3)
   async getObservabilityTelemetry(): Promise<ObservabilityTelemetryResponse> {
