@@ -119,6 +119,8 @@ class AuditService:
         action: Optional[str] = None,
         severity: Optional[str] = None,
         resource_type: Optional[str] = None,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
         limit: int = 50,
         offset: int = 0
     ) -> Tuple[List[AuditLog], int]:
@@ -129,7 +131,10 @@ class AuditService:
         AuditService.seed_initial_audit_if_empty(db, organization_id)
 
         query = select(AuditLog).where(AuditLog.organization_id == organization_id)
-
+        if start_date:
+            query = query.where(AuditLog.created_at >= start_date)
+        if end_date:
+            query = query.where(AuditLog.created_at <= end_date)
         if action:
             query = query.where(AuditLog.action == action)
         if severity:
@@ -138,6 +143,10 @@ class AuditService:
             query = query.where(AuditLog.resource_type == resource_type)
 
         count_query = select(func.count(AuditLog.id)).where(AuditLog.organization_id == organization_id)
+        if start_date:
+            count_query = count_query.where(AuditLog.created_at >= start_date)
+        if end_date:
+            count_query = count_query.where(AuditLog.created_at <= end_date)
         if action:
             count_query = count_query.where(AuditLog.action == action)
         if severity:

@@ -200,17 +200,19 @@ async def custom_swagger_docs():
 # CORS configuration
 
 app.add_middleware(
-
     CORSMiddleware,
-
     allow_origins=["*"],
-
     allow_credentials=True,
-
     allow_methods=["*"],
-
     allow_headers=["*"],
-
+    expose_headers=[
+        "Content-Disposition",
+        "X-Audit-Checksum-SHA256",
+        "X-Audit-Record-Count",
+        "X-Audit-Tenant-ID",
+        "X-Request-ID",
+        "X-Process-Time",
+    ],
 )
 
 

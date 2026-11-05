@@ -17,6 +17,8 @@ def list_audit_logs(
     action: Optional[str] = Query(None, description="Filter by event action"),
     severity: Optional[str] = Query(None, description="Filter by severity (info, warning, critical)"),
     resource_type: Optional[str] = Query(None, description="Filter by resource type"),
+    start_date: Optional[datetime] = Query(None, description="Filter events on or after this timestamp (ISO 8601)"),
+    end_date: Optional[datetime] = Query(None, description="Filter events on or before this timestamp (ISO 8601)"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     context: TenantContext = Depends(require_permission(Permission.AUDIT_READ)),
@@ -31,6 +33,8 @@ def list_audit_logs(
         action=action,
         severity=severity,
         resource_type=resource_type,
+        start_date=start_date,
+        end_date=end_date,
         limit=limit,
         offset=offset
     )

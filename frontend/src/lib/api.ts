@@ -597,6 +597,8 @@ class ApiClient {
     action?: string;
     severity?: string;
     resource_type?: string;
+    startDate?: string;
+    endDate?: string;
     limit?: number;
     offset?: number;
   }): Promise<AuditLogListResponse> {
@@ -604,6 +606,8 @@ class ApiClient {
     if (params?.action) query.set("action", params.action);
     if (params?.severity) query.set("severity", params.severity);
     if (params?.resource_type) query.set("resource_type", params.resource_type);
+    if (params?.startDate) query.set("start_date", params.startDate);
+    if (params?.endDate) query.set("end_date", params.endDate);
     if (params?.limit) query.set("limit", String(params.limit));
     if (params?.offset) query.set("offset", String(params.offset));
     const qs = query.toString();
@@ -614,19 +618,46 @@ class ApiClient {
     return this.request<AuditStats>("/audit-logs/stats");
   }
 
-  async exportAuditLogsCsv(): Promise<Blob> {
+  async exportAuditLogs(params?: {
+    format?: "csv" | "json";
+    startDate?: string;
+    endDate?: string;
+    severity?: string;
+    action?: string;
+  }): Promise<{ blob: Blob; filename: string; checksum: string; recordCount: string }> {
     const token = this.getToken();
     const headers: Record<string, string> = {};
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
     }
-    const res = await fetch(`${API_BASE_URL}/audit-logs/export`, {
+    const query = new URLSearchParams();
+    if (params?.format) query.set("format", params.format);
+    if (params?.startDate) query.set("start_date", params.startDate);
+    if (params?.endDate) query.set("end_date", params.endDate);
+    if (params?.severity) query.set("severity", params.severity);
+    if (params?.action) query.set("action", params.action);
+
+    const qs = query.toString();
+    const res = await fetch(`${API_BASE_URL}/audit-logs/export${qs ? `?${qs}` : ""}`, {
       headers,
     });
     if (!res.ok) {
       throw new Error(`Failed to export audit logs: ${res.statusText}`);
     }
-    return res.blob();
+
+    const disposition = res.headers.get("Content-Disposition") || "";
+    const filenameMatch = disposition.match(/filename="?([^";]+)"?/);
+    const filename = filenameMatch ? filenameMatch[1] : `bytherix_audit_trail.${params?.format || "csv"}`;
+    const checksum = res.headers.get("X-Audit-Checksum-SHA256") || "";
+    const recordCount = res.headers.get("X-Audit-Record-Count") || "0";
+    const blob = await res.blob();
+
+    return { blob, filename, checksum, recordCount };
+  }
+
+  async exportAuditLogsCsv(): Promise<Blob> {
+    const res = await this.exportAuditLogs({ format: "csv" });
+    return res.blob;
   }
 
   // Observability & Prometheus Telemetry (Section 13 & 14.3)
