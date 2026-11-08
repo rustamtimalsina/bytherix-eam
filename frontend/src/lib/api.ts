@@ -781,6 +781,14 @@ class ApiClient {
       body: JSON.stringify({ plan_tier: planTier, payment_method_id: paymentMethodId }),
     });
   }
+
+  async getInvoices(): Promise<InvoicesListResponse> {
+    return this.request<InvoicesListResponse>("/billing/invoices");
+  }
+
+  getInvoicePdfUrl(invoiceId: string): string {
+    return `${this.getApiBaseUrl()}/billing/invoices/${invoiceId}/download`;
+  }
 }
 
 export interface DocumentChunkItem {
@@ -924,4 +932,25 @@ export interface UpgradePlanResponse {
   current_plan: string;
   token_allowance: number;
   documents_limit: number;
+}
+
+export interface InvoiceItem {
+  id: string;
+  invoice_number: string;
+  billing_period: string;
+  plan_tier: string;
+  tokens_consumed: number;
+  token_allowance: number;
+  amount_usd: number;
+  currency: string;
+  status: string;
+  payment_method: string;
+  created_at: string;
+  paid_at: string | null;
+  pdf_download_url: string;
+}
+
+export interface InvoicesListResponse {
+  organization_id: string;
+  invoices: InvoiceItem[];
 }

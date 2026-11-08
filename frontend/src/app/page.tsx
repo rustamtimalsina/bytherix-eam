@@ -82,6 +82,7 @@ import { SubscriptionUpgradeModal } from "@/components/SubscriptionUpgradeModal"
 import { MarkdownAnswer } from "@/components/MarkdownAnswer";
 import { FlowButton } from "@/components/FlowButton";
 import { EnterpriseFooter } from "@/components/EnterpriseFooter";
+import { BillingLedger } from "@/components/BillingLedger";
 import { RAGEvalData } from "@/lib/api";
 
 const TASK_TYPE_OPTIONS = [
@@ -4891,6 +4892,12 @@ const loadChatSessions = async () => {
                 </div>
               </div>
             </div>
+
+            {/* Billing Invoices & PDF Receipt Ledger (Section 7.3 & 11) */}
+            <BillingLedger
+              organizationId={organizationId || undefined}
+              currentPlanTier={usage?.plan_tier || "starter"}
+            />
 
             {/* Team Members & Role Access Control (Section 7.1) */}
             <div className="card-depth-3d p-5 sm:p-6 space-y-4">

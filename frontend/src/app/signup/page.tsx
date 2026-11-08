@@ -53,12 +53,9 @@ export default function SignupPage() {
 
 
 
-      <div className="relative w-full max-w-lg pt-12 sm:pt-0">
+      <div className="relative w-full max-w-lg pt-24 sm:pt-28 pb-12">
         {/* Header branding */}
         <div className="flex flex-col items-center mb-6 text-center">
-          <div className="mb-3">
-            <BytherixEAMLogo size="lg" />
-          </div>
           <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-200/60 dark:bg-slate-900/80 border border-slate-300/60 dark:border-slate-800 text-blue-600 dark:text-blue-400 text-xs font-semibold mb-3 backdrop-blur-sm shadow-sm">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Bytherix Multi-Tenant Provisioning</span>

@@ -40,3 +40,24 @@ class StripeWebhookEvent(BaseModel):
     type: str = Field(..., description="Stripe webhook event type, e.g. customer.subscription.updated")
     id: str = Field(default="evt_simulated", description="Stripe event ID")
     data: Dict[str, Any] = Field(..., description="Stripe event object payload")
+
+
+class InvoiceItem(BaseModel):
+    id: str
+    invoice_number: str
+    billing_period: str
+    plan_tier: str
+    tokens_consumed: int
+    token_allowance: int
+    amount_usd: float
+    currency: str = "USD"
+    status: str  # PAID, PENDING, CURRENT_ACTIVE
+    payment_method: str
+    created_at: str
+    paid_at: Optional[str] = None
+    pdf_download_url: str
+
+
+class InvoicesListResponse(BaseModel):
+    organization_id: str
+    invoices: List[InvoiceItem]

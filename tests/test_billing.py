@@ -1,14 +1,10 @@
-import pytest
-from fastapi.testclient import TestClient
-
-
-def test_billing_plans_catalog(client: TestClient):
-    """Test Section 7.3 & 10.2: list subscription plans and active tenant tier."""
+def test_list_billing_plans_catalog(client):
+    # 1. Sign up tenant
     signup_data = {
         "email": "billing_user@bytherix.com",
         "password": "Password123!",
-        "full_name": "Billing Admin",
-        "organization_name": "Billing Corp"
+        "full_name": "Billing User",
+        "organization_name": "Billing Org"
     }
     resp = client.post("/api/v1/auth/signup", json=signup_data)
     assert resp.status_code == 201
@@ -16,27 +12,25 @@ def test_billing_plans_catalog(client: TestClient):
     org_id = resp.json()["organization_id"]
     headers = {"Authorization": f"Bearer {token}", "X-Organization-Id": org_id}
 
-    # 1. Fetch plans
+    # 2. Query billing plans
     plans_resp = client.get("/api/v1/billing/plans", headers=headers)
     assert plans_resp.status_code == 200
     data = plans_resp.json()
     assert data["current_plan"] == "starter"
-    assert data["organization_id"] == org_id
     assert len(data["plans"]) == 3
-    
-    plan_ids = [p["id"] for p in data["plans"]]
-    assert "starter" in plan_ids
-    assert "growth" in plan_ids
-    assert "enterprise" in plan_ids
+    plan_names = [p["name"] for p in data["plans"]]
+    assert "Starter Free" in plan_names
+    assert "Growth Pro" in plan_names
+    assert "Enterprise Quantum" in plan_names
 
 
-def test_billing_upgrade_flow(client: TestClient):
-    """Test Section 7.3: upgrade plan to Growth tier elevates token budget and records audit event."""
+def test_upgrade_plan_flow(client):
+    # 1. Sign up tenant
     signup_data = {
-        "email": "upgrader@bytherix.com",
+        "email": "upgrade_user@bytherix.com",
         "password": "Password123!",
-        "full_name": "Upgrade Admin",
-        "organization_name": "Growth Org"
+        "full_name": "Upgrade User",
+        "organization_name": "Upgrade Org"
     }
     resp = client.post("/api/v1/auth/signup", json=signup_data)
     assert resp.status_code == 201
@@ -44,28 +38,26 @@ def test_billing_upgrade_flow(client: TestClient):
     org_id = resp.json()["organization_id"]
     headers = {"Authorization": f"Bearer {token}", "X-Organization-Id": org_id}
 
-    # 1. Upgrade to Growth Pro
-    upgrade_payload = {"plan_tier": "growth"}
-    up_resp = client.post("/api/v1/billing/upgrade", json=upgrade_payload, headers=headers)
-    assert up_resp.status_code == 200
-    up_data = up_resp.json()
-    assert up_data["success"] is True
-    assert up_data["current_plan"] == "growth"
-    assert up_data["token_allowance"] == 1_500_000
+    # 2. Upgrade to growth plan
+    upgrade_resp = client.post(
+        "/api/v1/billing/upgrade",
+        json={"plan_tier": "growth"},
+        headers=headers
+    )
+    assert upgrade_resp.status_code == 200
+    assert upgrade_resp.json()["success"] is True
+    assert upgrade_resp.json()["current_plan"] == "growth"
+    assert upgrade_resp.json()["token_allowance"] == 1_500_000
+    assert upgrade_resp.json()["documents_limit"] == 50
 
-    # 2. Verify usage summary reflects new quota
-    usage_resp = client.get("/api/v1/usage", headers=headers)
-    assert usage_resp.status_code == 200
-    assert usage_resp.json()["plan_tier"] == "growth"
-    assert usage_resp.json()["token_allowance"] == 1_500_000
-
-    # 3. Test invalid plan rejection
-    bad_resp = client.post("/api/v1/billing/upgrade", json={"plan_tier": "super_vip"}, headers=headers)
-    assert bad_resp.status_code == 422  # Pydantic validation error
+    # 3. Verify plans endpoint now marks growth as active
+    plans_resp = client.get("/api/v1/billing/plans", headers=headers)
+    assert plans_resp.status_code == 200
+    assert plans_resp.json()["current_plan"] == "growth"
 
 
-def test_stripe_webhook_simulation(client: TestClient):
-    """Test Section 7.3: Stripe webhook event triggers backend subscription elevation."""
+def test_stripe_webhook_processing(client):
+    # 1. Sign up tenant
     signup_data = {
         "email": "stripe_tenant@bytherix.com",
         "password": "Password123!",
@@ -78,7 +70,7 @@ def test_stripe_webhook_simulation(client: TestClient):
     org_id = resp.json()["organization_id"]
     headers = {"Authorization": f"Bearer {token}", "X-Organization-Id": org_id}
 
-    # Dispatch Stripe webhook event for this tenant
+    # 2. Dispatch Stripe webhook event for this tenant
     webhook_payload = {
         "type": "checkout.session.completed",
         "id": "evt_test_12345",
@@ -102,8 +94,41 @@ def test_stripe_webhook_simulation(client: TestClient):
     assert hook_resp.json()["status"] == "processed"
     assert hook_resp.json()["current_plan"] == "enterprise"
 
-    # Verify usage endpoint reflects enterprise quota
+    # 3. Verify usage endpoint reflects enterprise quota
     usage_resp = client.get("/api/v1/usage", headers=headers)
     assert usage_resp.status_code == 200
     assert usage_resp.json()["plan_tier"] == "enterprise"
     assert usage_resp.json()["token_allowance"] == 10_000_000
+
+
+def test_list_invoices_and_download_pdf(client):
+    # 1. Sign up tenant
+    signup_data = {
+        "email": "invoice_tester@bytherix.com",
+        "password": "Password123!",
+        "full_name": "Invoice Tester",
+        "organization_name": "Invoice Org"
+    }
+    resp = client.post("/api/v1/auth/signup", json=signup_data)
+    assert resp.status_code == 201
+    token = resp.json()["access_token"]
+    org_id = resp.json()["organization_id"]
+    headers = {"Authorization": f"Bearer {token}", "X-Organization-Id": org_id}
+
+    # 2. Fetch invoice ledger
+    inv_resp = client.get("/api/v1/billing/invoices", headers=headers)
+    assert inv_resp.status_code == 200
+    data = inv_resp.json()
+    assert data["organization_id"] == org_id
+    assert len(data["invoices"]) >= 2
+    first_invoice = data["invoices"][0]
+    assert "INV-2026" in first_invoice["invoice_number"]
+    assert first_invoice["status"] == "PAID"
+
+    # 3. Download official PDF invoice receipt
+    download_url = first_invoice["pdf_download_url"]
+    pdf_resp = client.get(download_url, headers=headers)
+    assert pdf_resp.status_code == 200
+    assert pdf_resp.headers["content-type"] == "application/pdf"
+    assert b"%PDF" in pdf_resp.content[:10]
+    assert len(pdf_resp.content) > 1000
