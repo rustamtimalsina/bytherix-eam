@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { ShieldCheck, Activity, Terminal, Layers } from "lucide-react";
+import { ShieldCheck, Activity, Terminal } from "lucide-react";
+import { BytherixEAMLogo } from "./BytherixEAMLogo";
 
 interface EnterpriseFooterProps {
   onOpenDLPShield?: () => void;
@@ -15,11 +16,9 @@ export function EnterpriseFooter({
   return (
     <footer className="mt-16 sm:mt-20 pt-8 pb-12 border-t border-slate-200/80 dark:border-white/[0.08] text-xs font-mono select-none">
       <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-        {/* Left: Brand & Architecture Identity */}
+        {/* Left: Brand & Architecture Identity with Official Sovereign Shield */}
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3 text-center sm:text-left">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 shrink-0">
-            <Layers className="w-4 h-4" />
-          </div>
+          <BytherixEAMLogo size="sm" showText={false} />
           <div>
             <div className="flex items-center justify-center sm:justify-start gap-2">
               <span className="font-bold text-slate-900 dark:text-white tracking-tight">

@@ -1237,7 +1237,10 @@ const loadChatSessions = async () => {
 
           {/* Role Badge - Compact & Clean */}
           <div className="hidden min-[420px]:flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-ping shrink-0" />
+            <span className="relative flex h-2 w-2 shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
             <span className="truncate max-w-[65px] sm:max-w-none">
               {role ? role.replace("organization_", "") : "owner"}
             </span>
@@ -1675,15 +1678,25 @@ const loadChatSessions = async () => {
               </div>
 
               {documents.length === 0 ? (
-                <div className="p-8 sm:p-12 text-center text-slate-500 space-y-4 rounded-xl border border-dashed border-slate-200 dark:border-white/[0.06] bg-slate-50/30 dark:bg-white/[0.01]">
-                  <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 mx-auto">
-                    <Sparkles className="w-6 h-6 animate-pulse" />
+                <div className="p-8 sm:p-12 text-center text-slate-500 space-y-4 rounded-2xl border-2 border-dashed border-slate-200/90 dark:border-white/[0.08] bg-slate-50/40 dark:bg-white/[0.015] relative overflow-hidden">
+                  <div className="relative w-14 h-14 mx-auto flex items-center justify-center">
+                    <div className="absolute inset-0 rounded-2xl bg-indigo-500/20 blur-md animate-pulse" />
+                    <div className="relative w-12 h-12 rounded-2xl bg-indigo-500/10 dark:bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm">
+                      <Sparkles className="w-6 h-6 animate-pulse" />
+                    </div>
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">No documents in your tenant library</h4>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">No documents in your tenant library</h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto leading-relaxed">
                       Drop an enterprise PDF above, or instantly seed the authoritative Bytherix technical specification.
                     </p>
+                    <div className="flex items-center justify-center gap-2 mt-2.5 text-[10px] font-mono text-slate-400 dark:text-slate-500">
+                      <span>pgvector</span>
+                      <span>•</span>
+                      <span>1536-dim</span>
+                      <span>•</span>
+                      <span>Zero-Knowledge Isolation</span>
+                    </div>
                   </div>
                   {canUploadDocs && (
                     <button
@@ -1744,15 +1757,23 @@ const loadChatSessions = async () => {
                               : "bg-blue-500/10 border border-blue-500/30 text-blue-700 dark:text-blue-400"
                           }`}
                         >
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              doc.status === "indexed"
-                                ? "bg-emerald-500"
-                                : doc.status === "processing"
-                                ? "bg-amber-500 animate-ping"
-                                : "bg-blue-500"
-                            }`}
-                          />
+                          <span className="relative flex h-1.5 w-1.5 shrink-0">
+                            {doc.status === "indexed" && (
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            )}
+                            {doc.status === "processing" && (
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                            )}
+                            <span
+                              className={`relative inline-flex rounded-full h-1.5 w-1.5 ${
+                                doc.status === "indexed"
+                                  ? "bg-emerald-500"
+                                  : doc.status === "processing"
+                                  ? "bg-amber-500"
+                                  : "bg-blue-500"
+                              }`}
+                            />
+                          </span>
                           <span>{doc.status === "indexed" ? "Ready" : doc.status}</span>
                         </span>
 
@@ -3208,8 +3229,11 @@ const loadChatSessions = async () => {
                             {/* Action Button - EXACTLY ONE context-aware button per card */}
                             <div className="flex items-center gap-1.5 shrink-0">
                               {isProd ? (
-                                <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 shadow-xs">
+                                  <span className="relative flex h-2 w-2 shrink-0">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                  </span>
                                   <span>Active Prod</span>
                                 </span>
                               ) : canManageModels ? (
@@ -3912,7 +3936,7 @@ const loadChatSessions = async () => {
 
                               <td className="py-3 px-3 whitespace-nowrap">
                                 <span
-                                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
                                     log.severity === "critical"
                                       ? "bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/30"
                                       : log.severity === "warning"
@@ -3920,7 +3944,24 @@ const loadChatSessions = async () => {
                                       : "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/30"
                                   }`}
                                 >
-                                  {log.severity}
+                                  <span className="relative flex h-1.5 w-1.5 shrink-0">
+                                    {log.severity === "critical" && (
+                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                                    )}
+                                    {log.severity === "warning" && (
+                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                    )}
+                                    <span
+                                      className={`relative inline-flex rounded-full h-1.5 w-1.5 ${
+                                        log.severity === "critical"
+                                          ? "bg-rose-500"
+                                          : log.severity === "warning"
+                                          ? "bg-amber-500"
+                                          : "bg-blue-500"
+                                      }`}
+                                    />
+                                  </span>
+                                  <span>{log.severity}</span>
                                 </span>
                               </td>
 
