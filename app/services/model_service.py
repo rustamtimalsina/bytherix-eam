@@ -259,7 +259,8 @@ class ModelService:
         version_id: str,
         organization_id: str,
         target_stage: str,
-        user_email: str
+        user_email: str,
+        reason: Optional[str] = None
     ) -> ModelVersion:
         if target_stage not in VALID_STAGES:
             raise HTTPException(
@@ -318,7 +319,12 @@ class ModelService:
             resource_id=version.id,
             actor_email=user_email,
             severity="info" if target_stage != "archived" else "warning",
-            details={"model_name": model.name, "version": version.version, "target_stage": target_stage}
+            details={
+                "model_name": model.name,
+                "version": version.version,
+                "target_stage": target_stage,
+                "reason": reason or "Promoted via MLOps Registry"
+            }
         )
 
         return version

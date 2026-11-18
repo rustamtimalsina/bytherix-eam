@@ -109,7 +109,7 @@ export function CustomRoleDropdown({
             compact ? "right-0 w-56" : "left-0"
           } bg-white dark:bg-[#0c1222] border-slate-200 dark:border-white/[0.12] text-slate-900 dark:text-white backdrop-blur-xl`}
         >
-          <div className="space-y-0.5 max-h-60 overflow-y-auto custom-scrollbar">
+          <div className="space-y-0.5 max-h-36 sm:max-h-40 overflow-y-auto custom-scrollbar">
             {options.map((opt) => {
               const isSelected = opt.value === value;
               return (

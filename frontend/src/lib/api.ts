@@ -621,10 +621,10 @@ class ApiClient {
     });
   }
 
-  async promoteModelVersion(versionId: string, target_stage: string): Promise<ModelVersionDetail> {
+  async promoteModelVersion(versionId: string, target_stage: string, reason?: string): Promise<ModelVersionDetail> {
     return this.request<ModelVersionDetail>(`/models/versions/${versionId}/promote`, {
       method: "POST",
-      body: JSON.stringify({ target_stage }),
+      body: JSON.stringify({ target_stage, reason }),
     });
   }
 

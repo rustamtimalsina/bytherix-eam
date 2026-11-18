@@ -59,6 +59,7 @@ import {
   AgentExecutionDetail,
   RegisteredModelSummary,
   RegisteredModelDetail,
+  ModelVersionDetail,
   PredictionResult,
   AuditLogItem,
   AuditStats,
@@ -83,6 +84,7 @@ import { MarkdownAnswer } from "@/components/MarkdownAnswer";
 import { FlowButton } from "@/components/FlowButton";
 import { EnterpriseFooter } from "@/components/EnterpriseFooter";
 import { BillingLedger } from "@/components/BillingLedger";
+import { ModelPromotionModal } from "@/components/ModelPromotionModal";
 import { RAGEvalData } from "@/lib/api";
 
 const TASK_TYPE_OPTIONS = [
@@ -141,6 +143,10 @@ export default function DashboardPage() {
   const [newVersionAccuracy, setNewVersionAccuracy] = useState("98.0");
   const [newVersionLatency, setNewVersionLatency] = useState("85");
   const [isCreatingVersion, setIsCreatingVersion] = useState(false);
+  const [candidateForPromotion, setCandidateForPromotion] = useState<{
+    version: ModelVersionDetail;
+    targetStage: "production" | "staging";
+  } | null>(null);
 
   // Audit Logs state (Section 10 & 13)
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
@@ -628,16 +634,17 @@ export default function DashboardPage() {
     }
   };
 
-  const handlePromoteVersion = async (versionId: string, stage: string) => {
+  const handlePromoteVersion = async (versionId: string, stage: string, reason?: string) => {
     try {
       setIsPromoting(true);
-      await api.promoteModelVersion(versionId, stage);
+      await api.promoteModelVersion(versionId, stage, reason);
       if (selectedModelId) {
         const detail = await api.getModel(selectedModelId);
         setSelectedModel(detail);
       }
       const list = await api.listModels();
       setModels(list);
+      showToast("Model Stage Promoted", `Version successfully transitioned to ${stage.toUpperCase()}.`, "success");
     } catch (err) {
       showToast("Operation Notice", (err as Error).message || "Failed to promote version", "error");
     } finally {
@@ -1821,7 +1828,7 @@ const loadChatSessions = async () => {
 
             {/* RAG CHUNKS & VECTOR INSPECTION MODAL */}
             {showChunksModal && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
+              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
                 <div
                   className="w-full max-w-3xl max-h-[85vh] rounded-2xl bg-white dark:bg-[#0c1222] border border-slate-200 dark:border-white/[0.1] shadow-2xl flex flex-col overflow-hidden"
                   style={{
@@ -3252,7 +3259,7 @@ const loadChatSessions = async () => {
                                     <button
                                       type="button"
                                       disabled={isPromoting}
-                                      onClick={() => handlePromoteVersion(ver.id, "production")}
+                                      onClick={() => setCandidateForPromotion({ version: ver, targetStage: "production" })}
                                       className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-sm active:scale-95 transition-all"
                                       title="Promote this validated candidate release to active production"
                                     >
@@ -3263,7 +3270,7 @@ const loadChatSessions = async () => {
                                   <button
                                     type="button"
                                     disabled={isPromoting}
-                                    onClick={() => handlePromoteVersion(ver.id, "staging")}
+                                    onClick={() => setCandidateForPromotion({ version: ver, targetStage: "staging" })}
                                     className="px-2.5 py-1 rounded-lg text-[10px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-colors"
                                     title="Stage this draft candidate for pre-production evaluation"
                                   >
@@ -4048,7 +4055,7 @@ const loadChatSessions = async () => {
 
             {/* Inspect Modal Drawer */}
             {inspectingAuditLog && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                 <div className="card-depth-3d w-full max-w-xl p-6 space-y-4 relative">
                   <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/[0.08] pb-3">
                     <div className="flex items-center gap-2">
@@ -4577,7 +4584,7 @@ const loadChatSessions = async () => {
 
                 {/* Inspect DLQ Modal / Drawer */}
                 {inspectingDlqJob && (
-                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+                  <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
                     <div className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-white/[0.1] rounded-2xl max-w-2xl w-full p-6 space-y-4 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
                       <div className="flex items-start justify-between gap-3 border-b border-slate-100 dark:border-white/[0.06] pb-3">
                         <div>
@@ -5065,8 +5072,8 @@ const loadChatSessions = async () => {
 
             {/* Invite Member Modal */}
             {showInviteModal && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                <div className="card-depth-3d w-full max-w-md p-6 space-y-4 relative">
+              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 pb-24 sm:pb-8 bg-black/70 backdrop-blur-md overflow-y-auto">
+                <div className="card-depth-3d w-full max-w-md p-6 space-y-4 relative my-auto">
                   <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/[0.08] pb-3">
                     <div className="flex items-center gap-2">
                       <UserPlus className="w-4 h-4 text-teal-600 dark:text-teal-400" />
@@ -5238,6 +5245,24 @@ const loadChatSessions = async () => {
       <DLPShieldModal
         isOpen={isDlpModalOpen}
         onClose={() => setIsDlpModalOpen(false)}
+      />
+
+      {/* MLOps Model Promotion Safety Gate & Benchmark Modal */}
+      <ModelPromotionModal
+        isOpen={candidateForPromotion !== null}
+        onClose={() => setCandidateForPromotion(null)}
+        modelName={selectedModel?.name || "Selected Model"}
+        candidateVersion={candidateForPromotion?.version || null}
+        activeProductionVersion={
+          selectedModel?.versions.find(
+            (v) => v.id === selectedModel.active_version_id || v.lifecycle_stage === "production"
+          ) || null
+        }
+        targetStage={candidateForPromotion?.targetStage || "production"}
+        onConfirmPromotion={async (versionId, stage, reason) => {
+          await handlePromoteVersion(versionId, stage, reason);
+        }}
+        isPromoting={isPromoting}
       />
     </div>
   );

@@ -21,6 +21,7 @@ class ModelVersionCreate(BaseModel):
 
 class ModelPromoteRequest(BaseModel):
     target_stage: str = Field(..., description="evaluation | staging | production | archived")
+    reason: Optional[str] = Field(None, max_length=500, description="Release notes / justification for stage promotion")
 
 
 class PredictionRequest(BaseModel):

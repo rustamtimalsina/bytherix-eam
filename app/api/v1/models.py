@@ -82,7 +82,7 @@ def promote_model_version(
     with authorized audit logging (Section 9.2 #7 & #8).
     """
     user_email = context.user.email if context.user else "admin@bytherix.com"
-    return ModelService.promote_version(db, version_id, context.organization.id, payload.target_stage, user_email)
+    return ModelService.promote_version(db, version_id, context.organization.id, payload.target_stage, user_email, reason=payload.reason)
 
 
 @router.post("/{model_id}/rollback/{target_version_id}", response_model=ModelVersionResponse, status_code=status.HTTP_200_OK)
