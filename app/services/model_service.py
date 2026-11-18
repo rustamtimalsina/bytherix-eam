@@ -327,6 +327,25 @@ class ModelService:
             }
         )
 
+        try:
+            from app.services.webhook_service import WebhookService
+            WebhookService.dispatch_event(
+                db=db,
+                organization_id=organization_id,
+                event_type="model.promoted",
+                payload_data={
+                    "model_id": model.id,
+                    "model_name": model.name,
+                    "version_id": version.id,
+                    "version": version.version,
+                    "target_stage": target_stage,
+                    "reason": reason or "Promoted via MLOps Registry",
+                    "promoted_by": user_email
+                }
+            )
+        except Exception:
+            pass
+
         return version
 
     @staticmethod

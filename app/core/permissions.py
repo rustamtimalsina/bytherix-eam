@@ -55,6 +55,11 @@ class Permission(str, Enum):
     # Audit
     AUDIT_READ = "audit:read"
 
+    # Webhooks
+    WEBHOOKS_READ = "webhooks:read"
+    WEBHOOKS_CREATE = "webhooks:create"
+    WEBHOOKS_DELETE = "webhooks:delete"
+
 
 # Role-to-Permissions Mapping (Section 3.1 & 3.2)
 ROLE_PERMISSIONS: dict[Role, Set[Permission]] = {
@@ -73,6 +78,7 @@ ROLE_PERMISSIONS: dict[Role, Set[Permission]] = {
         Permission.MODELS_READ, Permission.MODELS_REGISTER, Permission.MODELS_PROMOTE, Permission.MODELS_ROLLBACK,
         Permission.PREDICTIONS_CALL, Permission.MONITORING_READ,
         Permission.AUDIT_READ,
+        Permission.WEBHOOKS_READ, Permission.WEBHOOKS_CREATE, Permission.WEBHOOKS_DELETE,
     },
     
     Role.DEVELOPER: {
@@ -83,6 +89,7 @@ ROLE_PERMISSIONS: dict[Role, Set[Permission]] = {
         Permission.AGENTS_EXECUTE,
         Permission.MODELS_READ, Permission.MODELS_REGISTER,
         Permission.PREDICTIONS_CALL,
+        Permission.WEBHOOKS_READ, Permission.WEBHOOKS_CREATE, Permission.WEBHOOKS_DELETE,
     },
     
     Role.AI_ML_ENGINEER: {

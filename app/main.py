@@ -43,6 +43,7 @@ from app.api.v1.notifications import router as notifications_router
 from app.api.v1.security import router as security_router
 from app.api.v1.billing import router as billing_router
 from app.api.v1.jobs import router as jobs_router
+from app.api.v1.webhooks import router as webhooks_router
 
 from app.core.notifications import notification_bus
 
@@ -479,4 +480,5 @@ app.include_router(notifications_router, prefix=settings.API_V1_STR)
 app.include_router(security_router, prefix=settings.API_V1_STR)
 app.include_router(billing_router, prefix=settings.API_V1_STR)
 app.include_router(jobs_router, prefix=settings.API_V1_STR)
+app.include_router(webhooks_router, prefix=settings.API_V1_STR)
 

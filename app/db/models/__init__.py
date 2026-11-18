@@ -11,6 +11,7 @@ from app.db.models.agent import AgentExecution, AgentStepTrace
 from app.db.models.model_registry import RegisteredModel, ModelVersion, PredictionLog
 from app.db.models.audit import AuditLog
 from app.db.models.dead_letter import DeadLetterJob
+from app.db.models.webhook import WebhookSubscription, WebhookDelivery
 
 __all__ = [
     "Base",
@@ -30,4 +31,6 @@ __all__ = [
     "PredictionLog",
     "AuditLog",
     "DeadLetterJob",
+    "WebhookSubscription",
+    "WebhookDelivery",
 ]

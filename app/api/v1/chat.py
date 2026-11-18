@@ -116,6 +116,21 @@ def chat_rag(
                 "summary": dlp_result.summary
             }
         )
+        try:
+            from app.services.webhook_service import WebhookService
+            WebhookService.dispatch_event(
+                db=db,
+                organization_id=context.organization.id,
+                event_type="dlp.violation",
+                payload_data={
+                    "session_id": session.id,
+                    "categories": dlp_result.categories,
+                    "entity_count": len(dlp_result.entities_detected),
+                    "summary": dlp_result.summary
+                }
+            )
+        except Exception:
+            pass
 
     # 4. Save sanitized user question
     save_message(
@@ -232,6 +247,21 @@ def chat_rag_stream(
                 "summary": dlp_result.summary
             }
         )
+        try:
+            from app.services.webhook_service import WebhookService
+            WebhookService.dispatch_event(
+                db=db,
+                organization_id=context.organization.id,
+                event_type="dlp.violation",
+                payload_data={
+                    "session_id": session.id,
+                    "categories": dlp_result.categories,
+                    "entity_count": len(dlp_result.entities_detected),
+                    "summary": dlp_result.summary
+                }
+            )
+        except Exception:
+            pass
 
     # 4. Save sanitized user question immediately
     save_message(

@@ -789,6 +789,45 @@ class ApiClient {
   getInvoicePdfUrl(invoiceId: string): string {
     return `${this.getApiBaseUrl()}/billing/invoices/${invoiceId}/download`;
   }
+
+  // Webhooks & Event Subscriptions
+  async getWebhooks(): Promise<WebhookItem[]> {
+    return this.request<WebhookItem[]>("/webhooks");
+  }
+
+  async createWebhook(data: { url: string; events?: string[]; description?: string }): Promise<WebhookCreatedResponse> {
+    return this.request<WebhookCreatedResponse>("/webhooks", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getWebhook(id: string): Promise<WebhookItem> {
+    return this.request<WebhookItem>(`/webhooks/${id}`);
+  }
+
+  async updateWebhook(id: string, data: { url?: string; events?: string[]; description?: string; is_active?: boolean }): Promise<WebhookItem> {
+    return this.request<WebhookItem>(`/webhooks/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteWebhook(id: string): Promise<void> {
+    await this.request<void>(`/webhooks/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  async testWebhook(id: string): Promise<WebhookTestResponse> {
+    return this.request<WebhookTestResponse>(`/webhooks/${id}/test`, {
+      method: "POST",
+    });
+  }
+
+  async getWebhookDeliveries(id: string): Promise<WebhookDeliveryItem[]> {
+    return this.request<WebhookDeliveryItem[]>(`/webhooks/${id}/deliveries`);
+  }
 }
 
 export interface DocumentChunkItem {
@@ -953,4 +992,40 @@ export interface InvoiceItem {
 export interface InvoicesListResponse {
   organization_id: string;
   invoices: InvoiceItem[];
+}
+
+export interface WebhookItem {
+  id: string;
+  organization_id: string;
+  url: string;
+  description: string | null;
+  events: string[];
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  secret_prefix: string;
+}
+
+export interface WebhookCreatedResponse extends WebhookItem {
+  secret: string;
+}
+
+export interface WebhookDeliveryItem {
+  id: string;
+  subscription_id: string;
+  event_type: string;
+  payload: Record<string, any>;
+  status_code: number | null;
+  status: string;
+  attempts: number;
+  response_body: string | null;
+  created_at: string;
+}
+
+export interface WebhookTestResponse {
+  status: string;
+  status_code: number | null;
+  delivery_id: string;
+  signature_preview: string;
+  message: string;
 }
