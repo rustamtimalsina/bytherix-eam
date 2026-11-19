@@ -468,18 +468,117 @@ def generate_branded_swagger_html(
 
     /* Modal Styling */
     .swagger-ui .dialog-ux .modal-ux {{
-      background: var(--bg-card) !important;
-      border: 1px solid rgba(99, 102, 241, 0.3) !important;
+      background: #0f172a !important;
+      border: 1px solid rgba(99, 102, 241, 0.4) !important;
       border-radius: 16px !important;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8) !important;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9) !important;
+      padding: 0.5rem !important;
+    }}
+
+    .swagger-ui .dialog-ux .modal-ux-header {{
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+      padding-bottom: 0.875rem !important;
     }}
 
     .swagger-ui .dialog-ux .modal-ux-header h3 {{
       color: #ffffff !important;
+      font-weight: 700 !important;
+      font-size: 1.25rem !important;
+    }}
+
+    .swagger-ui .dialog-ux .modal-ux-header .close-modal {{
+      fill: #94a3b8 !important;
+      transition: fill 0.2s ease;
+    }}
+
+    .swagger-ui .dialog-ux .modal-ux-header .close-modal:hover {{
+      fill: #ffffff !important;
     }}
 
     .swagger-ui .dialog-ux .modal-ux-content {{
-      color: var(--text-muted) !important;
+      color: #cbd5e1 !important;
+      padding-top: 1rem !important;
+    }}
+
+    .swagger-ui .dialog-ux .modal-ux-content p {{
+      color: #94a3b8 !important;
+      font-size: 0.875rem !important;
+      line-height: 1.5 !important;
+    }}
+
+    .swagger-ui .dialog-ux .modal-ux-content code {{
+      background: rgba(99, 102, 241, 0.2) !important;
+      color: #a5b4fc !important;
+      border: 1px solid rgba(99, 102, 241, 0.35) !important;
+      padding: 0.15rem 0.4rem !important;
+      border-radius: 4px !important;
+      font-family: 'JetBrains Mono', monospace !important;
+    }}
+
+    /* Modal Action Buttons (Authorize, Logout, Close) */
+    .swagger-ui .auth-btn-wrapper {{
+      display: flex !important;
+      align-items: center !important;
+      gap: 0.75rem !important;
+      margin-top: 1.25rem !important;
+      padding-top: 0.875rem !important;
+    }}
+
+    .swagger-ui .auth-btn-wrapper .btn.modal-btn {{
+      border-radius: 8px !important;
+      font-weight: 700 !important;
+      font-size: 0.8125rem !important;
+      padding: 0.55rem 1.35rem !important;
+      cursor: pointer !important;
+      opacity: 1 !important;
+      text-transform: none !important;
+      transition: all 0.2s ease !important;
+      letter-spacing: 0.01em !important;
+    }}
+
+    /* Authorize Button */
+    .swagger-ui .auth-btn-wrapper .btn.modal-btn.authorize {{
+      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+      border: 1px solid rgba(165, 180, 252, 0.4) !important;
+      color: #ffffff !important;
+      box-shadow: 0 0 15px rgba(99, 102, 241, 0.4) !important;
+    }}
+
+    .swagger-ui .auth-btn-wrapper .btn.modal-btn.authorize:hover {{
+      background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%) !important;
+      transform: translateY(-1px);
+    }}
+
+    /* Logout Button (rendered after authorization is active) */
+    .swagger-ui .auth-btn-wrapper .btn.modal-btn.auth:not(.authorize):not(.btn-done),
+    .swagger-ui .auth-btn-wrapper .btn.modal-btn.btn-logout {{
+      background: rgba(239, 68, 68, 0.25) !important;
+      border: 1px solid #ef4444 !important;
+      color: #fee2e2 !important;
+      font-weight: 700 !important;
+      box-shadow: 0 0 15px rgba(239, 68, 68, 0.3) !important;
+    }}
+
+    .swagger-ui .auth-btn-wrapper .btn.modal-btn.auth:not(.authorize):not(.btn-done):hover,
+    .swagger-ui .auth-btn-wrapper .btn.modal-btn.btn-logout:hover {{
+      background: #dc2626 !important;
+      border-color: #ef4444 !important;
+      color: #ffffff !important;
+    }}
+
+    /* Close / Done Button */
+    .swagger-ui .auth-btn-wrapper .btn.modal-btn.btn-done {{
+      background: #334155 !important;
+      border: 1px solid #64748b !important;
+      color: #ffffff !important;
+      font-weight: 700 !important;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4) !important;
+    }}
+
+    .swagger-ui .auth-btn-wrapper .btn.modal-btn.btn-done:hover {{
+      background: #475569 !important;
+      border-color: #94a3b8 !important;
+      color: #ffffff !important;
     }}
   </style>
 </head>

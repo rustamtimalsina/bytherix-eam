@@ -85,6 +85,7 @@ import { FlowButton } from "@/components/FlowButton";
 import { EnterpriseFooter } from "@/components/EnterpriseFooter";
 import { BillingLedger } from "@/components/BillingLedger";
 import { ModelPromotionModal } from "@/components/ModelPromotionModal";
+import { WebhookManagerCard } from "@/components/WebhookManagerCard";
 import { RAGEvalData } from "@/lib/api";
 
 const TASK_TYPE_OPTIONS = [
@@ -1503,7 +1504,7 @@ const loadChatSessions = async () => {
 
                 {/* TAB 1: DOCUMENTS HUB (Enterprise Precision Anti-Slop Redesign) */}
         {activeTab === "documents" && (
-          <div className="space-y-6">
+          <div className="space-y-6 pb-32 sm:pb-36">
             {/* Header */}
             <div className="text-center space-y-1.5">
               <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-blue-500/10 dark:bg-indigo-500/15 border border-blue-500/20 dark:border-indigo-500/30 text-[11px] font-mono font-bold text-blue-600 dark:text-indigo-400 mb-1">
@@ -2489,7 +2490,7 @@ const loadChatSessions = async () => {
         )}
 
         {activeTab === "agents" && (
-          <div className="space-y-6">
+          <div className="space-y-6 pb-32 sm:pb-36">
             {/* Header */}
             <div className="text-center space-y-1.5">
               <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-indigo-500/10 dark:bg-indigo-500/15 border border-indigo-500/20 dark:border-indigo-500/30 text-[11px] font-mono font-bold text-indigo-600 dark:text-indigo-400 mb-1">
@@ -2877,7 +2878,7 @@ const loadChatSessions = async () => {
               </button>
             </div>
           ) : (
-          <div className="space-y-6">
+          <div className="space-y-6 pb-32 sm:pb-36">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="space-y-1">
@@ -3400,7 +3401,7 @@ const loadChatSessions = async () => {
               </button>
             </div>
           ) : (
-          <div className="space-y-6">
+          <div className="space-y-6 pb-32 sm:pb-36">
             <div className="text-center space-y-1">
               <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center justify-center gap-2">
                 <span>API Keys & Machine Access</span>
@@ -3559,6 +3560,12 @@ const loadChatSessions = async () => {
                 )}
               </div>
             </div>
+
+            {/* Enterprise Webhook Subsystem (HMAC-SHA256 Event Subscriptions) */}
+            <WebhookManagerCard
+              token={token}
+              isOwnerOrAdmin={isOwnerOrAdmin}
+            />
 
             {/* Interactive Developer API Portal & SDK Hub */}
             <DeveloperApiPortal
@@ -4162,7 +4169,7 @@ const loadChatSessions = async () => {
               </>
             ) : auditSubView === "telemetry" ? (
               /* PROMETHEUS LIVE OBSERVABILITY VIEW (Section 13 & 14.3) */
-              <div className="space-y-6">
+              <div className="space-y-6 pb-32 sm:pb-36">
                 {/* 5 Telemetry 3D Gauge Cards with SLA Latency Budget (Section 13.2) */}
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
                   <TiltCard3D maxTilt={9} className="card-depth-3d p-4 sm:p-5 space-y-1 rounded-2xl cursor-default">
@@ -4331,7 +4338,7 @@ const loadChatSessions = async () => {
               </div>
             ) : (
               /* DEAD-LETTER QUEUE (DLQ) VIEW (Section 11.3 & 14) */
-              <div className="space-y-6">
+              <div className="space-y-6 pb-32 sm:pb-36">
                 {/* Action Alert Banner */}
                 {dlqActionMessage && (
                   <div
@@ -4691,7 +4698,7 @@ const loadChatSessions = async () => {
 
         {/* TAB 4: TEAM & WORKSPACE */}
         {activeTab === "team" && (
-          <div className="space-y-6">
+          <div className="space-y-6 pb-32 sm:pb-36">
             <div className="text-center space-y-1">
               <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center justify-center gap-2">
                 <span>Workspace & Quotas</span>
