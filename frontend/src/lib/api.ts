@@ -1014,7 +1014,7 @@ export interface WebhookDeliveryItem {
   id: string;
   subscription_id: string;
   event_type: string;
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
   status_code: number | null;
   status: string;
   attempts: number;

@@ -9,9 +9,6 @@ import {
   Zap,
   Check,
   ArrowRight,
-  Layers,
-  Sparkles,
-  Lock,
 } from "lucide-react";
 import { ModelVersionDetail } from "@/lib/api";
 
