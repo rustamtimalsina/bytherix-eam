@@ -10,6 +10,7 @@ from app.services.audit_service import AuditService
 
 from app.db.models.model_registry import RegisteredModel, ModelVersion, PredictionLog
 from app.schemas.model_registry import (
+    ModelMonitoringStatus,
     ModelRegisterCreate,
     ModelVersionCreate,
     PredictionResponse,
@@ -368,6 +369,78 @@ class ModelService:
 
         return ModelService.promote_version(
             db, target_v.id, organization_id, "production", user_email
+        )
+
+    @staticmethod
+    def get_monitoring_status(
+        db: Session,
+        model_id: str,
+        organization_id: str
+    ) -> ModelMonitoringStatus:
+        """
+        Compute live telemetry, drift detection, and rollback recommendation (Section 9.4 & 9.5).
+        """
+        model = ModelService.get_model(db, model_id, organization_id)
+        active_version = None
+        if model.active_version_id:
+            active_version = db.get(ModelVersion, model.active_version_id)
+
+        if not active_version and model.versions:
+            active_version = model.versions[0]
+
+        baseline = float(active_version.latency_p95_ms) if active_version and active_version.latency_p95_ms else 160.0
+
+        # Query recent prediction logs for this model
+        version_ids = [v.id for v in model.versions]
+        logs = db.query(PredictionLog).filter(
+            PredictionLog.organization_id == organization_id,
+            PredictionLog.model_version_id.in_(version_ids)
+        ).order_by(PredictionLog.created_at.desc()).limit(100).all()
+
+        total_predictions = len(logs)
+        if total_predictions > 0:
+            latencies = [l.latency_ms for l in logs]
+            current_latency = round(sum(latencies) / total_predictions, 1)
+            failed_count = sum(1 for l in logs if l.status != "success")
+            error_rate = round((failed_count / total_predictions) * 100, 1)
+        else:
+            current_latency = baseline
+            error_rate = 0.0
+
+        drift_percent = round(((current_latency - baseline) / baseline) * 100, 1) if baseline > 0 else 0.0
+
+        is_drift = drift_percent > 25.0 or error_rate > 5.0
+        if drift_percent > 40.0 or error_rate > 10.0:
+            severity = "critical"
+            recommendation = f"Severe latency degradation detected (+{drift_percent}%). Immediate rollback recommended to preserve SLA."
+        elif drift_percent > 20.0 or error_rate > 3.0:
+            severity = "warning"
+            recommendation = f"Moderate latency drift detected (+{drift_percent}%). Monitor closely or rollback to stable release."
+        else:
+            severity = "healthy"
+            recommendation = "Model operational health nominal. All latencies within acceptable SLA parameters."
+
+        rollback_candidate = None
+        for v in model.versions:
+            if active_version and v.id != active_version.id:
+                rollback_candidate = v
+                break
+
+        return ModelMonitoringStatus(
+            model_id=model.id,
+            model_name=model.name,
+            active_version=active_version.version if active_version else None,
+            active_version_id=active_version.id if active_version else None,
+            baseline_latency_p95_ms=baseline,
+            current_latency_p95_ms=current_latency,
+            latency_drift_percent=drift_percent,
+            is_drift_detected=is_drift,
+            alert_severity=severity,
+            error_rate_percent=error_rate,
+            total_predictions=total_predictions,
+            rollback_candidate_id=rollback_candidate.id if rollback_candidate else None,
+            rollback_candidate_version=rollback_candidate.version if rollback_candidate else None,
+            recommendation=recommendation
         )
 
     @staticmethod

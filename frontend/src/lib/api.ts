@@ -203,6 +203,23 @@ export interface PredictionResult {
   lifecycle_stage: string;
 }
 
+export interface ModelMonitoringStatus {
+  model_id: string;
+  model_name: string;
+  active_version?: string;
+  active_version_id?: string;
+  baseline_latency_p95_ms: number;
+  current_latency_p95_ms: number;
+  latency_drift_percent: number;
+  is_drift_detected: boolean;
+  alert_severity: "healthy" | "warning" | "critical";
+  error_rate_percent: number;
+  total_predictions: number;
+  rollback_candidate_id?: string;
+  rollback_candidate_version?: string;
+  recommendation: string;
+}
+
 export interface SessionDetail {
   id: string;
   title: string;
@@ -639,6 +656,10 @@ class ApiClient {
       method: "POST",
       body: JSON.stringify({ prompt, version }),
     });
+  }
+
+  async getModelMonitoring(modelId: string): Promise<ModelMonitoringStatus> {
+    return this.request<ModelMonitoringStatus>(`/models/${modelId}/monitoring`);
   }
 
   // Audit & Compliance Trail (Section 10 & 13)

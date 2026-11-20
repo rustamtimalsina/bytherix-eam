@@ -6,6 +6,7 @@ from app.core.permissions import Permission
 from app.core.tenant_context import TenantContext, require_permission
 from app.db.session import get_db
 from app.schemas.model_registry import (
+    ModelMonitoringStatus,
     ModelRegisterCreate,
     ModelVersionCreate,
     ModelPromoteRequest,
@@ -83,6 +84,18 @@ def promote_model_version(
     """
     user_email = context.user.email if context.user else "admin@bytherix.com"
     return ModelService.promote_version(db, version_id, context.organization.id, payload.target_stage, user_email, reason=payload.reason)
+
+
+@router.get("/{model_id}/monitoring", response_model=ModelMonitoringStatus, status_code=status.HTTP_200_OK)
+def get_model_monitoring_status(
+    model_id: str,
+    context: TenantContext = Depends(require_permission(Permission.MODELS_READ)),
+    db: Session = Depends(get_db)
+):
+    """
+    Get live monitoring telemetry, drift status, and rollback recommendation (Section 9.4 & 9.5).
+    """
+    return ModelService.get_monitoring_status(db, model_id, context.organization.id)
 
 
 @router.post("/{model_id}/rollback/{target_version_id}", response_model=ModelVersionResponse, status_code=status.HTTP_200_OK)

@@ -157,3 +157,13 @@ def test_mlops_model_registry_and_deployment_lifecycle(client: TestClient):
     # Beta querying Alpha model returns 404
     foreign_get = client.get(f"/api/v1/models/{model_id}", headers=headers_b)
     assert foreign_get.status_code == 404
+
+    # 10. Verify Model Monitoring & Drift Telemetry (Section 9.4 & 9.5)
+    monitoring_resp = client.get(f"/api/v1/models/{model_id}/monitoring", headers=headers_a)
+    assert monitoring_resp.status_code == 200
+    mon_data = monitoring_resp.json()
+    assert mon_data["model_id"] == model_id
+    assert mon_data["model_name"] == "customer-support-llama3"
+    assert mon_data["baseline_latency_p95_ms"] > 0
+    assert mon_data["alert_severity"] in ["healthy", "warning", "critical"]
+    assert "recommendation" in mon_data

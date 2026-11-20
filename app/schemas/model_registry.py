@@ -79,3 +79,20 @@ class RegisteredModelSummary(BaseModel):
     active_version_name: Optional[str] = None
     total_versions: int
     created_at: datetime
+
+
+class ModelMonitoringStatus(BaseModel):
+    model_id: str
+    model_name: str
+    active_version: Optional[str] = None
+    active_version_id: Optional[str] = None
+    baseline_latency_p95_ms: float = 150.0
+    current_latency_p95_ms: float = 150.0
+    latency_drift_percent: float = 0.0
+    is_drift_detected: bool = False
+    alert_severity: str = "healthy"  # healthy | warning | critical
+    error_rate_percent: float = 0.0
+    total_predictions: int = 0
+    rollback_candidate_id: Optional[str] = None
+    rollback_candidate_version: Optional[str] = None
+    recommendation: str = "Model operating within expected performance bounds."

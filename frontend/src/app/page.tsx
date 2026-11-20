@@ -87,6 +87,7 @@ import { BillingLedger } from "@/components/BillingLedger";
 import { ModelPromotionModal } from "@/components/ModelPromotionModal";
 import { WebhookManagerCard } from "@/components/WebhookManagerCard";
 import { ApiKeyUsageCard } from "@/components/ApiKeyUsageCard";
+import { ModelDriftMonitorCard } from "@/components/ModelDriftMonitorCard";
 import { RAGEvalData } from "@/lib/api";
 
 const TASK_TYPE_OPTIONS = [
@@ -3098,6 +3099,16 @@ const loadChatSessions = async () => {
                   );
                 })}
               </div>
+            )}
+
+            {/* Model Drift Telemetry & Automated Rollback Card */}
+            {selectedModel && (
+              <ModelDriftMonitorCard
+                model={selectedModel}
+                canRollback={canRegisterModels || isOwnerOrAdmin}
+                onRollbackComplete={() => loadModelsData()}
+                showToast={showToast}
+              />
             )}
 
             {/* Dual-Pane Lifecycle History & Prediction Station */}
