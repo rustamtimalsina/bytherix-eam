@@ -86,6 +86,7 @@ import { EnterpriseFooter } from "@/components/EnterpriseFooter";
 import { BillingLedger } from "@/components/BillingLedger";
 import { ModelPromotionModal } from "@/components/ModelPromotionModal";
 import { WebhookManagerCard } from "@/components/WebhookManagerCard";
+import { ApiKeyUsageCard } from "@/components/ApiKeyUsageCard";
 import { RAGEvalData } from "@/lib/api";
 
 const TASK_TYPE_OPTIONS = [
@@ -3412,6 +3413,14 @@ const loadChatSessions = async () => {
               </p>
             </div>
 
+            {/* Live API Telemetry & Quota Gauges */}
+            <ApiKeyUsageCard
+              usage={usage}
+              apiKeys={apiKeys}
+              isOwnerOrAdmin={isOwnerOrAdmin}
+              onOpenUpgradeModal={() => setIsUpgradeModalOpen(true)}
+            />
+
             {/* Revealed Key Modal */}
             {createdRawKey && (
               <div className="card-depth-3d p-5 border-amber-500/40 bg-amber-50/50 dark:bg-gradient-to-tr dark:from-amber-950/20 dark:to-black/60 space-y-3">
@@ -3525,11 +3534,20 @@ const loadChatSessions = async () => {
                       className="p-3.5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors"
                     >
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs font-bold text-slate-900 dark:text-white">{k.name}</span>
                           <span className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-700 dark:text-purple-400 font-semibold">
                             {k.prefix}
                           </span>
+                          {k.last_used_at ? (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 font-mono">
+                              Active {new Date(k.last_used_at).toLocaleDateString()}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/[0.05] text-slate-400 font-mono">
+                              Never used
+                            </span>
+                          )}
                           {k.is_revoked && (
                             <span className="text-[10px] px-2 py-0.5 rounded bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/60 font-semibold">
                               Revoked

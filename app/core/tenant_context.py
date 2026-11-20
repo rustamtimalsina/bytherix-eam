@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Optional, Set
 from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, APIKeyHeader
@@ -118,6 +119,15 @@ def get_tenant_context(
             if membership:
                 org = db.query(Organization).filter(Organization.id == membership.organization_id).first()
                 if org:
+                    if x_api_key_str:
+                        dev_key_rec = db.query(APIKey).filter(
+                            APIKey.organization_id == org.id,
+                            APIKey.name.ilike(f"%{x_api_key_str}%")
+                        ).first()
+                        if dev_key_rec:
+                            dev_key_rec.last_used_at = datetime.now(timezone.utc) if (getattr(dev_key_rec, "created_at", None) and getattr(dev_key_rec.created_at, "tzinfo", None)) else datetime.now()
+                            db.commit()
+
                     return TenantContext(
                         user=dev_user,
                         organization=org,
@@ -140,6 +150,19 @@ def get_tenant_context(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid or revoked API key"
             )
+        
+        if api_key_rec.expires_at:
+            exp = api_key_rec.expires_at
+            now = datetime.now(timezone.utc) if exp.tzinfo else datetime.now()
+            if exp < now:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="API key has expired"
+                )
+
+        # Update last_used_at timestamp on valid API key usage
+        api_key_rec.last_used_at = datetime.now(timezone.utc) if (getattr(api_key_rec, "created_at", None) and getattr(api_key_rec.created_at, "tzinfo", None)) else datetime.now()
+        db.commit()
         
         org = db.query(Organization).filter(
             Organization.id == api_key_rec.organization_id,
