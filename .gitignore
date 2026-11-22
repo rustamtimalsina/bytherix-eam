@@ -19,6 +19,7 @@ htmlcov/
 *.log
 uploads/
 storage/
+backups/
 *.db
 *.sqlite
 *.sqlite3
