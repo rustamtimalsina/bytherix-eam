@@ -796,6 +796,25 @@ class ApiClient {
     return this.request<BillingPlansResponse>("/billing/plans");
   }
 
+  async getSubscriptionStatus(): Promise<SubscriptionStatusResponse> {
+    return this.request<SubscriptionStatusResponse>("/billing/status");
+  }
+
+  async createCheckoutSession(
+    planTier: string,
+    successUrl?: string,
+    cancelUrl?: string
+  ): Promise<CheckoutSessionResponse> {
+    return this.request<CheckoutSessionResponse>("/billing/checkout", {
+      method: "POST",
+      body: JSON.stringify({
+        plan_tier: planTier,
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+      }),
+    });
+  }
+
   async upgradePlan(planTier: string, paymentMethodId?: string): Promise<UpgradePlanResponse> {
     return this.request<UpgradePlanResponse>("/billing/upgrade", {
       method: "POST",
@@ -992,6 +1011,28 @@ export interface UpgradePlanResponse {
   current_plan: string;
   token_allowance: number;
   documents_limit: number;
+}
+
+export interface CheckoutSessionResponse {
+  checkout_session_id: string;
+  checkout_url: string;
+  plan_tier: string;
+  amount_usd: number;
+  currency: string;
+  provider: string;
+  status: string;
+}
+
+export interface SubscriptionStatusResponse {
+  organization_id: string;
+  plan_tier: string;
+  subscription_status: string;
+  is_grace_period: boolean;
+  grace_period_days_remaining: number;
+  token_allowance: number;
+  tokens_used: number;
+  last_payment_date: string | null;
+  next_billing_date: string | null;
 }
 
 export interface InvoiceItem {

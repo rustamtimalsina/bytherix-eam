@@ -9,6 +9,9 @@ from app.schemas.billing import (
     BillingPlansResponse,
     UpgradePlanRequest,
     UpgradePlanResponse,
+    CreateCheckoutSessionRequest,
+    CheckoutSessionResponse,
+    SubscriptionStatusResponse,
     StripeWebhookEvent,
     InvoicesListResponse
 )
@@ -28,6 +31,36 @@ def list_billing_plans(
     return BillingService.get_plans_catalog(organization_id=context.organization.id, db=db)
 
 
+@router.get("/status", response_model=SubscriptionStatusResponse, status_code=status.HTTP_200_OK)
+def get_subscription_status(
+    context: TenantContext = Depends(require_permission(Permission.BILLING_READ)),
+    db: Session = Depends(get_db)
+):
+    """
+    Get organization subscription status, payment health, and grace period countdown (Section 7.3 #4 & #7).
+    """
+    return BillingService.get_subscription_status(organization_id=context.organization.id, db=db)
+
+
+@router.post("/checkout", response_model=CheckoutSessionResponse, status_code=status.HTTP_200_OK)
+def create_checkout_session(
+    data: CreateCheckoutSessionRequest,
+    context: TenantContext = Depends(require_permission(Permission.BILLING_UPDATE)),
+    db: Session = Depends(get_db)
+):
+    """
+    Create a Stripe-compatible checkout session for subscription plan upgrade (Section 7.3 #1).
+    Returns checkout session identifier and hosted checkout redirect URL.
+    """
+    return BillingService.create_checkout_session(
+        organization_id=context.organization.id,
+        target_plan=data.plan_tier,
+        success_url=data.success_url,
+        cancel_url=data.cancel_url,
+        db=db
+    )
+
+
 @router.post("/upgrade", response_model=UpgradePlanResponse, status_code=status.HTTP_200_OK)
 def upgrade_organization_plan(
     data: UpgradePlanRequest,
@@ -35,7 +68,7 @@ def upgrade_organization_plan(
     db: Session = Depends(get_db)
 ):
     """
-    Upgrade organization subscription tier (Section 7.3).
+    Upgrade organization subscription tier directly (Section 7.3).
     Enforces authorization, updates database records, logs audit trail, and broadcasts SSE alert.
     """
     actor_email = context.user.email if context.user else "owner@bytherix.com"
@@ -89,8 +122,8 @@ async def stripe_billing_webhook(
     db: Session = Depends(get_db)
 ):
     """
-    Stripe-compatible payment provider webhook receiver (Section 7.3).
-    Validates webhook events and elevates tenant plan boundaries.
+    Stripe-compatible payment provider webhook receiver (Section 7.3 #2-#4, #7).
+    Validates webhook events, deduplicates event IDs, and enforces subscription state machine.
     """
     return BillingService.process_stripe_webhook(
         payload=event.model_dump(),

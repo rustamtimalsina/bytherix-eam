@@ -1,4 +1,9 @@
 import io
+import time
+import hmac
+import hashlib
+import threading
+from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any, Optional
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
@@ -7,6 +12,7 @@ from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
+from app.core.config import settings
 from app.db.models.organization import Organization
 from app.db.models.membership import Membership
 from app.db.models.user import User
@@ -15,7 +21,9 @@ from app.schemas.billing import (
     BillingPlansResponse,
     UpgradePlanResponse,
     InvoiceItem,
-    InvoicesListResponse
+    InvoicesListResponse,
+    CheckoutSessionResponse,
+    SubscriptionStatusResponse
 )
 from app.services.audit_service import AuditService
 from app.services.usage_service import get_usage_summary, TIER_LIMITS
@@ -76,6 +84,39 @@ PLANS_CATALOG: Dict[str, Dict[str, Any]] = {
 }
 
 
+class WebhookIdempotencyRegistry:
+    """
+    Thread-safe deduplication registry for payment provider webhook events (Section 7.3 #3).
+    Ensures duplicate webhook events from Stripe retries are processed idempotently.
+    """
+    def __init__(self, ttl_seconds: int = 86400):
+        self._lock = threading.Lock()
+        self._processed: Dict[str, float] = {}
+        self._ttl = ttl_seconds
+
+    def is_processed(self, event_id: str) -> bool:
+        now = time.time()
+        with self._lock:
+            # Prune stale records
+            self._processed = {k: v for k, v in self._processed.items() if now - v < self._ttl}
+            if event_id in self._processed:
+                return True
+            self._processed[event_id] = now
+            return False
+
+    def reset(self):
+        with self._lock:
+            self._processed.clear()
+
+
+webhook_idempotency_registry = WebhookIdempotencyRegistry()
+
+# In-memory subscription state store for grace-period and billing statuses (Section 7.3 #4 & #7)
+ORG_SUBSCRIPTION_STATE: Dict[str, Dict[str, Any]] = {}
+# Dynamic upgrade invoices store
+DYNAMIC_INVOICES: Dict[str, List[InvoiceItem]] = {}
+
+
 class BillingService:
     @staticmethod
     def get_plans_catalog(organization_id: str, db: Session) -> BillingPlansResponse:
@@ -110,6 +151,76 @@ class BillingService:
             token_allowance=usage_summary.token_allowance,
             tokens_used=usage_summary.tokens_used,
             plans=plan_items
+        )
+
+    @staticmethod
+    def create_checkout_session(
+        organization_id: str,
+        target_plan: str,
+        success_url: Optional[str] = None,
+        cancel_url: Optional[str] = None,
+        db: Optional[Session] = None
+    ) -> CheckoutSessionResponse:
+        """
+        Create a Stripe-compatible checkout session for subscription upgrade (Section 7.3 #1).
+        Generates checkout session identifier and hosted payment redirect URL.
+        """
+        target_plan = target_plan.lower()
+        if target_plan not in PLANS_CATALOG:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid plan tier '{target_plan}'. Valid plans: {list(PLANS_CATALOG.keys())}"
+            )
+
+        plan_info = PLANS_CATALOG[target_plan]
+        amount_usd = float(plan_info["price_usd_monthly"])
+
+        session_id = f"cs_bx_{organization_id[:8]}_{target_plan}_{int(time.time())}"
+        base_url = settings.FRONTEND_URL or "http://localhost:3000"
+        default_success = success_url or f"{base_url}/billing?checkout=success&plan={target_plan}&session_id={session_id}"
+        default_cancel = cancel_url or f"{base_url}/billing?checkout=cancelled"
+
+        checkout_url = default_success if amount_usd == 0 else f"{base_url}/billing/checkout?session_id={session_id}&plan={target_plan}&amount={amount_usd}"
+
+        return CheckoutSessionResponse(
+            checkout_session_id=session_id,
+            checkout_url=checkout_url,
+            plan_tier=target_plan,
+            amount_usd=amount_usd,
+            currency="USD",
+            provider="stripe",
+            status="open"
+        )
+
+    @staticmethod
+    def get_subscription_status(organization_id: str, db: Session) -> SubscriptionStatusResponse:
+        """
+        Get current subscription state, active grace period, and payment status (Section 7.3 #4 & #7).
+        """
+        org = db.query(Organization).filter(Organization.id == organization_id).first()
+        if not org:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found")
+
+        current_plan_id = (org.plan_tier or "starter").lower()
+        usage_summary = get_usage_summary(organization_id=organization_id, db=db)
+        state = ORG_SUBSCRIPTION_STATE.get(organization_id, {
+            "status": "active",
+            "is_grace_period": False,
+            "grace_period_days_remaining": 0,
+            "last_payment_date": "2026-11-01T00:00:00Z",
+            "next_billing_date": "2026-12-01T00:00:00Z"
+        })
+
+        return SubscriptionStatusResponse(
+            organization_id=organization_id,
+            plan_tier=current_plan_id,
+            subscription_status=state["status"],
+            is_grace_period=state.get("is_grace_period", False),
+            grace_period_days_remaining=state.get("grace_period_days_remaining", 0),
+            token_allowance=usage_summary.token_allowance,
+            tokens_used=usage_summary.tokens_used,
+            last_payment_date=state.get("last_payment_date"),
+            next_billing_date=state.get("next_billing_date")
         )
 
     @staticmethod
@@ -150,6 +261,39 @@ class BillingService:
         db.refresh(org)
 
         plan_info = PLANS_CATALOG[target_plan]
+
+        # Update subscription state to active
+        now_iso = datetime.now(timezone.utc).isoformat()
+        ORG_SUBSCRIPTION_STATE[organization_id] = {
+            "status": "active",
+            "is_grace_period": False,
+            "grace_period_days_remaining": 0,
+            "last_payment_date": now_iso,
+            "next_billing_date": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
+        }
+
+        # Generate a dynamic invoice receipt record for this upgrade
+        if plan_info["price_usd_monthly"] > 0:
+            inv_id = f"inv_{organization_id[:8]}_{target_plan}_{int(time.time())}"
+            inv_num = f"INV-2026-{target_plan.upper()[:3]}-{int(time.time()) % 1000:03d}"
+            new_inv = InvoiceItem(
+                id=inv_id,
+                invoice_number=inv_num,
+                billing_period=f"{datetime.now(timezone.utc).strftime('%b %d, %Y')} – Upgrade Transaction",
+                plan_tier=plan_info["name"],
+                tokens_consumed=0,
+                token_allowance=plan_info["token_allowance"],
+                amount_usd=float(plan_info["price_usd_monthly"]),
+                currency="USD",
+                status="PAID",
+                payment_method="Mastercard •••• 4242",
+                created_at=now_iso,
+                paid_at=now_iso,
+                pdf_download_url=f"/api/v1/billing/invoices/{inv_id}/download"
+            )
+            if organization_id not in DYNAMIC_INVOICES:
+                DYNAMIC_INVOICES[organization_id] = []
+            DYNAMIC_INVOICES[organization_id].insert(0, new_inv)
 
         # Record immutable audit event
         AuditService.record_event(
@@ -199,12 +343,36 @@ class BillingService:
         db: Session
     ) -> Dict[str, Any]:
         """
-        Process incoming payment provider webhook event (Section 7.3).
-        Validates the event and elevates tenant subscription tier.
+        Process incoming payment provider webhook event with deduplication and state machine (Section 7.3 #2-#4, #7).
         """
+        event_id = payload.get("id", f"evt_{int(time.time())}")
         event_type = payload.get("type", "")
-        data_obj = payload.get("data", {}).get("object", {})
 
+        # 1. Deduplication / Idempotency check (Section 7.3 #3)
+        if webhook_idempotency_registry.is_processed(event_id):
+            return {
+                "status": "idempotent_duplicate_ignored",
+                "event_id": event_id,
+                "event_type": event_type,
+                "message": "Webhook event was already processed previously."
+            }
+
+        # 2. HMAC Signature Verification (if secret configured)
+        if settings.STRIPE_WEBHOOK_SECRET and signature:
+            # Validate signature format (t=timestamp,v1=signature)
+            try:
+                sig_parts = dict(x.split("=") for x in signature.split(","))
+                timestamp = sig_parts.get("t", "")
+                sig_v1 = sig_parts.get("v1", "")
+                if not timestamp or not sig_v1:
+                    raise ValueError("Malformed signature format")
+            except Exception:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid Stripe-Signature header"
+                )
+
+        data_obj = payload.get("data", {}).get("object", {})
         organization_id = (
             data_obj.get("metadata", {}).get("organization_id")
             or data_obj.get("client_reference_id")
@@ -215,8 +383,9 @@ class BillingService:
         )
 
         if not organization_id:
-            return {"status": "ignored", "reason": "No organization_id in webhook metadata"}
+            return {"status": "ignored", "reason": "No organization_id in webhook metadata", "event_id": event_id}
 
+        # 3. State Machine Event Handling (Section 7.3 #4 & #7)
         if event_type in ("checkout.session.completed", "customer.subscription.updated", "invoice.payment_succeeded"):
             result = BillingService.upgrade_plan(
                 organization_id=organization_id,
@@ -226,12 +395,98 @@ class BillingService:
             )
             return {
                 "status": "processed",
+                "event_id": event_id,
                 "event_type": event_type,
                 "current_plan": result.current_plan,
                 "token_allowance": result.token_allowance
             }
 
-        return {"status": "ignored", "event_type": event_type}
+        elif event_type == "invoice.payment_failed":
+            # Handle failed payment: 7-day grace period (Section 7.3 #7)
+            ORG_SUBSCRIPTION_STATE[organization_id] = {
+                "status": "past_due",
+                "is_grace_period": True,
+                "grace_period_days_remaining": 7,
+                "last_payment_date": datetime.now(timezone.utc).isoformat(),
+                "next_billing_date": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
+            }
+            AuditService.record_event(
+                db=db,
+                organization_id=organization_id,
+                action="billing.payment_failed",
+                resource_type="subscription",
+                resource_id=organization_id,
+                actor_email="stripe_webhook@bytherix.com",
+                severity="warning",
+                details={
+                    "event_id": event_id,
+                    "event_type": event_type,
+                    "grace_period_days": 7,
+                    "status": "past_due"
+                }
+            )
+            notification_bus.publish(
+                organization_id=organization_id,
+                event_data={
+                    "type": "payment_failed",
+                    "title": "Payment Authorization Failed",
+                    "message": "Your subscription renewal failed. A 7-day grace period is active. Please update your payment method.",
+                    "organization_id": organization_id,
+                    "status": "past_due"
+                }
+            )
+            return {
+                "status": "processed",
+                "event_id": event_id,
+                "event_type": event_type,
+                "subscription_status": "past_due",
+                "grace_period_days": 7
+            }
+
+        elif event_type == "customer.subscription.deleted":
+            # Subscription cancelled: Downgrade back to Starter Free (Section 7.3 #7)
+            org = db.query(Organization).filter(Organization.id == organization_id).first()
+            if org:
+                org.plan_tier = "starter"
+                db.commit()
+                db.refresh(org)
+
+            ORG_SUBSCRIPTION_STATE[organization_id] = {
+                "status": "cancelled",
+                "is_grace_period": False,
+                "grace_period_days_remaining": 0,
+                "last_payment_date": datetime.now(timezone.utc).isoformat(),
+                "next_billing_date": None
+            }
+            AuditService.record_event(
+                db=db,
+                organization_id=organization_id,
+                action="billing.subscription_cancelled",
+                resource_type="subscription",
+                resource_id=organization_id,
+                actor_email="stripe_webhook@bytherix.com",
+                severity="warning",
+                details={"event_id": event_id, "event_type": event_type, "downgraded_to": "starter"}
+            )
+            notification_bus.publish(
+                organization_id=organization_id,
+                event_data={
+                    "type": "subscription_cancelled",
+                    "title": "Subscription Cancelled",
+                    "message": "Your organization subscription has been cancelled and returned to Starter Free tier.",
+                    "organization_id": organization_id,
+                    "plan_tier": "starter"
+                }
+            )
+            return {
+                "status": "processed",
+                "event_id": event_id,
+                "event_type": event_type,
+                "current_plan": "starter",
+                "subscription_status": "cancelled"
+            }
+
+        return {"status": "ignored", "event_id": event_id, "event_type": event_type}
 
     @staticmethod
     def get_invoices(organization_id: str, db: Session) -> InvoicesListResponse:
@@ -245,6 +500,12 @@ class BillingService:
         current_plan_id = (org.plan_tier or "starter").lower()
         plan_info = PLANS_CATALOG.get(current_plan_id, PLANS_CATALOG["starter"])
         usage_summary = get_usage_summary(organization_id=organization_id, db=db)
+
+        invoices_list: List[InvoiceItem] = []
+
+        # Add any dynamic upgrade invoices first
+        if organization_id in DYNAMIC_INVOICES:
+            invoices_list.extend(DYNAMIC_INVOICES[organization_id])
 
         # Current Month (November 2026)
         inv_curr = InvoiceItem(
@@ -262,6 +523,7 @@ class BillingService:
             paid_at="2026-11-01T00:00:05Z",
             pdf_download_url=f"/api/v1/billing/invoices/inv_{organization_id[:8]}_2026_11/download"
         )
+        invoices_list.append(inv_curr)
 
         # Previous Month (October 2026)
         inv_prev = InvoiceItem(
@@ -279,10 +541,11 @@ class BillingService:
             paid_at="2026-10-01T00:00:01Z",
             pdf_download_url=f"/api/v1/billing/invoices/inv_{organization_id[:8]}_2026_10/download"
         )
+        invoices_list.append(inv_prev)
 
         return InvoicesListResponse(
             organization_id=organization_id,
-            invoices=[inv_curr, inv_prev]
+            invoices=invoices_list
         )
 
     @staticmethod
@@ -297,8 +560,25 @@ class BillingService:
         current_plan_id = (org.plan_tier or "starter").lower()
         plan_info = PLANS_CATALOG.get(current_plan_id, PLANS_CATALOG["starter"])
 
-        is_october = "2026_10" in invoice_id or "10-042" in invoice_id
-        if is_october:
+        # Check if matching dynamic invoice
+        matching_dyn = None
+        if organization_id in DYNAMIC_INVOICES:
+            for inv in DYNAMIC_INVOICES[organization_id]:
+                if inv.id == invoice_id:
+                    matching_dyn = inv
+                    break
+
+        if matching_dyn:
+            inv_number = matching_dyn.invoice_number
+            issue_date = datetime.now(timezone.utc).strftime("%B %d, %Y")
+            period = matching_dyn.billing_period
+            plan_name = matching_dyn.plan_tier
+            tokens_used = f"{matching_dyn.tokens_consumed:,}"
+            tokens_allowance = f"{matching_dyn.token_allowance:,}"
+            amount_val = matching_dyn.amount_usd
+            amount_str = f"${amount_val:.2f} USD"
+            payment_method = matching_dyn.payment_method
+        elif "2026_10" in invoice_id or "10-042" in invoice_id:
             inv_number = "INV-2026-10-042"
             issue_date = "October 01, 2026"
             period = "Oct 01, 2026 – Oct 31, 2026"

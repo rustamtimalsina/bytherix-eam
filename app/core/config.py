@@ -52,6 +52,11 @@ class Settings(BaseSettings):
     LOGIN_MAX_FAILED_ATTEMPTS: int = 5
     LOGIN_LOCKOUT_SECONDS: int = 60
 
+    # Stripe Billing Configuration (Section 7.3)
+    STRIPE_SECRET_KEY: str | None = None
+    STRIPE_PUBLISHABLE_KEY: str | None = None
+    STRIPE_WEBHOOK_SECRET: str | None = None
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

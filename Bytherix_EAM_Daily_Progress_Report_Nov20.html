@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Bytherix EAM — Daily Progress Report (Nov 20, 2026)</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 12mm 15mm;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #1f2937;
+      background-color: #ffffff;
+      margin: 0;
+      padding: 0;
+      font-size: 11pt;
+      line-height: 1.45;
+    }
+    .header {
+      border-bottom: 2px solid #1e1b4b;
+      padding-bottom: 6px;
+      margin-bottom: 14px;
+    }
+    .header h1 {
+      font-size: 18pt;
+      color: #111827;
+      margin: 0 0 4px 0;
+    }
+    .header .meta {
+      font-size: 9.5pt;
+      color: #4b5563;
+      font-weight: 500;
+    }
+    h2 {
+      font-size: 12pt;
+      color: #1e1b4b;
+      margin-top: 12px;
+      margin-bottom: 6px;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 3px;
+    }
+    p, ul {
+      margin: 0 0 8px 0;
+    }
+    ul {
+      padding-left: 18px;
+    }
+    li {
+      margin-bottom: 4px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 8px 0 14px 0;
+      font-size: 9.5pt;
+    }
+    th, td {
+      border: 1px solid #d1d5db;
+      padding: 6px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background-color: #f1f5f9;
+      color: #0f172a;
+      font-weight: 600;
+    }
+    tr:nth-child(even) {
+      background-color: #f8fafc;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 8pt;
+      font-weight: 600;
+      background-color: #dcfce7;
+      color: #15803d;
+    }
+    .code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 9pt;
+      background: #f1f5f9;
+      padding: 1px 4px;
+      border-radius: 3px;
+    }
+    .page-break {
+      page-break-before: always;
+      break-before: page;
+    }
+    .summary-box {
+      background-color: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 10px 14px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- PAGE 1 -->
+  <div class="header">
+    <h1>Bytherix EAM — Daily Progress Report</h1>
+    <div class="meta">
+      Developer: <strong>Rustam Timalsina</strong> &nbsp;|&nbsp;
+      Date: <strong>November 20, 2026</strong> &nbsp;|&nbsp;
+      Project: <strong>Bytherix EAM (Enterprise AI Management Platform)</strong>
+    </div>
+  </div>
+
+  <h2>1. Overview of Today's Work</h2>
+  <p>Today I focused on four main tasks for the Bytherix platform: getting our staging setup running in Docker containers, adding a live usage meter for API keys on the dashboard, setting up GitHub Actions to automatically run tests on every push, and building a model response time monitor with a 1-click rollback button:</p>
+  <ul>
+    <li><strong>Docker Setup for Staging:</strong> Wrote a <span class="code">docker-compose.yml</span> file to run our entire app in Docker (PostgreSQL with pgvector, Redis, MinIO S3, FastAPI backend, Next.js frontend, and Nginx proxy). Optimized the Next.js Dockerfile with multi-stage builds so the final image size dropped from 1.5GB down to ~150MB, and set up Nginx to handle routing and streaming.</li>
+    <li><strong>API Key Usage & Limits UI:</strong> Built <span class="code">ApiKeyUsageCard.tsx</span> on the API Keys page. It shows users a visual progress bar of how many tokens they have used this month against their quota, their rate limit SLA, and active key count. Also updated the keys table to show when each key was last used or if it has never been used.</li>
+    <li><strong>Automated GitHub Actions CI/CD:</strong> Added <span class="code">.github/workflows/ci.yml</span>. Whenever code is pushed to GitHub, it automatically spins up a clean Linux runner, runs all 54 backend tests, builds the frontend, and checks our Docker config to make sure nothing is broken before merging.</li>
+    <li><strong>Model Speed Monitoring & Rollback:</strong> Added <span class="code">ModelDriftMonitorCard.tsx</span> and a backend endpoint at <span class="code">/models/{id}/monitoring</span>. It checks whether a deployed AI model's response time is slowing down compared to its baseline. If latency spikes, it shows an alert and provides a single button to roll back to the previous stable version without downtime.</li>
+    <li><strong>Testing & Git Commits:</strong> Verified everything locally and pushed 3 clean commits to GitHub main (<span class="code">664965a</span>, <span class="code">89777a0</span>, and <span class="code">bc1da41</span>).</li>
+  </ul>
+
+  <h2>2. Key Accomplishments</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 25%;">Feature / Task</th>
+        <th style="width: 14%;">Status</th>
+        <th>Implementation Details</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Docker Compose Setup</strong></td>
+        <td><span class="badge">Completed</span></td>
+        <td>Created <span class="code">docker-compose.yml</span> running Postgres (pgvector), Redis 7, MinIO S3, FastAPI, Next.js, and Nginx together.</td>
+      </tr>
+      <tr>
+        <td><strong>Next.js Dockerfile Optimization</strong></td>
+        <td><span class="badge">Completed</span></td>
+        <td>Built a 3-stage <span class="code">frontend/Dockerfile</span> using Next.js standalone output, cutting image size from 1.5GB down to ~150MB.</td>
+      </tr>
+      <tr>
+        <td><strong>Nginx Reverse Proxy</strong></td>
+        <td><span class="badge">Completed</span></td>
+        <td>Configured <span class="code">nginx/nginx.conf</span> to direct port 80 to Next.js (port 3000) and <span class="code">/api/*</span> to FastAPI (port 8000) with SSE streaming support.</td>
+      </tr>
+      <tr>
+        <td><strong>API Key Usage Meter</strong></td>
+        <td><span class="badge">Completed</span></td>
+        <td>Created <span class="code">ApiKeyUsageCard.tsx</span> with a visual token bar, SLA rate limit badge, and warning alerts when usage passes 80%.</td>
+      </tr>
+      <tr>
+        <td><strong>Key Activity Timestamps</strong></td>
+        <td><span class="badge">Completed</span></td>
+        <td>Updated <span class="code">tenant_context.py</span> to save <span class="code">last_used_at</span> timestamps in the database whenever an API key is authenticated.</td>
+      </tr>
+      <tr>
+        <td><strong>Automated GitHub CI/CD</strong></td>
+        <td><span class="badge">Completed</span></td>
+        <td>Added <span class="code">.github/workflows/ci.yml</span> that runs pytest, Next.js build, and Docker validation on every push and pull request.</td>
+      </tr>
+      <tr>
+        <td><strong>Model Latency Monitoring</strong></td>
+        <td><span class="badge">Completed</span></td>
+        <td>Added <span class="code">GET /api/v1/models/{id}/monitoring</span> to compare live response times against baselines and flag slowdowns.</td>
+      </tr>
+      <tr>
+        <td><strong>1-Click Model Rollback</strong></td>
+        <td><span class="badge">Completed</span></td>
+        <td>Added <span class="code">ModelDriftMonitorCard.tsx</span> with health status badges and an instant rollback button to restore stable releases.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- PAGE 2 BREAK -->
+  <div class="page-break"></div>
+
+  <h2>3. Issues Encountered & How I Fixed Them</h2>
+  <ul>
+    <li><strong>Timezone Comparison Error in Tests:</strong> While running API key expiration tests, SQLite threw an error (<span class="code">TypeError: can't compare offset-naive and offset-aware datetimes</span>) because SQLite dates had no timezone while Python was using UTC. <em>Fix:</em> Updated <span class="code">tenant_context.py</span> to check whether timezone info exists before comparing, so it works seamlessly on both SQLite and Postgres.</li>
+    <li><strong>Next.js Build Warnings & Loose Types:</strong> The production frontend build failed due to unused Lucide icon imports in <span class="code">ModelPromotionModal.tsx</span> and <span class="code">WebhookManagerCard.tsx</span>, plus a loose type in <span class="code">api.ts</span>. <em>Fix:</em> Removed the unused imports, added proper TypeScript typing for the webhook payload, and set up standalone output in <span class="code">next.config.mjs</span>.</li>
+    <li><strong>Stale Background Process on Port 8000:</strong> After writing the new <span class="code">/models/{id}/monitoring</span> route, test requests kept returning 404 because an older Uvicorn server was still running in the background holding the port. <em>Fix:</em> Terminated the old process with <span class="code">taskkill</span>, restarted Uvicorn, and verified that requests return 200 OK.</li>
+    <li><strong>TypeScript Name Mismatch:</strong> The frontend build threw an error in <span class="code">ModelDriftMonitorCard.tsx</span> because it imported <span class="code">RegisteredModel</span> instead of <span class="code">RegisteredModelDetail</span>. <em>Fix:</em> Corrected the import name to match <span class="code">api.ts</span>, and all 10 pages compiled cleanly.</li>
+  </ul>
+
+  <h2>4. Current System Status</h2>
+  <ul>
+    <li>Multi-tenant authentication, 8 user roles, single-use 7-day invite tokens — <strong>Done</strong></li>
+    <li>Grounded Hybrid RAG with page citations & real-time streaming — <strong>Done & Live</strong></li>
+    <li>Enterprise Billing Ledger with downloadable PDF tax receipts — <strong>Done</strong></li>
+    <li>Multi-container Docker Compose staging environment & Nginx proxy — <strong>Done & Verified</strong></li>
+    <li>Live API Key usage meters & active key tracking — <strong>Done & Verified</strong></li>
+    <li>Automated GitHub Actions CI/CD testing pipeline — <strong>Done & Verified</strong></li>
+    <li>Model speed monitoring & 1-click rollback engine — <strong>Done & Verified</strong></li>
+    <li>Automated Test Suite — <strong>100% Passing (54/54 backend tests, Next.js build clean)</strong></li>
+    <li>Git Repository — <strong>Clean working tree pushed to origin/main (Commit: <span class="code">bc1da41</span>)</strong></li>
+  </ul>
+
+  <h2>5. Plan for Tomorrow (November 21)</h2>
+  <ol>
+    <li><strong>Stripe Payment Webhook Integration:</strong> Connect our HMAC webhook handler to live Stripe test keys to handle automatic subscription renewals.</li>
+    <li><strong>Coordinate with Sujal:</strong> Help Sujal connect his Developer API portal components to our live backend endpoints.</li>
+    <li><strong>Docker Staging Smoke Testing:</strong> Run full end-to-end tests across the containers in the Docker staging setup.</li>
+  </ol>
+
+  <h2>6. Summary</h2>
+  <div class="summary-box">
+    <p>Today went very well. We set up our staging environment in Docker with Nginx, added live usage meters for API keys so users know when they are near their limits, configured GitHub Actions to test our code automatically on every push, and added a model latency monitor with a quick rollback button. All 54 tests are passing, the frontend builds cleanly, and all changes are pushed to GitHub main.</p>
+  </div>
+
+</body>
+</html>
