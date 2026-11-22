@@ -88,8 +88,13 @@ def test_list_backups(temp_backup_dir):
     """Verify that listing backups displays registered manifests."""
     mgr = DisasterRecoveryManager(backup_dir=temp_backup_dir)
     mgr.create_backup(label="snap_1")
+    import time
+    time.sleep(0.05)
     mgr.create_backup(label="snap_2")
 
     backups = mgr.list_backups()
     assert len(backups) == 2
+    backup_ids = [b["backup_id"] for b in backups]
+    assert any("snap_1" in bid for bid in backup_ids)
+    assert any("snap_2" in bid for bid in backup_ids)
     assert "snap_2" in backups[0]["backup_id"]

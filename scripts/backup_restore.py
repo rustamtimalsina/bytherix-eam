@@ -191,7 +191,7 @@ class DisasterRecoveryManager:
     def list_backups(self) -> List[Dict[str, Any]]:
         """List all available backup manifests in descending order of creation."""
         results = []
-        for manifest_path in sorted(self.backup_dir.glob("*.manifest.json"), reverse=True):
+        for manifest_path in self.backup_dir.glob("*.manifest.json"):
             try:
                 with open(manifest_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
@@ -200,6 +200,8 @@ class DisasterRecoveryManager:
                     results.append(data)
             except Exception as e:
                 results.append({"error": str(e), "manifest_path": str(manifest_path)})
+        # Sort chronologically by timestamp descending
+        results.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
         return results
 
     def run_restoration_drill(
