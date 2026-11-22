@@ -560,6 +560,14 @@ class BillingService:
         current_plan_id = (org.plan_tier or "starter").lower()
         plan_info = PLANS_CATALOG.get(current_plan_id, PLANS_CATALOG["starter"])
 
+        # Strict Cross-Tenant Isolation: Ensure the invoice ID belongs to this organization (Section 6.2 & 7.3)
+        tenant_prefix = f"inv_{organization_id[:8]}"
+        if invoice_id.startswith("inv_") and not invoice_id.startswith(tenant_prefix):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Invoice not found for this organization."
+            )
+
         # Check if matching dynamic invoice
         matching_dyn = None
         if organization_id in DYNAMIC_INVOICES:
