@@ -75,6 +75,7 @@ import { TiltCard3D } from "@/components/TiltCard3D";
 import { DLPShieldModal } from "@/components/DLPShieldModal";
 import { RAGScoreboardBadge } from "@/components/RAGScoreboardBadge";
 import { DeveloperApiPortal } from "@/components/DeveloperApiPortal";
+import { DocumentBriefingModal } from "@/components/DocumentBriefingModal";
 import { CommandPaletteModal } from "@/components/CommandPaletteModal";
 import { TelemetrySparkline } from "@/components/TelemetrySparkline";
 import { CitationInspectorDrawer } from "@/components/CitationInspectorDrawer";
@@ -950,6 +951,7 @@ export default function DashboardPage() {
   const [showChunksModal, setShowChunksModal] = useState(false);
   const [chunkSearchQuery, setChunkSearchQuery] = useState("");
   const [copiedChunkId, setCopiedChunkId] = useState<string | null>(null);
+  const [briefingDoc, setBriefingDoc] = useState<{ id: string; title: string } | null>(null);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [selectedCitation, setSelectedCitation] = useState<SourceCitation | null>(null);
 
@@ -1789,6 +1791,15 @@ const loadChatSessions = async () => {
 
                         {/* Action buttons group with subtle hairline border */}
                         <div className="flex items-center gap-1 bg-slate-100/80 dark:bg-white/[0.04] p-1 rounded-lg border border-slate-200/60 dark:border-white/[0.06]">
+                          {/* AI Executive Briefing & 1-Click Prompt Chips */}
+                          <button
+                            onClick={() => setBriefingDoc({ id: doc.id, title: doc.title || doc.filename })}
+                            title="AI Executive Briefing & 1-Click Prompts"
+                            className="p-1.5 rounded-md text-amber-500 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-500/10 transition-colors"
+                          >
+                            <Sparkles className="w-3.5 h-3.5" />
+                          </button>
+
                           {/* Inspect Chunks & Vectors */}
                           <button
                             onClick={() => handleInspectChunks(doc.id)}
@@ -5253,6 +5264,18 @@ const loadChatSessions = async () => {
         onClose={() => setSelectedCitation(null)}
         onInspectDocumentChunks={(id) => handleInspectChunks(id)}
         onDownloadDocument={(id) => handleDownloadDocument(id)}
+      />
+
+      {/* AI Executive Briefing & Instant Prompt Chips Modal */}
+      <DocumentBriefingModal
+        isOpen={!!briefingDoc}
+        onClose={() => setBriefingDoc(null)}
+        documentId={briefingDoc?.id || null}
+        documentTitle={briefingDoc?.title || ""}
+        onSelectPrompt={(prompt) => {
+          setActiveTab("chat");
+          setInputQuery(prompt);
+        }}
       />
 
       <FloatingRocketDock

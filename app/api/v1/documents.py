@@ -11,8 +11,20 @@ from app.db.models.document import Document
 from app.db.models.chunk import DocumentChunk
 from app.db.models.membership import Membership
 from app.db.session import get_db
-from app.schemas.document import DocumentChunkOut, DocumentChunksResponse, DocumentDownloadUrlOut, DocumentOut, DocumentStatusOut
-from app.services.document_service import delete_document, upload_document, seed_demo_document
+from app.schemas.document import (
+    DocumentChunkOut,
+    DocumentChunksResponse,
+    DocumentDownloadUrlOut,
+    DocumentInsightOut,
+    DocumentOut,
+    DocumentStatusOut,
+)
+from app.services.document_service import (
+    delete_document,
+    get_document_insights,
+    seed_demo_document,
+    upload_document,
+)
 from app.services.audit_service import AuditService
 from app.integrations.object_storage.s3 import storage_service
 
@@ -320,3 +332,20 @@ def remove_document(
         )
     delete_document(db, doc)
     return {"message": "Document deleted successfully"}
+
+
+@router.get("/{document_id}/insights", response_model=DocumentInsightOut)
+def document_insights(
+    document_id: str,
+    context: TenantContext = Depends(require_permission(Permission.DOCUMENTS_READ)),
+    db: Session = Depends(get_db)
+):
+    """
+    Generate instant executive briefing, key topics, reading time, and
+    one-click suggested prompt chips from indexed vector chunks.
+    """
+    return get_document_insights(
+        document_id=document_id,
+        organization_id=context.organization.id,
+        db=db
+    )

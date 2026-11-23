@@ -58,3 +58,18 @@ class DocumentChunksResponse(BaseModel):
     filename: str
     total_chunks: int
     chunks: List[DocumentChunkOut]
+
+
+class DocumentInsightOut(BaseModel):
+    """Executive AI summary and instant one-click prompt suggestions."""
+    document_id: str
+    title: str
+    filename: str
+    total_pages: int
+    total_chunks: int
+    executive_summary: List[str]
+    suggested_questions: List[str]
+    key_topics: List[str]
+    reading_time_minutes: int
+    sentiment: str
+    status: str

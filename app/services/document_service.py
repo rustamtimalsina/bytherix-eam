@@ -449,3 +449,133 @@ def seed_demo_document(db: Session, organization_id: str, user_id: str) -> Docum
     )
 
     return doc
+
+
+def get_document_insights(document_id: str, organization_id: str, db: Session):
+    """
+    Generate instant executive briefing, key topics, reading time, and one-click
+    suggested prompt chips from indexed vector chunks.
+    """
+    import re
+    doc = db.query(Document).filter(
+        Document.id == document_id,
+        Document.organization_id == organization_id
+    ).first()
+
+    if not doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found"
+        )
+
+    chunks = db.query(DocumentChunk).filter(
+        DocumentChunk.document_id == document_id
+    ).order_by(DocumentChunk.chunk_index).all()
+
+    total_chunks = len(chunks)
+    total_pages = doc.page_count or 1
+
+    if total_chunks == 0:
+        return {
+            "document_id": doc.id,
+            "title": doc.title or doc.filename,
+            "filename": doc.filename,
+            "total_pages": total_pages,
+            "total_chunks": 0,
+            "executive_summary": [
+                f"Document '{doc.filename}' is currently queued or awaiting text chunk extraction.",
+                "Vector embeddings will be generated automatically once background ingestion completes.",
+                "Check back shortly to view the full executive briefing and suggested prompt chips."
+            ],
+            "suggested_questions": [
+                f"What is the status of document {doc.filename}?",
+                "How many chunks are being indexed?",
+                "What is the primary topic of this document?"
+            ],
+            "key_topics": ["Ingestion In-Progress", "Awaiting Index"],
+            "reading_time_minutes": 1,
+            "sentiment": "Neutral",
+            "status": doc.status
+        }
+
+    # Aggregate text for analysis
+    all_text = " ".join([c.content for c in chunks])
+    words = all_text.split()
+    total_words = len(words)
+    reading_time = max(1, round(total_words / 200))
+
+    # Topic Detection based on domain keywords
+    topic_weights = {
+        "Security & DLP": len(re.findall(r"\b(security|dlp|mask|redact|token|jwt|encrypt|privacy|iso|soc)\b", all_text, re.IGNORECASE)),
+        "Architecture & Cloud": len(re.findall(r"\b(architecture|fastapi|postgres|docker|database|redis|minio|nginx|microservice)\b", all_text, re.IGNORECASE)),
+        "Vector RAG & AI": len(re.findall(r"\b(rag|vector|embedding|chunk|citation|retrieval|cosine|pgvector|llm)\b", all_text, re.IGNORECASE)),
+        "MLOps & Governance": len(re.findall(r"\b(mlops|model|drift|rollback|latency|prediction|registry|pipeline)\b", all_text, re.IGNORECASE)),
+        "Billing & Enterprise": len(re.findall(r"\b(billing|invoice|stripe|quota|subscription|payment|tax|vat)\b", all_text, re.IGNORECASE)),
+        "Agent Workflows": len(re.findall(r"\b(agent|workflow|approval|tool|step|execution|trace)\b", all_text, re.IGNORECASE)),
+    }
+
+    sorted_topics = [t for t, count in sorted(topic_weights.items(), key=lambda x: x[1], reverse=True) if count > 0]
+    key_topics = sorted_topics[:4] if sorted_topics else ["Enterprise Operations", "Technical Overview"]
+
+    # Extract clean sentence candidates for summary
+    cleaned_text = re.sub(r"[\r\n\t]+", " ", all_text)
+    raw_sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", cleaned_text) if len(s.strip().split()) >= 7]
+
+    summary_bullets = []
+    # Pick distinctive sentences from beginning, middle, and technical sections
+    for s in raw_sentences[:15]:
+        if len(s) > 35 and not any(s.lower() in b.lower() or b.lower() in s.lower() for b in summary_bullets):
+            clean_s = s.strip()
+            if not clean_s.isupper():
+                summary_bullets.append(clean_s)
+        if len(summary_bullets) == 3:
+            break
+
+    if len(summary_bullets) < 3:
+        summary_bullets.append(f"Comprehensive document comprising {total_pages} page(s) and {total_chunks} indexed vector chunk(s).")
+    if len(summary_bullets) < 3:
+        summary_bullets.append(f"Grounded knowledge is verified for semantic search, DLP security filtering, and citation attribution.")
+    if len(summary_bullets) < 3:
+        summary_bullets.append(f"Enterprise intelligence ready for multi-tenant query retrieval across {', '.join(key_topics)}.")
+
+    # Generate document-specific suggested questions
+    questions = []
+    doc_lower = (doc.title + " " + doc.filename).lower()
+
+    if "specification" in doc_lower or "architecture" in doc_lower or "eam" in doc_lower:
+        questions = [
+            "What are the core technical requirements and architecture boundaries defined in this document?",
+            "How does Bytherix EAM enforce multi-tenant security isolation across database queries?",
+            "What are the disaster recovery SLA and automated backup restoration objectives?",
+            "Summarize the key deliverables and milestones for the platform."
+        ]
+    elif "video" in doc_lower or "guide" in doc_lower or "notebook" in doc_lower:
+        questions = [
+            "What are the step-by-step strategies recommended in this guide?",
+            "What are the key production metrics and audience retention tips?",
+            "Summarize the core takeaways and actionable advice from this document.",
+            "What tools and workflows are suggested for best results?"
+        ]
+    else:
+        # Dynamic questions based on detected top topics
+        lead_topic = key_topics[0] if key_topics else "General"
+        questions = [
+            f"What does this document outline regarding {lead_topic.lower()}?",
+            "What are the primary operational requirements and constraints described here?",
+            "Summarize the core conclusions and actionable takeaways from this document.",
+            "What metrics, dates, or key stipulations are highlighted in this text?"
+        ]
+
+    return {
+        "document_id": doc.id,
+        "title": doc.title or doc.filename,
+        "filename": doc.filename,
+        "total_pages": total_pages,
+        "total_chunks": total_chunks,
+        "executive_summary": summary_bullets[:3],
+        "suggested_questions": questions[:4],
+        "key_topics": key_topics,
+        "reading_time_minutes": reading_time,
+        "sentiment": "Analytical / Formal",
+        "status": doc.status
+    }

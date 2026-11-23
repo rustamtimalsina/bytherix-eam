@@ -769,6 +769,11 @@ class ApiClient {
     return this.request<DocumentChunksResponse>(`/documents/${documentId}/chunks`);
   }
 
+  // Automated Executive Briefing & Instant Prompt Chips (Upgrade Feature)
+  async getDocumentInsights(documentId: string): Promise<DocumentInsightResponse> {
+    return this.request<DocumentInsightResponse>(`/documents/${documentId}/insights`);
+  }
+
   // Real-time SSE Notification Stream
   getNotificationStreamUrl(): string {
     const token = this.getToken();
@@ -888,6 +893,20 @@ export interface DocumentChunksResponse {
   filename: string;
   total_chunks: number;
   chunks: DocumentChunkItem[];
+}
+
+export interface DocumentInsightResponse {
+  document_id: string;
+  title: string;
+  filename: string;
+  total_pages: number;
+  total_chunks: number;
+  executive_summary: string[];
+  suggested_questions: string[];
+  key_topics: string[];
+  reading_time_minutes: number;
+  sentiment: string;
+  status: string;
 }
 
 export interface ObservabilityTelemetryResponse {
