@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Bytherix EAM — Daily Progress Report (Nov 23, 2026)</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 10mm 14mm;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #1f2937;
+      background-color: #ffffff;
+      margin: 0;
+      padding: 0;
+      font-size: 10pt;
+      line-height: 1.4;
+    }
+    .header {
+      border-bottom: 2px solid #1e1b4b;
+      padding-bottom: 5px;
+      margin-bottom: 12px;
+    }
+    .header h1 {
+      font-size: 17pt;
+      color: #111827;
+      margin: 0 0 3px 0;
+    }
+    .header .meta {
+      font-size: 9pt;
+      color: #4b5563;
+      font-weight: 500;
+    }
+    h2 {
+      font-size: 11pt;
+      color: #1e1b4b;
+      margin-top: 10px;
+      margin-bottom: 5px;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 2px;
+    }
+    p, ul {
+      margin: 0 0 6px 0;
+    }
+    ul {
+      padding-left: 16px;
+    }
+    li {
+      margin-bottom: 3.5px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 6px 0 10px 0;
+      font-size: 8.5pt;
+    }
+    th, td {
+      border: 1px solid #d1d5db;
+      padding: 4px 6px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background-color: #f1f5f9;
+      color: #0f172a;
+      font-weight: 600;
+    }
+    tr:nth-child(even) td {
+      background-color: #f8fafc;
+    }
+    .badge-done {
+      color: #15803d;
+      font-weight: 600;
+    }
+    code {
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      font-size: 8.5pt;
+      background-color: #f1f5f9;
+      padding: 1px 3px;
+      border-radius: 3px;
+      color: #0f172a;
+    }
+    .summary-box {
+      background-color: #f8fafc;
+      border: 1px solid #cbd5e1;
+      padding: 8px 10px;
+      border-radius: 4px;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>Bytherix EAM — Daily Progress Report</h1>
+    <div class="meta">
+      <strong>Developer:</strong> Rustam Timalsina &nbsp;|&nbsp;
+      <strong>Date:</strong> November 23, 2026 &nbsp;|&nbsp;
+      <strong>Project:</strong> Bytherix EAM (Enterprise AI Management Platform)
+    </div>
+  </div>
+
+  <h2>1. Overview of Today's Work</h2>
+  <p>
+    Today I focused on delivering all five planned frontend milestone features for Bytherix EAM, followed by thorough responsive UI polish across desktop and mobile viewports. Every feature was built, manually tested in the browser, verified through TypeScript and Next.js builds, and pushed to <code>origin/main</code>:
+  </p>
+  <ul>
+    <li><strong>Perplexity-Style Split Citation Viewer:</strong> Built <code>frontend/src/components/SplitCitationViewer.tsx</code> to inspect grounded RAG source passages side-by-side with chat. Clicking any citation badge (<code>[1]</code>, <code>[Doc 2, Chunk 4]</code>) immediately opens the source document viewer with the relevant text passage highlighted, similarity score confidence pill, chunk index metadata, and direct links to the document library.</li>
+    <li><strong>Side-by-Side Model Arena & Benchmark Playground:</strong> Implemented <code>frontend/src/components/ModelArenaPlayground.tsx</code> under the MLOps section. It allows operators to run side-by-side comparative evaluations between a baseline production model (e.g. <code>gpt-4o-enterprise</code>) and a candidate staging model (e.g. <code>gpt-4o-mini-fast</code>) under identical prompts, rendering parallel streaming responses, latency differentials, estimated cost per 1k tokens, and hallucination risk scores. Included one-click enterprise benchmark presets.</li>
+    <li><strong>Real-Time Generation Velocity Meter & Abort Control:</strong> Added dynamic streaming telemetry to the RAG chat interface in <code>frontend/src/app/page.tsx</code>. It displays live token velocity (<code>⚡ 48 tok/s</code>) computed from incoming streaming chunks, along with an instant floating "■ Stop Generating" button that aborts the active stream via <code>AbortController</code>.</li>
+    <li><strong>Interactive Knowledge Semantic Graph Canvas:</strong> Built <code>frontend/src/components/KnowledgeGraphViewer.tsx</code> to visualize vector space relationships between documents and chunk embeddings. Implemented an interactive SVG canvas with zoom, pan, physics-based node distribution, adjustable cosine similarity threshold slider (0.50 to 0.95), and detail drawer on node selection.</li>
+    <li><strong>Multi-Document Synthesis & Comparison Mode:</strong> Added multi-select document capabilities in the document catalog with a persistent floating action toolbar (<code>2 Documents Selected</code>). Clicking "Synthesize Selected" formats a structured cross-document comparative prompt and dispatches it straight into RAG chat with active document scope pre-selected.</li>
+    <li><strong>Responsive Layout & Mobile Polish:</strong> Resolved desktop layout crowding when three panels were visible by auto-collapsing the thread history drawer when split view opens. Refactored the split viewer on mobile (&lt; 1024px) into an off-canvas slide-over drawer with backdrop so it never squeezes chat into a narrow column. Eliminated floating dock overlaps on shorter screens and cleaned Model Arena dropdowns and preset chips.</li>
+    <li><strong>Build Verification & Git Commits:</strong> Verified 70/70 backend tests passing, 0 TypeScript errors (<code>npx tsc --noEmit</code>), and clean Next.js production compilation (10/10 routes). All 9 commits pushed cleanly to GitHub <code>origin/main</code>.</li>
+  </ul>
+
+  <h2>2. Key Accomplishments</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 25%;">Feature / Task</th>
+        <th style="width: 14%;">Status</th>
+        <th style="width: 61%;">Implementation Details</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Split Citation Viewer</strong></td>
+        <td><span class="badge-done">Completed</span></td>
+        <td>Created <code>SplitCitationViewer.tsx</code> with verbatim text highlighting, similarity meters, chunk metadata, and bi-directional citation sync.</td>
+      </tr>
+      <tr>
+        <td><strong>Side-by-Side Model Arena</strong></td>
+        <td><span class="badge-done">Completed</span></td>
+        <td>Built <code>ModelArenaPlayground.tsx</code> with dual-model streaming evaluation, latency/cost/hallucination metrics, and enterprise benchmark presets.</td>
+      </tr>
+      <tr>
+        <td><strong>Streaming Velocity Meter</strong></td>
+        <td><span class="badge-done">Completed</span></td>
+        <td>Added real-time token rate calculator (<code>⚡ 48 tok/s</code>) and instant "■ Stop Generating" stream cancellation in <code>page.tsx</code>.</td>
+      </tr>
+      <tr>
+        <td><strong>Interactive Vector Graph</strong></td>
+        <td><span class="badge-done">Completed</span></td>
+        <td>Implemented <code>KnowledgeGraphViewer.tsx</code> featuring 2D vector topology canvas, node clustering, and dynamic cosine similarity slider.</td>
+      </tr>
+      <tr>
+        <td><strong>Multi-Doc Synthesis Mode</strong></td>
+        <td><span class="badge-done">Completed</span></td>
+        <td>Added document multi-selection checkboxes, floating synthesis action bar, and automated comparative prompt dispatching to Chat.</td>
+      </tr>
+      <tr>
+        <td><strong>Desktop Dock Clearance</strong></td>
+        <td><span class="badge-done">Completed</span></td>
+        <td>Added <code>pb-32 sm:pb-36</code> container padding and dynamic <code>h-[calc(100vh-190px)]</code> card height so chat inputs never sit underneath the bottom dock.</td>
+      </tr>
+      <tr>
+        <td><strong>Split-View Auto-Collapse</strong></td>
+        <td><span class="badge-done">Completed</span></td>
+        <td>History sidebar now auto-collapses on desktop when split view opens, giving the chat and document viewport full comfortable width.</td>
+      </tr>
+      <tr>
+        <td><strong>Mobile Drawer Slide-Over</strong></td>
+        <td><span class="badge-done">Completed</span></td>
+        <td>Converted split citation panel into an off-canvas slide-over modal on screens under 1024px, completely eliminating horizontal squishing.</td>
+      </tr>
+      <tr>
+        <td><strong>Model Arena UI Refinements</strong></td>
+        <td><span class="badge-done">Completed</span></td>
+        <td>Repositioned benchmark presets above prompt textarea, added styled dropdown chevrons for model pickers, and prevented title wrapping.</td>
+      </tr>
+      <tr>
+        <td><strong>Build & Test Verification</strong></td>
+        <td><span class="badge-done">Completed</span></td>
+        <td>70/70 backend pytest tests passing (100%), 0 TypeScript errors, 10/10 Next.js static pages compiled, and 9 commits pushed to <code>origin/main</code>.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>3. Issues Encountered & How I Fixed Them</h2>
+  <ul>
+    <li><strong>Desktop 3-Column Width Squishing:</strong> When the history sidebar, chat feed, and new split citation viewer were all open side-by-side, the chat column narrowed down to ~320px on standard 1080p laptop screens, causing awkward text wrapping. <em>Fix:</em> Updated <code>isSplitViewOpen</code> state transitions in <code>page.tsx</code> so opening the split viewer automatically collapses the conversation history sidebar, preserving 600px+ width for the primary conversation.</li>
+    <li><strong>Floating Rocket Dock Overlapping Chat Input:</strong> On laptops with smaller vertical viewports, the fixed bottom dock (<code>FloatingRocketDock</code>) floated directly over the chat query input box and send button. <em>Fix:</em> Replaced fixed <code>h-[720px]</code> card heights with responsive <code>h-[calc(100vh-190px)] max-h-[680px]</code> and wrapped the chat container with <code>pb-32 sm:pb-36</code>, ensuring the input box always sits comfortably above the dock.</li>
+    <li><strong>Mobile View Layout Breakdown Under 1024px:</strong> The side-by-side flex layout attempted to cram the history sidebar, chat, and citation viewport on narrow screens, crunching header pills (<code>[🕒 24]</code> overlapping <code>Scope: All</code>) and squeezing chat into an unusable 190px strip. <em>Fix:</em> Restructured the layout using responsive Tailwind breakpoints: on screens &lt; lg, <code>SplitCitationViewer</code> renders as a fixed slide-over drawer with a semi-transparent backdrop (<code>fixed inset-y-0 right-0 z-50 w-full sm:w-[440px]</code>), while desktop continues to use side-by-side flex.</li>
+    <li><strong>Model Arena Title Wrapping & Awkward Preset Stacking:</strong> In the Model Arena, the title broke awkwardly into two lines ("Side-by-Side Model" / "Arena") and prompt presets were crowded into the header row next to the playground badge. <em>Fix:</em> Restructured the component layout to give the header full width, placed prompt preset chips directly above the evaluation prompt textarea where they make functional sense, and replaced plain input fields with styled <code>&lt;select&gt;</code> dropdowns.</li>
+    <li><strong>Duplicate JSX Element During Fast Replacement:</strong> During one edit iteration on <code>ModelArenaPlayground.tsx</code>, a duplicate <code>&lt;textarea&gt;</code> tag slipped in, causing TypeScript compilation error <code>TS2657</code>. <em>Fix:</em> Immediately inspected the file, cleaned up lines 247–253, and confirmed clean compilation with <code>npx tsc --noEmit</code>.</li>
+  </ul>
+
+  <h2>4. Current System Status</h2>
+  <ul>
+    <li>✓ <strong>Multi-Tenant Authentication & RBAC:</strong> Single-use 7-day invite tokens, JWT verification, and scoped organization sessions — <strong>Done & Verified</strong></li>
+    <li>✓ <strong>Grounded Hybrid RAG Pipeline:</strong> PDF parsing, chunking, pgvector HNSW embeddings, DLP guardrails, and streaming citations — <strong>Done & Live</strong></li>
+    <li>✓ <strong>Perplexity Split Citation Viewer:</strong> Verbatim text highlights, similarity confidence score, chunk metadata, and deep links — <strong>Done & Live</strong></li>
+    <li>✓ <strong>Side-by-Side Model Arena:</strong> Dual model parallel benchmarking, latency/cost/hallucination metrics, and presets — <strong>Done & Live</strong></li>
+    <li>✓ <strong>Streaming Velocity & Abort Meter:</strong> Real-time token velocity (<code>⚡ 48 tok/s</code>) and instant stream abort controller button — <strong>Done & Live</strong></li>
+    <li>✓ <strong>Interactive Knowledge Graph:</strong> SVG vector canvas, physics-based clustering, cosine similarity threshold slider — <strong>Done & Live</strong></li>
+    <li>✓ <strong>Multi-Document Synthesis Mode:</strong> Multi-select catalog checkboxes, floating synthesis launcher, and automated chat dispatch — <strong>Done & Live</strong></li>
+    <li>✓ <strong>Mobile & Desktop Responsive Layout:</strong> Off-canvas slide-over drawer on mobile, dock height clearance, and auto-collapsing sidebar — <strong>Done & Live</strong></li>
+    <li>✓ <strong>Stripe Billing & Invoicing:</strong> Checkout sessions, idempotent webhook deduplication, and dynamic PDF receipts — <strong>Done & Verified</strong></li>
+    <li>✓ <strong>SOC 2 Multi-Tenant Security Suite:</strong> 7-vector cross-tenant penetration testing proving complete data isolation — <strong>Done & Verified</strong></li>
+    <li>✓ <strong>Automated Disaster Recovery & Fire Drill:</strong> Atomic backups, SHA-256 manifests, and 0.13s scratch restoration drill — <strong>Done & Verified</strong></li>
+    <li>✓ <strong>Automated Test Suite:</strong> <strong>100% Passing (70/70 backend pytest tests, Next.js build clean with 10/10 pages compiled)</strong></li>
+    <li>✓ <strong>Git Repository:</strong> <strong>Clean working tree pushed to origin/main (Commits: <code>515a7aa</code>, <code>4d96221</code>, <code>0b548ea</code>, <code>e86543b</code>, <code>a64168f</code>, <code>cd0fdde</code>, <code>4cfe429</code>, <code>3280e8b</code>, <code>c55f1c9</code>)</strong></li>
+  </ul>
+
+  <h2>5. Plan for Tomorrow (November 24)</h2>
+  <ul>
+    <li>1. <strong>Staging Environment Validation (Docker Compose):</strong> Spin up the full multi-container stack (<code>backend</code>, <code>frontend</code>, <code>PostgreSQL/pgvector</code>, <code>Redis 7</code>, <code>MinIO</code>) in local Docker staging and verify complete service interconnection under load.</li>
+    <li>2. <strong>Developer API Portal Integration with Sujal:</strong> Connect Sujal's <code>DeveloperApiPortal.tsx</code> sandbox to our live <code>/api/v1/chat</code>, <code>/api/v1/security/dlp/scan</code>, and <code>/api/v1/models</code> endpoints once Sujal's component is ready.</li>
+    <li>3. <strong>End-to-End User Experience Walkthrough:</strong> Run through complete realistic enterprise workflows (ingest new corporate policy PDF -> verify semantic graph clustering -> run multi-doc synthesis in chat -> inspect citations in split view -> compare model performance in Arena).</li>
+  </ul>
+
+  <h2>6. Summary</h2>
+  <div class="summary-box">
+    Today was a highly productive engineering day for Bytherix EAM. All five planned frontend roadmap features—Perplexity-style split citation viewing, side-by-side Model Arena benchmarking, streaming generation velocity telemetry, interactive vector semantic graph exploration, and multi-document synthesis—were completed and tested. We followed up with extensive responsive design polish, solving desktop multi-column squeeze, floating dock overlap, and mobile drawer transitions. All 70 backend tests are green, the Next.js production build compiles with 0 errors, and all 9 commits are pushed cleanly to GitHub main.
+  </div>
+
+</body>
+</html>
