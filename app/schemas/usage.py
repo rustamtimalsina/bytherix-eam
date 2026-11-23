@@ -30,3 +30,48 @@ class QuotaAlertItem(BaseModel):
     unit: str
     action_required: bool
     action_label: str
+
+
+class ModelUsageStat(BaseModel):
+    """Breakdown of usage and estimated cost by model."""
+    model: str
+    tokens: int
+    prompt_tokens: int
+    completion_tokens: int
+    queries: int
+    estimated_cost_usd: float
+    percentage_of_total: float
+
+
+class UsageLedgerItem(BaseModel):
+    """Detailed immutable usage record item for tenant audit & ledger export."""
+    id: str
+    created_at: str
+    event_type: str
+    model: str
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    estimated_cost_usd: float
+
+
+class UsageAnalyticsOut(BaseModel):
+    """Comprehensive AI spend, token consumption, and burn rate analytics."""
+    organization_id: str
+    plan_tier: str
+    token_allowance: int
+    tokens_used: int
+    prompt_tokens: int
+    completion_tokens: int
+    percentage_used: float
+    queries_count: int
+    documents_count: int
+    documents_limit: int
+    quota_status: str
+    estimated_cost_usd: float
+    cost_per_query_usd: float
+    daily_burn_rate: int
+    projected_days_remaining: int
+    models_breakdown: list[ModelUsageStat]
+    recent_activity: list[UsageLedgerItem]
+

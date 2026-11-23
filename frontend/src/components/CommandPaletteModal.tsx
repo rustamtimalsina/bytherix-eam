@@ -16,6 +16,7 @@ import {
   CornerDownLeft,
   X,
   Zap,
+  DollarSign,
   Receipt,
   UserPlus,
   Copy,
@@ -42,6 +43,7 @@ interface CommandPaletteModalProps {
   onToggleTheme?: () => void;
   onOpenDLPShield?: () => void;
   onOpenUpgradeModal?: () => void;
+  onOpenCostAnalytics?: () => void;
   documents?: Array<{ id: string; title?: string; filename: string }>;
   onInspectDocument?: (docId: string) => void;
   canAccessModels?: boolean;
@@ -60,6 +62,7 @@ export function CommandPaletteModal({
   onToggleTheme,
   onOpenDLPShield,
   onOpenUpgradeModal,
+  onOpenCostAnalytics,
   documents = [],
   onInspectDocument,
   canAccessModels = true,
@@ -254,6 +257,22 @@ export function CommandPaletteModal({
       },
 
       // 3. Quick Actions
+      ...(onOpenCostAnalytics
+        ? [
+            {
+              id: "act-cost-analytics",
+              title: "View AI Cost & Token Intelligence",
+              subtitle: "Inspect real-time token spend, model breakdown, and burn rate",
+              category: "Quick Actions" as const,
+              shortcut: "C A",
+              icon: <DollarSign className="w-4 h-4 text-emerald-400" />,
+              action: () => {
+                onOpenCostAnalytics();
+                onClose();
+              },
+            },
+          ]
+        : []),
       ...(onOpenUpgradeModal && canUpgradePlan
         ? [
             {

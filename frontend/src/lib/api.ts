@@ -257,6 +257,47 @@ export interface QuotaAlertItem {
   action_label: string;
 }
 
+export interface ModelUsageStat {
+  model: string;
+  tokens: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  queries: number;
+  estimated_cost_usd: number;
+  percentage_of_total: number;
+}
+
+export interface UsageLedgerItem {
+  id: string;
+  created_at: string;
+  event_type: string;
+  model: string;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  estimated_cost_usd: number;
+}
+
+export interface UsageAnalyticsResponse {
+  organization_id: string;
+  plan_tier: string;
+  token_allowance: number;
+  tokens_used: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  percentage_used: number;
+  queries_count: number;
+  documents_count: number;
+  documents_limit: number;
+  quota_status: string;
+  estimated_cost_usd: number;
+  cost_per_query_usd: number;
+  daily_burn_rate: number;
+  projected_days_remaining: number;
+  models_breakdown: ModelUsageStat[];
+  recent_activity: UsageLedgerItem[];
+}
+
 export interface MembershipItem {
   id: string;
   user_id: string;
@@ -581,6 +622,10 @@ class ApiClient {
 
   async getUsageAlerts(): Promise<QuotaAlertItem[]> {
     return this.request<QuotaAlertItem[]>("/usage/alerts");
+  }
+
+  async getUsageAnalytics(): Promise<UsageAnalyticsResponse> {
+    return this.request<UsageAnalyticsResponse>("/usage/analytics");
   }
 
   // Member & Organization endpoints (Section 7.1 & 10.2)

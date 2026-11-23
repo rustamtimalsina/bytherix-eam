@@ -76,6 +76,7 @@ import { DLPShieldModal } from "@/components/DLPShieldModal";
 import { RAGScoreboardBadge } from "@/components/RAGScoreboardBadge";
 import { DeveloperApiPortal } from "@/components/DeveloperApiPortal";
 import { DocumentBriefingModal } from "@/components/DocumentBriefingModal";
+import { AIUsageCostModal } from "@/components/AIUsageCostModal";
 import { CommandPaletteModal } from "@/components/CommandPaletteModal";
 import { TelemetrySparkline } from "@/components/TelemetrySparkline";
 import { CitationInspectorDrawer } from "@/components/CitationInspectorDrawer";
@@ -228,6 +229,7 @@ export default function DashboardPage() {
   // Document Scope Filtering State (Section 8.2)
   const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [isUsageCostModalOpen, setIsUsageCostModalOpen] = useState(false);
 
   const handleToggleDocScope = (id: string) => {
     setSelectedDocIds((prev) =>
@@ -1262,7 +1264,7 @@ const loadChatSessions = async () => {
           {usage && (
             <button
               type="button"
-              onClick={() => setIsUpgradeModalOpen(true)}
+              onClick={() => setIsUsageCostModalOpen(true)}
               className={`hidden sm:flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-mono shrink-0 transition-all cursor-pointer ${
                 usage.is_quota_exceeded
                   ? "bg-rose-500/15 border border-rose-500/40 text-rose-700 dark:text-rose-300 shadow-sm animate-pulse"
@@ -1362,7 +1364,7 @@ const loadChatSessions = async () => {
       {/* Mobile-Exclusive AI Token Quota Ticker Bar with Warning Alerting (< sm screens) (Section 6.3) */}
       {usage && (
         <div
-          onClick={() => setIsUpgradeModalOpen(true)}
+          onClick={() => setIsUsageCostModalOpen(true)}
           className={`sm:hidden w-full px-3.5 py-1.5 border-b backdrop-blur-xl flex items-center justify-between text-[11px] font-mono sticky top-16 z-30 shadow-xs cursor-pointer ${
             usage.is_quota_exceeded
               ? "bg-rose-500/15 border-rose-500/30 text-rose-800 dark:text-rose-200"
@@ -5249,6 +5251,7 @@ const loadChatSessions = async () => {
         }}
         onOpenDLPShield={() => setIsDlpModalOpen(true)}
         onOpenUpgradeModal={() => setIsUpgradeModalOpen(true)}
+        onOpenCostAnalytics={() => setIsUsageCostModalOpen(true)}
         documents={documents}
         onInspectDocument={(id) => handleInspectChunks(id)}
         canAccessModels={canAccessModels}
@@ -5298,6 +5301,13 @@ const loadChatSessions = async () => {
           loadUsage();
         }}
         showToast={showToast}
+      />
+
+      {/* AI Cost & Spend Intelligence Center Modal */}
+      <AIUsageCostModal
+        isOpen={isUsageCostModalOpen}
+        onClose={() => setIsUsageCostModalOpen(false)}
+        onOpenUpgradeModal={() => setIsUpgradeModalOpen(true)}
       />
 
       {/* Enterprise DLP Shield & PII Inspector Modal */}

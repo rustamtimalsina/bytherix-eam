@@ -5,8 +5,8 @@ from sqlalchemy.orm import Session
 from app.core.permissions import Permission
 from app.core.tenant_context import TenantContext, require_permission
 from app.db.session import get_db
-from app.schemas.usage import QuotaAlertItem, UsageSummary
-from app.services.usage_service import get_tenant_alerts, get_usage_summary
+from app.schemas.usage import QuotaAlertItem, UsageSummary, UsageAnalyticsOut
+from app.services.usage_service import get_tenant_alerts, get_usage_summary, get_usage_analytics
 
 router = APIRouter(prefix="/usage", tags=["Usage & Quota Telemetry"])
 
@@ -32,3 +32,16 @@ def get_organization_alerts(
     Get real-time quota and latency budget SLA alerts for tenant (Section 6.3 & 13.2).
     """
     return get_tenant_alerts(organization_id=context.organization.id, db=db)
+
+
+@router.get("/analytics", response_model=UsageAnalyticsOut, status_code=status.HTTP_200_OK)
+def get_organization_usage_analytics(
+    context: TenantContext = Depends(require_permission(Permission.ORG_READ)),
+    db: Session = Depends(get_db)
+):
+    """
+    Get detailed AI token usage, dollar spend estimation, model breakdown, and burn rate runway.
+    Strict tenant boundary enforcement.
+    """
+    return get_usage_analytics(organization_id=context.organization.id, db=db)
+

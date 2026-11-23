@@ -9,7 +9,7 @@ from app.core.notifications import notification_bus
 from app.db.models.document import Document
 from app.db.models.organization import Organization
 from app.db.models.usage import UsageRecord
-from app.schemas.usage import QuotaAlertItem, UsageSummary
+from app.schemas.usage import QuotaAlertItem, UsageSummary, UsageAnalyticsOut, ModelUsageStat, UsageLedgerItem
 from app.services.audit_service import AuditService
 
 # Default plan limits (Section 7.3 & 7.4)
@@ -297,3 +297,116 @@ def get_tenant_alerts(organization_id: str, db: Session) -> List[QuotaAlertItem]
         )
 
     return alerts
+
+
+def get_usage_analytics(organization_id: str, db: Session) -> UsageAnalyticsOut:
+    """
+    Compute comprehensive AI spend, token consumption, model breakdown, and burn rate analytics.
+    """
+    summary = get_usage_summary(organization_id, db)
+    
+    # Model pricing reference per 1,000,000 tokens (USD)
+    pricing = {
+        "gpt-4o": {"prompt": 2.50, "completion": 10.00},
+        "gpt-4o-mini": {"prompt": 0.15, "completion": 0.60},
+        "claude-3-5-sonnet": {"prompt": 3.00, "completion": 15.00},
+        "mistral-large": {"prompt": 2.00, "completion": 6.00},
+        "bytherix-eam-default": {"prompt": 1.00, "completion": 3.00},
+    }
+
+    # Fetch all billable usage records for this organization
+    records = db.query(UsageRecord).filter(
+        UsageRecord.organization_id == organization_id,
+        UsageRecord.is_billable == True
+    ).order_by(UsageRecord.created_at.desc()).all()
+
+    # Calculate model breakdowns
+    model_stats_map = {}
+    total_cost = 0.0
+
+    for r in records:
+        m = r.model or "bytherix-eam-default"
+        rates = pricing.get(m, pricing["bytherix-eam-default"])
+        p_cost = (r.prompt_tokens / 1_000_000.0) * rates["prompt"]
+        c_cost = (r.completion_tokens / 1_000_000.0) * rates["completion"]
+        r_cost = p_cost + c_cost
+        total_cost += r_cost
+
+        if m not in model_stats_map:
+            model_stats_map[m] = {
+                "tokens": 0,
+                "prompt_tokens": 0,
+                "completion_tokens": 0,
+                "queries": 0,
+                "cost": 0.0,
+            }
+        model_stats_map[m]["tokens"] += r.quantity
+        model_stats_map[m]["prompt_tokens"] += r.prompt_tokens
+        model_stats_map[m]["completion_tokens"] += r.completion_tokens
+        model_stats_map[m]["queries"] += 1
+        model_stats_map[m]["cost"] += r_cost
+
+    total_tokens = summary.tokens_used
+    models_breakdown: List[ModelUsageStat] = []
+    for model_name, s in model_stats_map.items():
+        pct = round((s["tokens"] / total_tokens) * 100.0, 1) if total_tokens > 0 else 0.0
+        models_breakdown.append(
+            ModelUsageStat(
+                model=model_name,
+                tokens=s["tokens"],
+                prompt_tokens=s["prompt_tokens"],
+                completion_tokens=s["completion_tokens"],
+                queries=s["queries"],
+                estimated_cost_usd=round(s["cost"], 4),
+                percentage_of_total=pct
+            )
+        )
+
+    # Sort models by token volume descending
+    models_breakdown.sort(key=lambda x: x.tokens, reverse=True)
+
+    # Calculate recent ledger items (last 10 records)
+    recent_activity: List[UsageLedgerItem] = []
+    for r in records[:10]:
+        rates = pricing.get(r.model, pricing["bytherix-eam-default"])
+        item_cost = ((r.prompt_tokens / 1_000_000.0) * rates["prompt"]) + ((r.completion_tokens / 1_000_000.0) * rates["completion"])
+        recent_activity.append(
+            UsageLedgerItem(
+                id=str(r.id),
+                created_at=r.created_at.isoformat() if hasattr(r, "created_at") and r.created_at else datetime.now(timezone.utc).isoformat(),
+                event_type=r.event_type,
+                model=r.model or "bytherix-eam-default",
+                prompt_tokens=r.prompt_tokens,
+                completion_tokens=r.completion_tokens,
+                total_tokens=r.quantity,
+                estimated_cost_usd=round(item_cost, 4)
+            )
+        )
+
+    # Calculate burn rate & projection
+    avg_daily_burn = max(1, round(total_tokens / 30)) if total_tokens > 0 else 0
+    remaining_tokens = max(0, summary.token_allowance - total_tokens)
+    projected_days = round(remaining_tokens / avg_daily_burn) if avg_daily_burn > 0 else 30
+
+    cost_per_query = round(total_cost / summary.queries_count, 4) if summary.queries_count > 0 else 0.0
+
+    return UsageAnalyticsOut(
+        organization_id=organization_id,
+        plan_tier=summary.plan_tier,
+        token_allowance=summary.token_allowance,
+        tokens_used=summary.tokens_used,
+        prompt_tokens=summary.prompt_tokens,
+        completion_tokens=summary.completion_tokens,
+        percentage_used=summary.percentage_used,
+        queries_count=summary.queries_count,
+        documents_count=summary.documents_count,
+        documents_limit=summary.documents_limit,
+        quota_status=summary.quota_status,
+        estimated_cost_usd=round(total_cost, 4),
+        cost_per_query_usd=cost_per_query,
+        daily_burn_rate=avg_daily_burn,
+        projected_days_remaining=projected_days,
+        models_breakdown=models_breakdown,
+        recent_activity=recent_activity
+    )
+
