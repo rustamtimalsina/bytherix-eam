@@ -50,16 +50,16 @@ export function SplitCitationViewer({
     : 85;
 
   return (
-    <div className="w-full lg:w-[420px] xl:w-[460px] h-full flex flex-col border-l border-slate-200/80 dark:border-white/[0.08] bg-slate-50/90 dark:bg-[#080c16]/95 backdrop-blur-xl animate-in slide-in-from-right-4 duration-200 overflow-hidden shrink-0">
+    <div className="w-full md:w-[340px] lg:w-[380px] xl:w-[420px] max-w-[50vw] h-full flex flex-col border-l border-slate-200/80 dark:border-white/[0.08] bg-slate-50 dark:bg-[#0c1222] shadow-xl relative z-20 overflow-hidden shrink-0">
       {/* Top Header */}
-      <div className="p-3.5 border-b border-slate-200/80 dark:border-white/[0.08] flex items-center justify-between gap-2 bg-slate-100/60 dark:bg-white/[0.02]">
+      <div className="p-3 border-b border-slate-200/80 dark:border-white/[0.08] flex items-center justify-between gap-2 bg-slate-100/90 dark:bg-white/[0.03] shrink-0">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
-            <FileText className="w-4 h-4" />
+          <div className="w-6 h-6 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+            <FileText className="w-3.5 h-3.5" />
           </div>
           <div className="min-w-0">
             <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
-              Side-by-Side Document Viewport
+              Document Viewport
             </h4>
             <p className="text-[10px] font-mono text-slate-500 dark:text-slate-400 truncate">
               {citation ? citation.document_title : "Select citation from chat"}
@@ -69,7 +69,7 @@ export function SplitCitationViewer({
 
         <button
           onClick={onClose}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
+          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/[0.06] transition-colors cursor-pointer shrink-0"
           title="Close split viewport"
         >
           <X className="w-4 h-4" />
