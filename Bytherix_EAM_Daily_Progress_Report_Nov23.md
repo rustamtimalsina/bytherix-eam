@@ -12,7 +12,7 @@ Today was all about finishing up the remaining frontend features on our roadmap 
 
 * **Split-screen citation viewer:** Built `SplitCitationViewer.tsx`. Clicking citation numbers like `[1]` in the chat now opens the exact source document on the right with the cited text highlighted, similarity percentage, and chunk details.
 * **Side-by-side Model Arena:** Added `ModelArenaPlayground.tsx` inside the Models page. You can pick Model A and Model B, type a prompt (or click one of the quick presets), and run them together to compare outputs, response times, token counts, and cost differences.
-* **Generation speed meter & stop button:** In `page.tsx`, added a live speed indicator (`⚡ 48 tok/s`) while the model is answering, plus a red "Stop Generating" button that immediately kills the stream using an AbortController.
+* **Generation speed meter & stop button:** In `page.tsx`, added a live speed indicator (`48 tok/s`) while the model is answering, plus a red "Stop Generating" button that immediately kills the stream using an AbortController.
 * **Knowledge semantic graph:** Added `KnowledgeGraphViewer.tsx` to visualize document embeddings on an SVG canvas. You can drag and zoom, adjust the similarity threshold slider (0.50 to 0.95) to see document clusters, and click nodes to view chunk text.
 * **Multi-document compare & synthesis:** Added checkboxes next to documents in the library. When you select multiple documents, a floating bar pops up with a "Synthesize" button that automatically creates a comparison prompt and opens it in chat.
 * **Responsive UI & Mobile Fixes:** Tested the app in the browser and found several layout issues on laptop and mobile screens. Auto-collapsed the chat history sidebar when split view opens so chat doesn't get squeezed, turned the split viewer into a slide-out drawer on mobile screens (<1024px), gave the bottom dock proper clearance so it doesn't cover the chat input, and cleaned up the Model Arena header.
@@ -26,7 +26,7 @@ Today was all about finishing up the remaining frontend features on our roadmap 
 | :--- | :--- | :--- |
 | **Split Citation Viewer** | Completed | Created `SplitCitationViewer.tsx` with passage highlights, similarity score, and chunk metadata. |
 | **Side-by-Side Model Arena** | Completed | Created `ModelArenaPlayground.tsx` with dual streaming, latency/cost/hallucination metrics, and presets. |
-| **Speed Meter & Stop Button** | Completed | Added live token velocity counter (`⚡ tok/s`) and stream abort button in `page.tsx`. |
+| **Speed Meter & Stop Button** | Completed | Added live token velocity counter (`tok/s`) and stream abort button in `page.tsx`. |
 | **Knowledge Graph Visualizer** | Completed | Built `KnowledgeGraphViewer.tsx` with 2D vector clustering and similarity threshold slider. |
 | **Multi-Doc Compare Mode** | Completed | Added document selection checkboxes, floating action bar, and one-click comparative prompt dispatch to chat. |
 | **Bottom Dock Clearance** | Completed | Added container padding (`pb-32 sm:pb-36`) and adjusted card heights so inputs don't get hidden behind the dock. |

@@ -110,7 +110,7 @@ def build_pdf():
     overview_bullets = [
         "<b>Split-screen citation viewer:</b> Built <code>SplitCitationViewer.tsx</code>. Clicking citation numbers like <code>[1]</code> in the chat now opens the exact source document on the right with the cited text highlighted, similarity percentage, and chunk details.",
         "<b>Side-by-side Model Arena:</b> Added <code>ModelArenaPlayground.tsx</code> inside the Models page. You can pick Model A and Model B, type a prompt (or click one of the quick presets), and run them together to compare outputs, response times, token counts, and cost differences.",
-        "<b>Generation speed meter & stop button:</b> In <code>page.tsx</code>, added a live speed indicator (<code>⚡ 48 tok/s</code>) while the model is answering, plus a red 'Stop Generating' button that immediately kills the stream using an AbortController.",
+        "<b>Generation speed meter & stop button:</b> In <code>page.tsx</code>, added a live speed indicator (<code>48 tok/s</code>) while the model is answering, plus a red 'Stop Generating' button that immediately kills the stream using an AbortController.",
         "<b>Knowledge semantic graph:</b> Added <code>KnowledgeGraphViewer.tsx</code> to visualize document embeddings on an SVG canvas. You can drag and zoom, adjust the similarity threshold slider (0.50 to 0.95) to see document clusters, and click nodes to view chunk text.",
         "<b>Multi-document compare & synthesis:</b> Added checkboxes next to documents in the library. When you select multiple documents, a floating bar pops up with a 'Synthesize' button that automatically creates a comparison prompt and opens it in chat.",
         "<b>Responsive UI & Mobile Fixes:</b> Tested the app in the browser and found several layout issues on laptop and mobile screens. Auto-collapsed the chat history sidebar when split view opens so chat doesn't get squeezed, turned the split viewer into a slide-out drawer on mobile screens (&lt;1024px), gave the bottom dock proper clearance so it doesn't cover the chat input, and cleaned up the Model Arena header.",
@@ -145,7 +145,7 @@ def build_pdf():
         [
             Paragraph("Speed Meter & Stop Button", cell_bold),
             Paragraph("<font color='#15803d'><b>Completed</b></font>", cell_body),
-            Paragraph("Added live token velocity counter (<code>⚡ tok/s</code>) and stream abort button in <code>page.tsx</code>.", cell_body)
+            Paragraph("Added live token velocity counter (<code>48 tok/s</code>) and stream abort button in <code>page.tsx</code>.", cell_body)
         ],
         [
             Paragraph("Knowledge Graph Visualizer", cell_bold),
@@ -199,11 +199,9 @@ def build_pdf():
         ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, COLOR_BG_LIGHT]),
     ]))
     story.append(t)
+    story.append(Spacer(1, 3))
 
-    # Force PageBreak to guarantee exact 2-page balance
-    story.append(PageBreak())
-
-    # --- PAGE 2 ---
+    # 3. Issues I Ran Into & How I Fixed Them
     story.append(Paragraph("3. Issues I Ran Into & How I Fixed Them", h2_style))
     story.append(Spacer(1, 1))
 
@@ -218,8 +216,10 @@ def build_pdf():
     for bullet in issues_bullets:
         story.append(Paragraph(f"• {bullet}", bullet_style))
 
-    story.append(Spacer(1, 3))
+    # PageBreak between Page 1 and Page 2
+    story.append(PageBreak())
 
+    # --- PAGE 2 ---
     # 4. Current Platform Status
     story.append(Paragraph("4. Current Platform Status", h2_style))
     story.append(Spacer(1, 1))
