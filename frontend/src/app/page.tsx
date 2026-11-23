@@ -48,6 +48,7 @@ import {
   Columns,
   Swords,
   Square,
+  Network,
 } from "lucide-react";
 import {
   api,
@@ -85,6 +86,7 @@ import { TelemetrySparkline } from "@/components/TelemetrySparkline";
 import { CitationInspectorDrawer } from "@/components/CitationInspectorDrawer";
 import { SplitCitationViewer } from "@/components/SplitCitationViewer";
 import { ModelArenaPlayground } from "@/components/ModelArenaPlayground";
+import { KnowledgeGraphViewer } from "@/components/KnowledgeGraphViewer";
 import { DocumentScopeSelector } from "@/components/DocumentScopeSelector";
 import { SubscriptionUpgradeModal } from "@/components/SubscriptionUpgradeModal";
 import { MarkdownAnswer } from "@/components/MarkdownAnswer";
@@ -253,6 +255,7 @@ export default function DashboardPage() {
   };
 
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
+  const [docViewMode, setDocViewMode] = useState<"table" | "graph">("table");
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -1722,6 +1725,33 @@ const loadChatSessions = async () => {
                       <span>{isSeedingDemo ? "Seeding Spec..." : "⚡ Seed Demo Spec"}</span>
                     </button>
                   )}
+                  {/* View Mode Toggle: Table vs Semantic Graph */}
+                  <div className="flex items-center p-0.5 rounded-lg bg-slate-100 dark:bg-white/[0.04] border border-slate-200/80 dark:border-white/[0.06]">
+                    <button
+                      type="button"
+                      onClick={() => setDocViewMode("table")}
+                      className={`px-2.5 py-1 rounded-md text-[10.5px] font-mono font-semibold transition-all cursor-pointer ${
+                        docViewMode === "table"
+                          ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                    >
+                      Table
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDocViewMode("graph")}
+                      className={`px-2.5 py-1 rounded-md text-[10.5px] font-mono font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                        docViewMode === "graph"
+                          ? "bg-indigo-600 text-white shadow-xs"
+                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                    >
+                      <Network className="w-3 h-3" />
+                      <span>Semantic Graph</span>
+                    </button>
+                  </div>
+
                   <button
                     onClick={loadDocuments}
                     className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[0.05] transition-colors"
@@ -1732,7 +1762,13 @@ const loadChatSessions = async () => {
                 </div>
               </div>
 
-              {documents.length === 0 ? (
+              {docViewMode === "graph" ? (
+                <KnowledgeGraphViewer
+                  documents={documents}
+                  onInspectDocument={(id) => handleInspectChunks(id)}
+                  onOpenBriefing={(doc) => setBriefingDoc(doc)}
+                />
+              ) : documents.length === 0 ? (
                 <div className="p-8 sm:p-12 text-center text-slate-500 space-y-4 rounded-2xl border-2 border-dashed border-slate-200/90 dark:border-white/[0.08] bg-slate-50/40 dark:bg-white/[0.015] relative overflow-hidden">
                   <div className="relative w-14 h-14 mx-auto flex items-center justify-center">
                     <div className="absolute inset-0 rounded-2xl bg-indigo-500/20 blur-md animate-pulse" />
