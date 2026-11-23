@@ -100,21 +100,21 @@ def build_pdf():
 
     # --- PAGE 1 ---
     story.append(Paragraph("Bytherix EAM — Daily Progress Report", title_style))
-    story.append(Paragraph("Developer: <b>Rustam Timalsina</b> &nbsp;|&nbsp; Date: <b>November 23, 2026</b> &nbsp;|&nbsp; Project: <b>Bytherix EAM (Enterprise AI Management Platform)</b>", meta_style))
+    story.append(Paragraph("Developer: <b>Rustam Timalsina</b> &nbsp;|&nbsp; Date: <b>November 23, 2026</b> &nbsp;|&nbsp; Project: <b>Bytherix EAM</b>", meta_style))
     story.append(Spacer(1, 2))
 
-    story.append(Paragraph("1. Overview of Today's Work", h2_style))
-    story.append(Paragraph("Today I focused on delivering all five planned frontend milestone features for Bytherix EAM, followed by thorough responsive UI polish across desktop and mobile viewports. Every feature was built, manually tested in the browser, verified through TypeScript and Next.js builds, and pushed to <code>origin/main</code>:", body_style))
+    story.append(Paragraph("1. What I Worked On Today", h2_style))
+    story.append(Paragraph("Today was all about finishing up the remaining frontend features on our roadmap and sorting out the UI layout issues on both desktop and mobile:", body_style))
     story.append(Spacer(1, 1))
 
     overview_bullets = [
-        "<b>Perplexity-Style Split Citation Viewer:</b> Built <code>frontend/src/components/SplitCitationViewer.tsx</code> to inspect grounded RAG source passages side-by-side with chat. Clicking citation pills (<code>[1]</code>, <code>[Doc 2, Chunk 4]</code>) immediately highlights the passage with similarity score meters and chunk metadata.",
-        "<b>Side-by-Side Model Arena & Benchmark Playground:</b> Built <code>frontend/src/components/ModelArenaPlayground.tsx</code> to run head-to-head evaluations between baseline production and candidate models under identical prompts, displaying streaming tokens, latency tracking, estimated cost delta, and hallucination metrics.",
-        "<b>Real-Time Generation Velocity Meter & Abort Control:</b> Added streaming generation telemetry (<code>⚡ 48 tok/s</code>) computed dynamically per chunk arrival, with a floating '■ Stop Generating' button that cleanly cancels the active stream via <code>AbortController</code> in <code>page.tsx</code>.",
-        "<b>Interactive Knowledge Semantic Graph Canvas:</b> Implemented <code>frontend/src/components/KnowledgeGraphViewer.tsx</code> featuring interactive 2D vector clustering, node topology, cosine similarity threshold slider (0.50 to 0.95), and node detail inspection.",
-        "<b>Multi-Document Synthesis & Comparison Mode:</b> Added document multi-selection checkboxes, floating synthesis action bar, and automated comparative prompt dispatching to Chat with grounded document scopes pre-selected.",
-        "<b>Responsive Layout & Mobile Overhaul:</b> Auto-collapsed history sidebar when split view opens to preserve 600px+ chat width on desktop, refactored split view into an off-canvas slide-over drawer on mobile (&lt; 1024px), and eliminated bottom dock overlap with dynamic viewport heights.",
-        "<b>Build Verification & Git Commits:</b> Verified 70/70 backend tests passing, 0 TypeScript errors, 10/10 Next.js static pages compiled, and pushed 9 clean commits to <code>origin/main</code>."
+        "<b>Split-screen citation viewer:</b> Built <code>SplitCitationViewer.tsx</code>. Clicking citation numbers like <code>[1]</code> in the chat now opens the exact source document on the right with the cited text highlighted, similarity percentage, and chunk details.",
+        "<b>Side-by-side Model Arena:</b> Added <code>ModelArenaPlayground.tsx</code> inside the Models page. You can pick Model A and Model B, type a prompt (or click one of the quick presets), and run them together to compare outputs, response times, token counts, and cost differences.",
+        "<b>Generation speed meter & stop button:</b> In <code>page.tsx</code>, added a live speed indicator (<code>⚡ 48 tok/s</code>) while the model is answering, plus a red 'Stop Generating' button that immediately kills the stream using an AbortController.",
+        "<b>Knowledge semantic graph:</b> Added <code>KnowledgeGraphViewer.tsx</code> to visualize document embeddings on an SVG canvas. You can drag and zoom, adjust the similarity threshold slider (0.50 to 0.95) to see document clusters, and click nodes to view chunk text.",
+        "<b>Multi-document compare & synthesis:</b> Added checkboxes next to documents in the library. When you select multiple documents, a floating bar pops up with a 'Synthesize' button that automatically creates a comparison prompt and opens it in chat.",
+        "<b>Responsive UI & Mobile Fixes:</b> Tested the app in the browser and found several layout issues on laptop and mobile screens. Auto-collapsed the chat history sidebar when split view opens so chat doesn't get squeezed, turned the split viewer into a slide-out drawer on mobile screens (&lt;1024px), gave the bottom dock proper clearance so it doesn't cover the chat input, and cleaned up the Model Arena header.",
+        "<b>Tests and Builds:</b> All 70 backend tests are passing, TypeScript compiles with 0 errors, and the Next.js production build succeeded. Everything is committed and pushed to <code>main</code>."
     ]
 
     for bullet in overview_bullets:
@@ -122,69 +122,69 @@ def build_pdf():
 
     story.append(Spacer(1, 2))
 
-    # 2. Key Accomplishments Table
-    story.append(Paragraph("2. Key Accomplishments", h2_style))
+    # 2. Completed Tasks Table
+    story.append(Paragraph("2. Completed Tasks", h2_style))
     story.append(Spacer(1, 1))
 
     table_data = [
         [
-            Paragraph("<b>Feature / Task</b>", cell_bold),
+            Paragraph("<b>Task</b>", cell_bold),
             Paragraph("<b>Status</b>", cell_bold),
-            Paragraph("<b>Implementation Details</b>", cell_bold)
+            Paragraph("<b>What Was Done</b>", cell_bold)
         ],
         [
             Paragraph("Split Citation Viewer", cell_bold),
             Paragraph("<font color='#15803d'><b>Completed</b></font>", cell_body),
-            Paragraph("Created <code>SplitCitationViewer.tsx</code> with verbatim text highlighting, similarity meters, chunk metadata, and bi-directional citation sync.", cell_body)
+            Paragraph("Created <code>SplitCitationViewer.tsx</code> with passage highlights, similarity score, and chunk metadata.", cell_body)
         ],
         [
             Paragraph("Side-by-Side Model Arena", cell_bold),
             Paragraph("<font color='#15803d'><b>Completed</b></font>", cell_body),
-            Paragraph("Built <code>ModelArenaPlayground.tsx</code> with dual-model streaming evaluation, latency/cost/hallucination metrics, and enterprise benchmark presets.", cell_body)
+            Paragraph("Created <code>ModelArenaPlayground.tsx</code> with dual streaming, latency/cost/hallucination metrics, and presets.", cell_body)
         ],
         [
-            Paragraph("Streaming Velocity Meter", cell_bold),
+            Paragraph("Speed Meter & Stop Button", cell_bold),
             Paragraph("<font color='#15803d'><b>Completed</b></font>", cell_body),
-            Paragraph("Added real-time token rate calculator (<code>⚡ 48 tok/s</code>) and instant '■ Stop Generating' stream cancellation in <code>page.tsx</code>.", cell_body)
+            Paragraph("Added live token velocity counter (<code>⚡ tok/s</code>) and stream abort button in <code>page.tsx</code>.", cell_body)
         ],
         [
-            Paragraph("Interactive Vector Graph", cell_bold),
+            Paragraph("Knowledge Graph Visualizer", cell_bold),
             Paragraph("<font color='#15803d'><b>Completed</b></font>", cell_body),
-            Paragraph("Implemented <code>KnowledgeGraphViewer.tsx</code> featuring 2D vector topology canvas, node clustering, and dynamic cosine similarity slider.", cell_body)
+            Paragraph("Built <code>KnowledgeGraphViewer.tsx</code> with 2D vector clustering and similarity threshold slider.", cell_body)
         ],
         [
-            Paragraph("Multi-Doc Synthesis Mode", cell_bold),
+            Paragraph("Multi-Doc Compare Mode", cell_bold),
             Paragraph("<font color='#15803d'><b>Completed</b></font>", cell_body),
-            Paragraph("Added document multi-selection checkboxes, floating synthesis action bar, and automated comparative prompt dispatching to Chat.", cell_body)
+            Paragraph("Added document selection checkboxes, floating action bar, and one-click comparative prompt dispatch to chat.", cell_body)
         ],
         [
-            Paragraph("Desktop Dock Clearance", cell_bold),
+            Paragraph("Bottom Dock Clearance", cell_bold),
             Paragraph("<font color='#15803d'><b>Completed</b></font>", cell_body),
-            Paragraph("Added <code>pb-32 sm:pb-36</code> container padding and dynamic <code>h-[calc(100vh-190px)]</code> card height so chat inputs never sit underneath the dock.", cell_body)
+            Paragraph("Added container padding (<code>pb-32 sm:pb-36</code>) and adjusted card heights so inputs don't get hidden behind the dock.", cell_body)
         ],
         [
-            Paragraph("Split-View Auto-Collapse", cell_bold),
+            Paragraph("Auto-Collapsing History", cell_bold),
             Paragraph("<font color='#15803d'><b>Completed</b></font>", cell_body),
-            Paragraph("History sidebar auto-collapses on desktop when split view opens, giving the chat and document viewport full comfortable width.", cell_body)
+            Paragraph("History sidebar now closes automatically when opening split view on desktop so chat keeps good width.", cell_body)
         ],
         [
-            Paragraph("Mobile Drawer Slide-Over", cell_bold),
+            Paragraph("Mobile Drawer View", cell_bold),
             Paragraph("<font color='#15803d'><b>Completed</b></font>", cell_body),
-            Paragraph("Converted split citation panel into an off-canvas slide-over modal on screens under 1024px, completely eliminating horizontal squishing.", cell_body)
+            Paragraph("Converted split view into an off-canvas slide-out drawer on phones/tablets so it doesn't crush the chat.", cell_body)
         ],
         [
-            Paragraph("Model Arena UI Refinements", cell_bold),
+            Paragraph("Model Arena UI Polish", cell_bold),
             Paragraph("<font color='#15803d'><b>Completed</b></font>", cell_body),
-            Paragraph("Repositioned benchmark presets above prompt textarea, added styled dropdown chevrons for model pickers, and prevented title wrapping.", cell_body)
+            Paragraph("Fixed title line break, moved presets above the prompt textarea, and replaced inputs with styled dropdowns.", cell_body)
         ],
         [
-            Paragraph("Build & Test Verification", cell_bold),
+            Paragraph("Testing & Verification", cell_bold),
             Paragraph("<font color='#15803d'><b>Completed</b></font>", cell_body),
-            Paragraph("70/70 backend pytest tests passing (100%), 0 TypeScript errors, 10/10 Next.js static pages compiled, and 9 commits pushed to <code>origin/main</code>.", cell_body)
+            Paragraph("Ran pytest (70/70 passing), checked Next.js build (10/10 pages), and pushed all 9 commits to GitHub main.", cell_body)
         ],
     ]
 
-    col_widths = [130, 65, 328]
+    col_widths = [125, 65, 333]
     t = Table(table_data, colWidths=col_widths)
     t.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#f1f5f9")),
@@ -204,15 +204,15 @@ def build_pdf():
     story.append(PageBreak())
 
     # --- PAGE 2 ---
-    story.append(Paragraph("3. Issues Encountered & How I Fixed Them", h2_style))
+    story.append(Paragraph("3. Issues I Ran Into & How I Fixed Them", h2_style))
     story.append(Spacer(1, 1))
 
     issues_bullets = [
-        "<b>Desktop 3-Column Width Squishing:</b> When history sidebar, chat feed, and split viewer were open simultaneously, chat narrowed to ~320px on laptop screens. <i>Fix:</i> Configured split view state in <code>page.tsx</code> to auto-collapse the conversation history sidebar, preserving 600px+ width for chat.",
-        "<b>Floating Rocket Dock Overlapping Chat Input:</b> On smaller laptop viewports, the bottom dock covered the chat query input box and send button. <i>Fix:</i> Replaced fixed <code>h-[720px]</code> card heights with responsive <code>h-[calc(100vh-190px)] max-h-[680px]</code> and wrapped chat in <code>pb-32 sm:pb-36</code>, ensuring reliable dock clearance.",
-        "<b>Mobile View Layout Breakdown Under 1024px:</b> The side-by-side flex layout cramped three columns on mobile screens, overlapping header pills (<code>[🕒 24]</code> over <code>Scope: All</code>) and crushing chat into 190px. <i>Fix:</i> Refactored <code>SplitCitationViewer</code> into a responsive fixed slide-over drawer with backdrop (<code>fixed inset-y-0 right-0 z-50 w-full sm:w-[440px]</code>) on mobile.",
-        "<b>Model Arena Title Wrapping & Awkward Preset Stacking:</b> The title broke awkwardly into two lines ('Side-by-Side Model' / 'Arena') and presets crowded into the header next to the badge. <i>Fix:</i> Restructured the header to full width, moved prompt presets directly above the prompt textarea, and upgraded inputs to styled <code>&lt;select&gt;</code> dropdowns.",
-        "<b>Duplicate JSX Element During Fast Replacement:</b> During an edit on <code>ModelArenaPlayground.tsx</code>, a duplicate <code>&lt;textarea&gt;</code> tag was introduced, throwing TS2657. <i>Fix:</i> Immediately cleaned duplicate lines 247-253 and confirmed clean compilation with <code>npx tsc --noEmit</code>."
+        "<b>Chat column was way too narrow on laptop screens:</b> When history, chat, and the new split viewer were all open side by side, the chat box shrank to ~320px and words wrapped weirdly. I fixed this by having the chat history sidebar auto-collapse as soon as split view opens. That keeps the chat at 600px+ width.",
+        "<b>Bottom floating dock covered the send button:</b> On smaller laptop screens, the floating navigation dock sat right over the chat input textarea and send button. I removed fixed card heights in favor of <code>h-[calc(100vh-190px)]</code> and added <code>pb-32</code> bottom padding so the input always stays visible above the dock.",
+        "<b>Mobile layout broke completely under 1024px:</b> Trying to fit 3 panels side by side on a phone screen squeezed the chat down to 190px, and the history count pill overlapped the scope dropdown. I changed the mobile layout so <code>SplitCitationViewer</code> becomes a slide-out drawer with a dark backdrop instead of sharing horizontal space.",
+        "<b>Model Arena title wrapped and presets were messy:</b> The title 'Side-by-Side Model Arena' broke across two lines, and the benchmark preset buttons were shoved into the top right header. I gave the title full width, moved the presets directly above the prompt box where they are easier to click, and switched to clean <code>&lt;select&gt;</code> dropdowns for picking models.",
+        "<b>Duplicate tag during quick code edit:</b> In <code>ModelArenaPlayground.tsx</code>, an accidental duplicate <code>&lt;textarea&gt;</code> tag caused a TypeScript error (<code>TS2657</code>). I caught it right away with <code>tsc</code>, deleted lines 247-253, and the build went green."
     ]
 
     for bullet in issues_bullets:
@@ -220,24 +220,25 @@ def build_pdf():
 
     story.append(Spacer(1, 3))
 
-    # 4. Current System Status
-    story.append(Paragraph("4. Current System Status", h2_style))
+    # 4. Current Platform Status
+    story.append(Paragraph("4. Current Platform Status", h2_style))
     story.append(Spacer(1, 1))
 
     status_items = [
-        "Multi-Tenant Auth & RBAC: Single-use 7-day invite tokens, JWT verification, and scoped organization sessions — <b>Done & Verified</b>",
-        "Grounded Hybrid RAG: PDF parsing, chunking, pgvector HNSW embeddings, DLP guardrails, and streaming citations — <b>Done & Live</b>",
-        "Perplexity Split Citation Viewer: Verbatim highlights, similarity confidence meters, chunk metadata, and deep links — <b>Done & Live</b>",
-        "Side-by-Side Model Arena: Dual model parallel benchmarking, latency/cost/hallucination metrics, and presets — <b>Done & Live</b>",
-        "Streaming Velocity & Abort Meter: Real-time token velocity (<code>⚡ 48 tok/s</code>) and instant stream abort controller button — <b>Done & Live</b>",
-        "Interactive Knowledge Graph: SVG vector canvas, physics clustering, cosine similarity threshold slider — <b>Done & Live</b>",
-        "Multi-Document Synthesis Mode: Multi-select catalog checkboxes, floating synthesis launcher, and automated chat dispatch — <b>Done & Live</b>",
-        "Mobile & Desktop Responsive Layout: Off-canvas slide-over drawer on mobile, dock height clearance, and auto-collapsing sidebar — <b>Done & Live</b>",
-        "Stripe Billing & Invoicing: Checkout sessions, idempotent webhook deduplication, and dynamic PDF receipts — <b>Done & Verified</b>",
-        "SOC 2 Multi-Tenant Security Suite: 7-vector cross-tenant penetration testing proving complete data isolation — <b>Done & Verified</b>",
-        "Automated Disaster Recovery & Fire Drill: Atomic backups, SHA-256 manifests, and 0.13s scratch restoration drill — <b>Done & Verified</b>",
-        "Automated Test Suite — <b>100% Passing (70/70 backend pytest tests, Next.js build clean with 10/10 pages compiled)</b>",
-        "Git Repository — <b>Clean working tree pushed to origin/main (Commits: <code>515a7aa</code>, <code>4d96221</code>, <code>0b548ea</code>, <code>e86543b</code>, <code>a64168f</code>, <code>cd0fdde</code>, <code>4cfe429</code>, <code>3280e8b</code>, <code>c55f1c9</code>)</b>"
+        "Multi-tenant auth & RBAC: Single-use 7-day invite tokens, JWT verification, org-scoped sessions — <b>Working</b>",
+        "Hybrid RAG pipeline: PDF parsing, chunking, pgvector HNSW embeddings, DLP scan, and streaming citations — <b>Working & Live</b>",
+        "Split citation viewer: Verbatim highlights, similarity confidence score, chunk details — <b>Working & Live</b>",
+        "Model Arena: Dual-model parallel testing, latency/cost/hallucination metrics, presets — <b>Working & Live</b>",
+        "Velocity meter & stop button: Live tokens/sec display and instant stream cancellation — <b>Working & Live</b>",
+        "Knowledge graph: Interactive vector canvas, node clustering, similarity slider — <b>Working & Live</b>",
+        "Multi-doc synthesis: Checkbox selection, floating launcher, auto-prompt to chat — <b>Working & Live</b>",
+        "Desktop & mobile responsive layout: Mobile slide-out drawer, bottom dock clearance, auto-collapsing sidebar — <b>Working & Live</b>",
+        "Stripe billing & invoices: Checkout sessions, webhook deduplication, PDF receipts — <b>Working & Tested</b>",
+        "Multi-tenant security tests: 7-vector cross-tenant penetration test suite — <b>Passing (100%)</b>",
+        "Disaster recovery: Atomic backups, SHA-256 manifests, 0.13s restore fire drill — <b>Working & Tested</b>",
+        "Backend tests: <b>70/70 pytest tests passing</b>",
+        "Frontend build: <b>0 TypeScript errors, 10/10 static pages built</b>",
+        "GitHub repo: <b>Clean working tree, up to date with origin/main</b>"
     ]
 
     for item in status_items:
@@ -245,14 +246,14 @@ def build_pdf():
 
     story.append(Spacer(1, 3))
 
-    # 5. Plan for Tomorrow
-    story.append(Paragraph("5. Plan for Tomorrow (November 24)", h2_style))
+    # 5. What I'm Doing Tomorrow
+    story.append(Paragraph("5. What I'm Doing Tomorrow (November 24)", h2_style))
     story.append(Spacer(1, 1))
 
     tomorrow_items = [
-        "<b>Staging Environment Validation (Docker Compose):</b> Spin up the full multi-container stack (<code>FastAPI</code>, <code>Next.js</code>, <code>PostgreSQL/pgvector</code>, <code>Redis 7</code>, <code>MinIO</code>) in local Docker staging and verify service interconnection under load.",
-        "<b>Developer API Portal Integration with Sujal:</b> Connect Sujal's <code>DeveloperApiPortal.tsx</code> sandbox to live <code>/api/v1/chat</code>, <code>/api/v1/security/dlp/scan</code>, and <code>/api/v1/models</code> endpoints once ready.",
-        "<b>End-to-End User Experience Walkthrough:</b> Run through complete realistic enterprise workflows (ingest PDF -> verify semantic graph -> run multi-doc synthesis in chat -> inspect citations in split view -> compare model performance in Arena)."
+        "<b>Docker Compose staging test:</b> Test the whole stack (FastAPI backend, Next.js frontend, PostgreSQL with pgvector, Redis 7, and MinIO) together in Docker Compose to make sure everything connects smoothly.",
+        "<b>Help Sujal wire up the Developer Portal:</b> Once Sujal finishes <code>DeveloperApiPortal.tsx</code>, help him connect his test sandbox to our live chat, DLP scan, and model endpoints.",
+        "<b>Full walkthrough testing:</b> Do a complete run-through from scratch: upload a new enterprise PDF, check its clusters in the knowledge graph, run multi-doc synthesis in chat, inspect citations in split view, and run an arena comparison."
     ]
 
     for i, item in enumerate(tomorrow_items, 1):
@@ -265,7 +266,7 @@ def build_pdf():
     story.append(Spacer(1, 1))
 
     summary_text = (
-        "Today was a highly productive engineering day for Bytherix EAM. All five planned frontend roadmap features—Perplexity-style split citation viewing, side-by-side Model Arena benchmarking, streaming generation velocity telemetry, interactive vector semantic graph exploration, and multi-document synthesis—were completed and tested. We followed up with extensive responsive design polish, solving desktop multi-column squeeze, floating dock overlap, and mobile drawer transitions. All 70 backend tests are green, the Next.js production build compiles with 0 errors, and all 9 commits are pushed cleanly to GitHub main."
+        "Wrapped up all 5 roadmap frontend features today: split-screen citation viewer, side-by-side Model Arena, streaming speed meter with stop button, interactive vector knowledge graph, and multi-document synthesis. Tested everything in the browser and fixed several responsive UI issues on desktop and mobile (dock overlap, narrow chat columns, and mobile layout breaking). All 70 backend tests are passing, the frontend builds cleanly with zero errors, and all commits are pushed to main."
     )
 
     summary_table = Table([[Paragraph(summary_text, body_style)]], colWidths=[523])
