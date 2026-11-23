@@ -46,6 +46,7 @@ import {
   Calendar,
   FileJson,
   Columns,
+  Swords,
 } from "lucide-react";
 import {
   api,
@@ -82,6 +83,7 @@ import { CommandPaletteModal } from "@/components/CommandPaletteModal";
 import { TelemetrySparkline } from "@/components/TelemetrySparkline";
 import { CitationInspectorDrawer } from "@/components/CitationInspectorDrawer";
 import { SplitCitationViewer } from "@/components/SplitCitationViewer";
+import { ModelArenaPlayground } from "@/components/ModelArenaPlayground";
 import { DocumentScopeSelector } from "@/components/DocumentScopeSelector";
 import { SubscriptionUpgradeModal } from "@/components/SubscriptionUpgradeModal";
 import { MarkdownAnswer } from "@/components/MarkdownAnswer";
@@ -134,6 +136,7 @@ export default function DashboardPage() {
   const [selectedModel, setSelectedModel] = useState<RegisteredModelDetail | null>(null);
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const [isModelLoading, setIsModelLoading] = useState(false);
+  const [modelSubView, setModelSubView] = useState<"catalog" | "arena">("catalog");
   const [predictPrompt, setPredictPrompt] = useState("");
   const [isPredicting, setIsPredicting] = useState(false);
   const [predictionResult, setPredictionResult] = useState<PredictionResult | null>(null);
@@ -2984,6 +2987,37 @@ const loadChatSessions = async () => {
               </div>
             </div>
 
+            {/* Sub-view switcher: Catalog vs Arena */}
+            <div className="flex items-center gap-2 border-b border-slate-200/80 dark:border-white/[0.08] pb-3">
+              <button
+                type="button"
+                onClick={() => setModelSubView("catalog")}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  modelSubView === "catalog"
+                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20"
+                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[0.04]"
+                }`}
+              >
+                Model Registry Catalog ({models.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setModelSubView("arena")}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  modelSubView === "arena"
+                    ? "bg-gradient-to-r from-indigo-600 to-pink-600 text-white shadow-md shadow-indigo-500/20"
+                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[0.04]"
+                }`}
+              >
+                <Swords className="w-3.5 h-3.5 text-pink-400" />
+                <span>Side-by-Side Model Arena</span>
+              </button>
+            </div>
+
+            {modelSubView === "arena" ? (
+              <ModelArenaPlayground models={models} />
+            ) : (
+              <>
             {/* Register Model Modal */}
             {showNewModelModal && (
               <div className="card-depth-3d p-5 sm:p-6 border-indigo-500/30 bg-white/95 dark:bg-[#0c1220]/95 backdrop-blur-xl rounded-2xl space-y-4 shadow-2xl">
@@ -3454,6 +3488,8 @@ const loadChatSessions = async () => {
                   )}
                 </div>
               </div>
+            )}
+            </>
             )}
           </div>
           )
