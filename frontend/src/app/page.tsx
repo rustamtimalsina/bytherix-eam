@@ -47,6 +47,7 @@ import {
   FileJson,
   Columns,
   Swords,
+  Square,
 } from "lucide-react";
 import {
   api,
@@ -266,8 +267,11 @@ export default function DashboardPage() {
       model?: string;
       isStreaming?: boolean;
       evaluation?: RAGEvalData;
+      generationSpeed?: { durationSec: number; tokensPerSec: number };
     }>
   >([]);
+  const chatStartTimeRef = useRef<number>(0);
+  const tokenCountRef = useRef<number>(0);
   // Conversation Session state (Section 16.1 #6)
   const [chatSessions, setChatSessions] = useState<SessionSummary[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -1048,6 +1052,27 @@ const loadChatSessions = async () => {
     setInputQuery("");
   };
 
+  const handleStopGenerating = () => {
+    setIsQuerying(false);
+    setChatMessages((prev) => {
+      const copy = [...prev];
+      const last = copy[copy.length - 1];
+      if (last && last.sender === "assistant") {
+        const elapsed = Math.max(0.1, (Date.now() - chatStartTimeRef.current) / 1000);
+        const tokPerSec = Math.max(1, Math.round(tokenCountRef.current / elapsed));
+        copy[copy.length - 1] = {
+          ...last,
+          isStreaming: false,
+          generationSpeed: {
+            durationSec: Number(elapsed.toFixed(1)),
+            tokensPerSec: tokPerSec,
+          },
+        };
+      }
+      return copy;
+    });
+  };
+
   const handleDeleteSession = async (e: React.MouseEvent, sessionId: string) => {
     e.stopPropagation();
     if (!confirm("Are you sure you want to delete this conversation thread?")) return;
@@ -1068,6 +1093,9 @@ const loadChatSessions = async () => {
     if (!query || isQuerying) return;
     setInputQuery("");
     
+    chatStartTimeRef.current = Date.now();
+    tokenCountRef.current = 0;
+
     // Append user query and empty streaming assistant response
     setChatMessages((prev) => [
       ...prev,
@@ -1110,50 +1138,57 @@ const loadChatSessions = async () => {
             });
           },
           onToken: (token: string) => {
-          setChatMessages((prev) => {
-            const copy = [...prev];
-            const last = copy[copy.length - 1];
-            if (last && last.sender === "assistant") {
-              copy[copy.length - 1] = {
-                ...last,
-                text: last.text + token,
-                isStreaming: true,
-              };
-            }
-            return copy;
-          });
-        },
-        onCitations: (citations: SourceCitation[]) => {
-          setChatMessages((prev) => {
-            const copy = [...prev];
-            const last = copy[copy.length - 1];
-            if (last && last.sender === "assistant") {
-              copy[copy.length - 1] = {
-                ...last,
-                sources: citations,
-              };
-            }
-            return copy;
-          });
-        },
-        onDone: (metrics) => {
-          setChatMessages((prev) => {
-            const copy = [...prev];
-            const last = copy[copy.length - 1];
-            if (last && last.sender === "assistant") {
-              copy[copy.length - 1] = {
-                ...last,
-                model: metrics.model,
-                isStreaming: false,
-              };
-            }
-            return copy;
-          });
-          setIsQuerying(false);
-          loadUsage(); // Live refresh token quota telemetry (Section 7.4)
-          loadChatSessions();
-      loadAgentData(); // Refresh past conversation sessions list
-        },
+            tokenCountRef.current += 1;
+            setChatMessages((prev) => {
+              const copy = [...prev];
+              const last = copy[copy.length - 1];
+              if (last && last.sender === "assistant") {
+                copy[copy.length - 1] = {
+                  ...last,
+                  text: last.text + token,
+                  isStreaming: true,
+                };
+              }
+              return copy;
+            });
+          },
+          onCitations: (citations: SourceCitation[]) => {
+            setChatMessages((prev) => {
+              const copy = [...prev];
+              const last = copy[copy.length - 1];
+              if (last && last.sender === "assistant") {
+                copy[copy.length - 1] = {
+                  ...last,
+                  sources: citations,
+                };
+              }
+              return copy;
+            });
+          },
+          onDone: (metrics) => {
+            const elapsed = Math.max(0.1, (Date.now() - chatStartTimeRef.current) / 1000);
+            const tokPerSec = Math.max(1, Math.round(tokenCountRef.current / elapsed));
+            setChatMessages((prev) => {
+              const copy = [...prev];
+              const last = copy[copy.length - 1];
+              if (last && last.sender === "assistant") {
+                copy[copy.length - 1] = {
+                  ...last,
+                  model: metrics.model,
+                  isStreaming: false,
+                  generationSpeed: {
+                    durationSec: Number(elapsed.toFixed(1)),
+                    tokensPerSec: tokPerSec,
+                  },
+                };
+              }
+              return copy;
+            });
+            setIsQuerying(false);
+            loadUsage(); // Live refresh token quota telemetry (Section 7.4)
+            loadChatSessions();
+            loadAgentData(); // Refresh past conversation sessions list
+          },
         onError: (errMsg: string) => {
           setChatMessages((prev) => {
             const copy = [...prev];
@@ -2374,11 +2409,19 @@ const loadChatSessions = async () => {
                                 <FileText className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
                                 Grounded Sources ({msg.sources.length})
                               </span>
-                              {msg.model && (
-                                <span className="text-[9px] font-mono text-slate-400 dark:text-slate-500">
-                                  Model: {msg.model}
-                                </span>
-                              )}
+                              <div className="flex items-center gap-2">
+                                {msg.generationSpeed && (
+                                  <span className="text-[9px] font-mono text-cyan-600 dark:text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/20 flex items-center gap-1">
+                                    <Zap className="w-2.5 h-2.5 text-cyan-500" />
+                                    <span>{msg.generationSpeed.tokensPerSec} tok/s ({msg.generationSpeed.durationSec}s)</span>
+                                  </span>
+                                )}
+                                {msg.model && (
+                                  <span className="text-[9px] font-mono text-slate-400 dark:text-slate-500">
+                                    Model: {msg.model}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                             <div className="grid grid-cols-1 gap-2">
                               {msg.sources.map((src, sIdx) => (
@@ -2501,6 +2544,21 @@ const loadChatSessions = async () => {
                     </div>
                   </div>
                 )}
+
+                {/* Floating Stop Generating Button while streaming */}
+                {isQuerying && (
+                  <div className="flex justify-center mb-2 animate-in fade-in zoom-in-95 duration-150">
+                    <button
+                      type="button"
+                      onClick={handleStopGenerating}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold bg-white/95 dark:bg-slate-900/95 text-rose-500 border border-rose-500/30 hover:bg-rose-50 dark:hover:bg-rose-950/30 shadow-md shadow-rose-500/10 transition-all cursor-pointer"
+                    >
+                      <Square className="w-3 h-3 fill-rose-500" />
+                      <span>Stop Generating</span>
+                    </button>
+                  </div>
+                )}
+
                 <div className="flex items-center gap-2">
                   <div className="relative flex-1">
                     <input
