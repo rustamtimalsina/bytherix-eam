@@ -2191,9 +2191,9 @@ const loadChatSessions = async () => {
 
         {/* TAB 2: RAG AI CHATROOM (Precision Perplexity-Tier Redesign) */}
         {activeTab === "chat" && (
-          <div className="space-y-6 pb-32 sm:pb-36">
+          <div className="space-y-6 pb-24 sm:pb-28">
             <div
-              className="card-depth-3d relative flex flex-col md:flex-row h-[620px] sm:h-[680px] lg:h-[720px] rounded-2xl overflow-hidden border border-slate-200/80 dark:border-white/[0.08]"
+              className="card-depth-3d relative flex flex-col md:flex-row h-[calc(100vh-190px)] min-h-[500px] max-h-[680px] rounded-2xl overflow-hidden border border-slate-200/80 dark:border-white/[0.08]"
               style={{
                 boxShadow: "0 20px 40px -15px rgba(0, 0, 0, 0.1), inset 0 1px 0 0 rgba(255, 255, 255, 0.08)",
               }}
@@ -2382,7 +2382,7 @@ const loadChatSessions = async () => {
                 </div>
 
                 {/* Right: Action Pills - Fully Responsive & Non-Overlapping */}
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0 pr-2 sm:pr-3">
                   {/* Document Scope Filter Dropdown (Section 8.2) */}
                   <DocumentScopeSelector
                     documents={documents}
@@ -2410,13 +2410,18 @@ const loadChatSessions = async () => {
                     onClick={() => {
                       setIsSplitViewOpen((prev) => {
                         const next = !prev;
-                        if (next && !selectedCitation) {
-                          const lastWithSources = [...chatMessages].reverse().find(
-                            (m) => m.sources && m.sources.length > 0
-                          );
-                          if (lastWithSources?.sources?.[0]) {
-                            setSelectedCitation(lastWithSources.sources[0]);
+                        if (next) {
+                          setIsHistoryCollapsed(true);
+                          if (!selectedCitation) {
+                            const lastWithSources = [...chatMessages].reverse().find(
+                              (m) => m.sources && m.sources.length > 0
+                            );
+                            if (lastWithSources?.sources?.[0]) {
+                              setSelectedCitation(lastWithSources.sources[0]);
+                            }
                           }
+                        } else {
+                          setIsHistoryCollapsed(false);
                         }
                         return next;
                       });
@@ -2567,6 +2572,7 @@ const loadChatSessions = async () => {
                                 if (match) {
                                   setSelectedCitation(match);
                                   setIsSplitViewOpen(true);
+                                  setIsHistoryCollapsed(true);
                                 }
                               }}
                             />
@@ -2614,6 +2620,7 @@ const loadChatSessions = async () => {
                                   onClick={() => {
                                     setSelectedCitation(src);
                                     setIsSplitViewOpen(true);
+                                    setIsHistoryCollapsed(true);
                                   }}
                                   className="p-2.5 rounded-xl text-[11px] text-slate-800 dark:text-slate-300 bg-slate-50/80 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/[0.06] hover:border-indigo-500/40 hover:bg-indigo-50/30 dark:hover:bg-indigo-950/20 transition-all cursor-pointer group"
                                   title="Click to inspect citation in slide-over drawer"
@@ -2793,7 +2800,10 @@ const loadChatSessions = async () => {
                   [...chatMessages].reverse().find((m) => m.sources && m.sources.length > 0)?.sources || []
                 }
                 onSelectCitation={(src) => setSelectedCitation(src)}
-                onClose={() => setIsSplitViewOpen(false)}
+                onClose={() => {
+                  setIsSplitViewOpen(false);
+                  setIsHistoryCollapsed(false);
+                }}
                 onAskAboutChunk={(prompt) => {
                   setInputQuery(prompt);
                 }}
