@@ -45,6 +45,7 @@ import {
   Hash,
   Calendar,
   FileJson,
+  Columns,
 } from "lucide-react";
 import {
   api,
@@ -80,6 +81,7 @@ import { AIUsageCostModal } from "@/components/AIUsageCostModal";
 import { CommandPaletteModal } from "@/components/CommandPaletteModal";
 import { TelemetrySparkline } from "@/components/TelemetrySparkline";
 import { CitationInspectorDrawer } from "@/components/CitationInspectorDrawer";
+import { SplitCitationViewer } from "@/components/SplitCitationViewer";
 import { DocumentScopeSelector } from "@/components/DocumentScopeSelector";
 import { SubscriptionUpgradeModal } from "@/components/SubscriptionUpgradeModal";
 import { MarkdownAnswer } from "@/components/MarkdownAnswer";
@@ -956,6 +958,7 @@ export default function DashboardPage() {
   const [briefingDoc, setBriefingDoc] = useState<{ id: string; title: string } | null>(null);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [selectedCitation, setSelectedCitation] = useState<SourceCitation | null>(null);
+  const [isSplitViewOpen, setIsSplitViewOpen] = useState(false);
 
   useEffect(() => {
     const handleOpenPalette = () => setIsCommandPaletteOpen(true);
@@ -2120,8 +2123,9 @@ const loadChatSessions = async () => {
               </div>
             )}
 
-            {/* 3. Main Chat Viewport */}
-            <div className="flex-1 flex flex-col min-w-0 h-full bg-white/60 dark:bg-[#090d18]/60">
+            {/* 3. Main Chat & Split Viewport Area */}
+            <div className="flex-1 flex flex-row min-w-0 h-full overflow-hidden bg-white/60 dark:bg-[#090d18]/60">
+              <div className="flex-1 flex flex-col min-w-0 h-full">
               {/* Chat Header Bar - Mobile First & Anti-Clash Layout */}
               <div className="p-2.5 sm:p-3.5 border-b border-slate-200/80 dark:border-white/[0.08] flex items-center justify-between gap-2 bg-slate-50/80 dark:bg-[#090d18]/80 backdrop-blur-md shrink-0 relative z-30">
                 {/* Left: Thread Title & Mobile Drawer Toggle - Guaranteed Never Crushed */}
@@ -2173,6 +2177,34 @@ const loadChatSessions = async () => {
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                     <span className="font-bold text-emerald-700 dark:text-emerald-400">DLP Shield</span>
                     <span className="hidden md:inline font-normal text-emerald-600 dark:text-emerald-400/80">&bull; Enforcing</span>
+                  </button>
+
+                  {/* Split Canvas Side-by-Side Toggle Button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSplitViewOpen((prev) => {
+                        const next = !prev;
+                        if (next && !selectedCitation) {
+                          const lastWithSources = [...chatMessages].reverse().find(
+                            (m) => m.sources && m.sources.length > 0
+                          );
+                          if (lastWithSources?.sources?.[0]) {
+                            setSelectedCitation(lastWithSources.sources[0]);
+                          }
+                        }
+                        return next;
+                      });
+                    }}
+                    className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg text-[10px] sm:text-[11px] font-mono font-semibold border transition-all duration-200 cursor-pointer shrink-0 ${
+                      isSplitViewOpen
+                        ? "bg-indigo-600 text-white border-indigo-500 shadow-md shadow-indigo-500/20"
+                        : "bg-slate-100 hover:bg-slate-200/80 text-slate-700 border-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] dark:text-slate-300 dark:border-white/[0.08]"
+                    }`}
+                    title="Toggle Side-by-Side Document & Chunk Inspector"
+                  >
+                    <Columns className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">{isSplitViewOpen ? "Hide Split" : "Split View"}</span>
                   </button>
 
                   {/* Model spec pill (Visible only on Large screens >= 1200px) */}
@@ -2310,7 +2342,10 @@ const loadChatSessions = async () => {
                                     tag.toLowerCase().includes(s.document_title.toLowerCase()) ||
                                     tag.includes(String(s.page_number))
                                 );
-                                if (match) setSelectedCitation(match);
+                                if (match) {
+                                  setSelectedCitation(match);
+                                  setIsSplitViewOpen(true);
+                                }
                               }}
                             />
                           </div>
@@ -2346,7 +2381,10 @@ const loadChatSessions = async () => {
                               {msg.sources.map((src, sIdx) => (
                                 <div
                                   key={sIdx}
-                                  onClick={() => setSelectedCitation(src)}
+                                  onClick={() => {
+                                    setSelectedCitation(src);
+                                    setIsSplitViewOpen(true);
+                                  }}
                                   className="p-2.5 rounded-xl text-[11px] text-slate-800 dark:text-slate-300 bg-slate-50/80 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/[0.06] hover:border-indigo-500/40 hover:bg-indigo-50/30 dark:hover:bg-indigo-950/20 transition-all cursor-pointer group"
                                   title="Click to inspect citation in slide-over drawer"
                                 >
@@ -2500,6 +2538,23 @@ const loadChatSessions = async () => {
                   </span>
                 </div>
               </form>
+            </div>
+
+            {/* Split Citation Viewer Pane */}
+            {isSplitViewOpen && (
+              <SplitCitationViewer
+                citation={selectedCitation}
+                allSources={
+                  [...chatMessages].reverse().find((m) => m.sources && m.sources.length > 0)?.sources || []
+                }
+                onSelectCitation={(src) => setSelectedCitation(src)}
+                onClose={() => setIsSplitViewOpen(false)}
+                onAskAboutChunk={(prompt) => {
+                  setInputQuery(prompt);
+                }}
+                onDownloadDoc={(id) => handleDownloadDocument(id)}
+              />
+            )}
             </div>
           </div>
         )}
