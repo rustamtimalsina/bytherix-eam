@@ -49,6 +49,7 @@ import {
   Swords,
   Square,
   Network,
+  GitCompare,
 } from "lucide-react";
 import {
   api,
@@ -252,6 +253,43 @@ export default function DashboardPage() {
 
   const handleClearDocScope = () => {
     setSelectedDocIds([]);
+  };
+
+  // Multi-Document Compare & Synthesis State
+  const [selectedDocsForCompare, setSelectedDocsForCompare] = useState<string[]>([]);
+
+  const handleToggleDocCompare = (id: string) => {
+    setSelectedDocsForCompare((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAllDocsForCompare = () => {
+    if (selectedDocsForCompare.length === documents.length) {
+      setSelectedDocsForCompare([]);
+    } else {
+      setSelectedDocsForCompare(documents.map((d) => d.id));
+    }
+  };
+
+  const handleSynthesizeDocuments = (docIds?: string[]) => {
+    const ids = docIds || selectedDocsForCompare;
+    const chosenDocs = documents.filter((d) => ids.includes(d.id));
+    if (chosenDocs.length < 2) return;
+
+    const docList = chosenDocs
+      .map((d, i) => `${i + 1}. "${d.title || d.filename}"`)
+      .join("\n");
+    const prompt = `Synthesize and compare the following ${chosenDocs.length} documents:\n${docList}\n\nPlease provide:\n1. Comparative Executive Summary\n2. Key Architectural, Technical & Policy Differences\n3. Overlapping Requirements & Shared Synergies\n4. Synthesized Recommendations & Action Items`;
+
+    setSelectedDocIds(ids);
+    setInputQuery(prompt);
+    setActiveTab("chat");
+    showToast(
+      "Synthesis Mode Active",
+      `Targeted ${chosenDocs.length} documents for multi-document synthesis in Chat.`,
+      "info"
+    );
   };
 
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
@@ -1803,15 +1841,71 @@ const loadChatSessions = async () => {
                 </div>
               ) : (
                 <div className="space-y-2.5">
+                  {/* Multi-Document Selection & Synthesis Toolbar */}
+                  {documents.length > 1 && (
+                    <div className="flex flex-wrap items-center justify-between gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-100/70 dark:bg-white/[0.03] border border-slate-200/70 dark:border-white/[0.06] text-xs text-slate-600 dark:text-slate-300">
+                      <div className="flex items-center gap-2.5">
+                        <button
+                          type="button"
+                          onClick={handleSelectAllDocsForCompare}
+                          className="flex items-center gap-1.5 font-medium hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedDocsForCompare.length === documents.length && documents.length > 0}
+                            onChange={() => {}}
+                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 pointer-events-none"
+                          />
+                          <span>
+                            {selectedDocsForCompare.length === documents.length ? "Deselect All" : "Select All"} ({documents.length})
+                          </span>
+                        </button>
+                        {selectedDocsForCompare.length > 0 && (
+                          <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-semibold border border-indigo-500/20">
+                            {selectedDocsForCompare.length} selected
+                          </span>
+                        )}
+                      </div>
+
+                      {selectedDocsForCompare.length >= 2 ? (
+                        <button
+                          type="button"
+                          onClick={() => handleSynthesizeDocuments()}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white font-semibold text-xs shadow-md shadow-indigo-500/25 active:scale-95 transition-all cursor-pointer"
+                        >
+                          <GitCompare className="w-3.5 h-3.5" />
+                          <span>Compare & Synthesize ({selectedDocsForCompare.length})</span>
+                        </button>
+                      ) : (
+                        <span className="text-[11px] text-slate-400 dark:text-slate-500 italic hidden sm:inline">
+                          Select 2+ documents to activate Multi-Doc Synthesis & Comparison
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   {documents.map((doc) => (
                     <div
                       key={doc.id}
-                      className="group p-3.5 rounded-xl bg-slate-50/70 dark:bg-white/[0.02] hover:bg-slate-100/80 dark:hover:bg-white/[0.045] border border-slate-200/80 dark:border-white/[0.06] flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all duration-200"
+                      className={`group p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all duration-200 ${
+                        selectedDocsForCompare.includes(doc.id)
+                          ? "bg-indigo-500/[0.06] border-indigo-500/40 dark:border-indigo-500/40"
+                          : "bg-slate-50/70 dark:bg-white/[0.02] hover:bg-slate-100/80 dark:hover:bg-white/[0.045] border-slate-200/80 dark:border-white/[0.06]"
+                      }`}
                       style={{
                         boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.04)",
                       }}
                     >
                       <div className="flex items-center gap-3 min-w-0">
+                        <label className="flex items-center cursor-pointer p-0.5">
+                          <input
+                            type="checkbox"
+                            checked={selectedDocsForCompare.includes(doc.id)}
+                            onChange={() => handleToggleDocCompare(doc.id)}
+                            className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                            title="Select for Multi-Document Compare & Synthesis"
+                          />
+                        </label>
                         <div className="w-9 h-9 rounded-lg bg-blue-500/10 dark:bg-indigo-500/10 border border-blue-500/20 dark:border-indigo-500/20 flex items-center justify-center text-blue-600 dark:text-indigo-400 shrink-0">
                           <FileCheck2 className="w-4 h-4" />
                         </div>
@@ -2050,6 +2144,44 @@ const loadChatSessions = async () => {
                       Close
                     </button>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Floating Multi-Doc Compare Action Bar */}
+            {selectedDocsForCompare.length >= 2 && (
+              <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl bg-slate-900/95 dark:bg-[#0c1222]/95 border border-indigo-500/40 shadow-2xl backdrop-blur-xl animate-in slide-in-from-bottom-5 duration-200 text-white max-w-xl w-[92vw] sm:w-auto">
+                <div className="w-8 h-8 rounded-lg bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
+                  <GitCompare className="w-4 h-4 animate-pulse" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-bold flex items-center gap-2">
+                    <span>Multi-Document Synthesis Mode</span>
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-indigo-500/30 text-indigo-300 font-semibold shrink-0">
+                      {selectedDocsForCompare.length} selected
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 truncate">
+                    Cross-correlate knowledge, spot architecture gaps & policy differences
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDocsForCompare([])}
+                    className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSynthesizeDocuments()}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-600 hover:from-indigo-400 hover:to-pink-500 text-white font-bold text-xs shadow-lg shadow-indigo-500/30 active:scale-95 transition-all cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Launch Synthesis</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
             )}
