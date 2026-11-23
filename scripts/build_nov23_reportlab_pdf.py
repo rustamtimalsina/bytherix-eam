@@ -251,9 +251,10 @@ def build_pdf():
     story.append(Spacer(1, 1))
 
     tomorrow_items = [
-        "<b>Docker Compose staging test:</b> Test the whole stack (FastAPI backend, Next.js frontend, PostgreSQL with pgvector, Redis 7, and MinIO) together in Docker Compose to make sure everything connects smoothly.",
-        "<b>Help Sujal wire up the Developer Portal:</b> Once Sujal finishes <code>DeveloperApiPortal.tsx</code>, help him connect his test sandbox to our live chat, DLP scan, and model endpoints.",
-        "<b>Full walkthrough testing:</b> Do a complete run-through from scratch: upload a new enterprise PDF, check its clusters in the knowledge graph, run multi-doc synthesis in chat, inspect citations in split view, and run an arena comparison."
+        "<b>Production Deployment & Cloud Prep:</b> Set up production environment configs, SSL/TLS reverse proxy settings, and domain routing (<code>app.bytherix.com</code>).",
+        "<b>Backend Concurrency & Load Testing:</b> Run load tests on the FastAPI backend (simulating 50+ concurrent streaming RAG queries) to check pgvector query speeds and Redis rate-limiting under pressure.",
+        "<b>Automated Security & DLP Webhook Alerts:</b> Wire up real-time webhook/email notifications when DLP guardrails catch sensitive data leaks or when a model exceeds latency thresholds.",
+        "<b>Clean Demo Workspace Setup:</b> Pre-load a fresh demo tenant with sample enterprise policies, calibrated model benchmarks, and active API keys ready for stakeholder presentations."
     ]
 
     for i, item in enumerate(tomorrow_items, 1):

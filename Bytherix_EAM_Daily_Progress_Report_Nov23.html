@@ -207,9 +207,10 @@
 
   <h2>5. What I'm Doing Tomorrow (November 24)</h2>
   <ul>
-    <li>1. <strong>Docker Compose staging test:</strong> Test the whole stack (FastAPI backend, Next.js frontend, PostgreSQL with pgvector, Redis 7, and MinIO) together in Docker Compose to make sure everything connects smoothly.</li>
-    <li>2. <strong>Help Sujal wire up the Developer Portal:</strong> Once Sujal finishes <code>DeveloperApiPortal.tsx</code>, help him connect his test sandbox to our live chat, DLP scan, and model endpoints.</li>
-    <li>3. <strong>Full walkthrough testing:</strong> Do a complete run-through from scratch: upload a new enterprise PDF, check its clusters in the knowledge graph, run multi-doc synthesis in chat, inspect citations in split view, and run an arena comparison.</li>
+    <li>1. <strong>Production Deployment &amp; Cloud Prep:</strong> Set up production environment configs, SSL/TLS reverse proxy settings, and domain routing (<code>app.bytherix.com</code>).</li>
+    <li>2. <strong>Backend Concurrency &amp; Load Testing:</strong> Run load tests on the FastAPI backend (simulating 50+ concurrent streaming RAG queries) to check pgvector query speeds and Redis rate-limiting under pressure.</li>
+    <li>3. <strong>Automated Security &amp; DLP Webhook Alerts:</strong> Wire up real-time webhook/email notifications when DLP guardrails catch sensitive data leaks or when a model exceeds latency thresholds.</li>
+    <li>4. <strong>Clean Demo Workspace Setup:</strong> Pre-load a fresh demo tenant with sample enterprise policies, calibrated model benchmarks, and active API keys ready for stakeholder presentations.</li>
   </ul>
 
   <h2>6. Summary</h2>
