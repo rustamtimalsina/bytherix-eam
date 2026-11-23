@@ -50,31 +50,39 @@ export function SplitCitationViewer({
     : 85;
 
   return (
-    <div className="w-full md:w-[340px] lg:w-[380px] xl:w-[420px] max-w-[50vw] h-full flex flex-col border-l border-slate-200/80 dark:border-white/[0.08] bg-slate-50 dark:bg-[#0c1222] shadow-xl relative z-20 overflow-hidden shrink-0">
-      {/* Top Header */}
-      <div className="p-3 border-b border-slate-200/80 dark:border-white/[0.08] flex items-center justify-between gap-2 bg-slate-100/90 dark:bg-white/[0.03] shrink-0">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="w-6 h-6 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
-            <FileText className="w-3.5 h-3.5" />
-          </div>
-          <div className="min-w-0">
-            <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
-              Document Viewport
-            </h4>
-            <p className="text-[10px] font-mono text-slate-500 dark:text-slate-400 truncate">
-              {citation ? citation.document_title : "Select citation from chat"}
-            </p>
-          </div>
-        </div>
+    <>
+      {/* Mobile Overlay Backdrop */}
+      <div
+        className="lg:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+        onClick={onClose}
+      />
 
-        <button
-          onClick={onClose}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/[0.06] transition-colors cursor-pointer shrink-0"
-          title="Close split viewport"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
+      {/* Main Viewport: Slide-over Drawer on Mobile, Split Pane on Desktop */}
+      <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-[440px] lg:static lg:inset-auto lg:w-[380px] xl:w-[440px] lg:max-w-[45vw] h-full flex flex-col border-l border-slate-200/90 dark:border-white/[0.08] bg-white dark:bg-[#0c1222] shadow-2xl relative lg:z-20 overflow-hidden shrink-0 animate-in slide-in-from-right-4 duration-200">
+        {/* Top Header */}
+        <div className="p-3 sm:p-3.5 border-b border-slate-200/80 dark:border-white/[0.08] flex items-center justify-between gap-2 bg-slate-100/90 dark:bg-white/[0.03] shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-6 h-6 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+              <FileText className="w-3.5 h-3.5" />
+            </div>
+            <div className="min-w-0">
+              <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                Document Viewport
+              </h4>
+              <p className="text-[10px] font-mono text-slate-500 dark:text-slate-400 truncate">
+                {citation ? citation.document_title : "Select citation from chat"}
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/[0.06] transition-colors cursor-pointer shrink-0"
+            title="Close split viewport"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
 
       {/* Sources Quick Switch Bar (if multiple citations exist) */}
       {allSources.length > 1 && (
@@ -206,5 +214,6 @@ export function SplitCitationViewer({
         <span>Zero Hallucination Mode</span>
       </div>
     </div>
+    </>
   );
 }

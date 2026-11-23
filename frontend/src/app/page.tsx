@@ -2369,7 +2369,7 @@ const loadChatSessions = async () => {
                     <HistoryIcon className="w-4 h-4" />
                   </button>
 
-                  <div className="min-w-0 truncate">
+                  <div className="min-w-0 truncate hidden sm:block">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white truncate">
                       Grounded Knowledge QA
                     </h3>
@@ -2779,13 +2779,13 @@ const loadChatSessions = async () => {
                     <Send className="w-3.5 h-3.5" />
                   </button>
                 </div>
-                <div className="flex items-center justify-between mt-2 px-1 text-[10px] font-mono text-slate-400 dark:text-slate-500 select-none">
+                <div className="flex flex-wrap items-center justify-between gap-1 mt-2 px-1 text-[10px] font-mono text-slate-400 dark:text-slate-500 select-none">
                   <span className="flex items-center gap-1">
                     <kbd className="px-1 py-0.2 rounded bg-slate-200/80 dark:bg-white/10 font-bold text-slate-600 dark:text-slate-300">↵</kbd> send
                     <span className="mx-1">&bull;</span>
                     <kbd className="px-1 py-0.2 rounded bg-slate-200/80 dark:bg-white/10 font-bold text-slate-600 dark:text-slate-300">Shift+↵</kbd> newline
                   </span>
-                  <span className="hidden sm:inline text-indigo-600 dark:text-indigo-400 font-semibold">
+                  <span className="hidden md:inline text-indigo-600 dark:text-indigo-400 font-semibold">
                     Strictly grounded in enterprise documents
                   </span>
                 </div>
