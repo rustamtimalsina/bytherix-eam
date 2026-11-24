@@ -33,6 +33,109 @@ class WebhookService:
         return hmac.compare_digest(expected, signature_header.strip())
 
     @classmethod
+    def _format_slack_card(cls, event_type: str, envelope: Dict[str, Any]) -> Dict[str, Any]:
+        """Format a rich Slack Block Kit alert message."""
+        data = envelope.get("data", {})
+        ts = envelope.get("timestamp", datetime.now(timezone.utc).isoformat())
+
+        if "dlp" in event_type:
+            title = "🚨 Security Alert: DLP Policy Violation Detected"
+            color = "#dc2626"
+            summary = data.get("summary", "Sensitive data was intercepted and masked.")
+            details = [
+                f"*Categories:* {', '.join(data.get('categories', [])) or 'General PII'}",
+                f"*Entities Redacted:* {data.get('entity_count', 0)}",
+                f"*Session ID:* `{data.get('session_id', 'unknown')}`"
+            ]
+        elif "model" in event_type:
+            title = "⚠️ MLOps Alert: Model Latency SLA Breach"
+            color = "#f59e0b"
+            summary = data.get("recommendation", "Model latency exceeded configured SLA thresholds.")
+            details = [
+                f"*Model ID:* `{data.get('model_id', 'unknown')}`",
+                f"*Current Latency:* {data.get('current_latency_ms', 0)} ms",
+                f"*Drift Delta:* +{data.get('drift_percent', 0)}%",
+                f"*Severity:* *{data.get('severity', 'warning').upper()}*"
+            ]
+        else:
+            title = f"📢 Bytherix Notification: {event_type}"
+            color = "#3b82f6"
+            summary = str(data.get("message", "System event triggered."))
+            details = [f"*Event:* `{event_type}`"]
+
+        return {
+            "text": f"{title}: {summary}",
+            "attachments": [
+                {
+                    "color": color,
+                    "blocks": [
+                        {
+                            "type": "header",
+                            "text": {"type": "plain_text", "text": title, "emoji": True}
+                        },
+                        {
+                            "type": "section",
+                            "text": {"type": "mrkdwn", "text": f"*Summary:* {summary}"}
+                        },
+                        {
+                            "type": "section",
+                            "fields": [{"type": "mrkdwn", "text": d} for d in details]
+                        },
+                        {
+                            "type": "context",
+                            "elements": [
+                                {"type": "mrkdwn", "text": f"Org: `{envelope.get('organization_id')}` | Time: {ts}"}
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+
+    @classmethod
+    def _format_discord_card(cls, event_type: str, envelope: Dict[str, Any]) -> Dict[str, Any]:
+        """Format a rich Discord Webhook Embed message."""
+        data = envelope.get("data", {})
+        ts = envelope.get("timestamp", datetime.now(timezone.utc).isoformat())
+
+        if "dlp" in event_type:
+            title = "🚨 Security Alert: DLP Policy Violation"
+            color = 14431526  # Red
+            desc = data.get("summary", "Sensitive data intercepted and masked.")
+            fields = [
+                {"name": "Categories", "value": ", ".join(data.get("categories", [])) or "PII", "inline": True},
+                {"name": "Redacted Entities", "value": str(data.get("entity_count", 0)), "inline": True},
+                {"name": "Session ID", "value": f"`{data.get('session_id', 'unknown')}`", "inline": False}
+            ]
+        elif "model" in event_type:
+            title = "⚠️ MLOps Alert: Model SLA Breach"
+            color = 16098827  # Amber
+            desc = data.get("recommendation", "Model latency exceeded SLA threshold.")
+            fields = [
+                {"name": "Model", "value": f"`{data.get('model_id', 'unknown')}`", "inline": True},
+                {"name": "Current Latency", "value": f"{data.get('current_latency_ms', 0)} ms", "inline": True},
+                {"name": "Drift", "value": f"+{data.get('drift_percent', 0)}%", "inline": True}
+            ]
+        else:
+            title = f"📢 Bytherix Event: {event_type}"
+            color = 3899894
+            desc = str(data.get("message", "Event triggered."))
+            fields = []
+
+        return {
+            "content": f"**{title}**",
+            "embeds": [
+                {
+                    "title": title,
+                    "description": desc,
+                    "color": color,
+                    "fields": fields,
+                    "footer": {"text": f"Org: {envelope.get('organization_id')} • {ts}"}
+                }
+            ]
+        }
+
+    @classmethod
     def deliver_event(
         cls,
         db: Session,
@@ -49,7 +152,15 @@ class WebhookService:
             "data": payload_data
         }
         
-        payload_bytes = json.dumps(envelope, separators=(",", ":")).encode("utf-8")
+        url_lower = subscription.url.lower()
+        if "hooks.slack.com" in url_lower:
+            outgoing_payload = cls._format_slack_card(event_type, envelope)
+        elif "discord.com/api/webhooks" in url_lower:
+            outgoing_payload = cls._format_discord_card(event_type, envelope)
+        else:
+            outgoing_payload = envelope
+
+        payload_bytes = json.dumps(outgoing_payload, separators=(",", ":")).encode("utf-8")
         signature = cls.sign_payload(payload_bytes, subscription.secret)
 
         delivery = WebhookDelivery(

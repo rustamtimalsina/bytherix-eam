@@ -426,6 +426,28 @@ class ModelService:
                 rollback_candidate = v
                 break
 
+        # Automated Webhook Notification for SLA Breach / Latency Drift
+        if is_drift:
+            try:
+                from app.services.webhook_service import WebhookService
+                WebhookService.dispatch_event(
+                    db=db,
+                    organization_id=organization_id,
+                    event_type="model.sla_breach",
+                    payload_data={
+                        "model_id": model.id,
+                        "model_name": model.name,
+                        "severity": severity,
+                        "drift_percent": drift_percent,
+                        "current_latency_ms": current_latency,
+                        "baseline_latency_ms": baseline,
+                        "error_rate_percent": error_rate,
+                        "recommendation": recommendation,
+                    }
+                )
+            except Exception:
+                pass
+
         return ModelMonitoringStatus(
             model_id=model.id,
             model_name=model.name,
