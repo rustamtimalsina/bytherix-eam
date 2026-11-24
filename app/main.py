@@ -419,6 +419,17 @@ def prometheus_metrics():
 
 # Health Checks (Section 10.2 & 14.3)
 
+@app.get("/health", tags=["Health"])
+def health_check():
+    """Unified health probe for reverse proxies, cloud load balancers, and container orchestrators."""
+    return {
+        "status": "ok",
+        "service": "bytherix-eam-api",
+        "version": "1.0.0",
+        "environment": settings.APP_ENV
+    }
+
+
 @app.get("/health/live", tags=["Health"])
 
 def health_live():
