@@ -21,6 +21,8 @@ uploads/
 storage/
 backups/
 *.db
+*.db-shm
+*.db-wal
 *.sqlite
 *.sqlite3
 
