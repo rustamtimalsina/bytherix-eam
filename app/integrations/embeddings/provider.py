@@ -15,8 +15,8 @@ class EmbeddingProvider:
 
     def get_embedding(self, text: str) -> List[float]:
         """Generate a normalized 1536-dimensional vector for text."""
-        # 1. If real OpenAI API key is set, call OpenAI
-        if self.api_key and not self.api_key.startswith("your-"):
+        # 1. If real OpenAI API key is set, call OpenAI (skip in test environment or non-OpenAI keys)
+        if settings.APP_ENV != "test" and self.api_key and self.api_key.startswith("sk-"):
             try:
                 with httpx.Client(timeout=30.0) as client:
                     resp = client.post(
