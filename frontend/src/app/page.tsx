@@ -1412,14 +1412,14 @@ const loadChatSessions = async () => {
 
           {/* User Identity Capsule with Email (Always visible on mobile & desktop) */}
           <div className="flex items-center gap-1.5 sm:gap-2 px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-slate-100/90 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 shrink-0">
-            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-[9px] sm:text-[10px] shrink-0 shadow-sm">
+            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-[10px] shrink-0 shadow-sm">
               {user?.full_name ? user.full_name.slice(0, 2).toUpperCase() : user?.email ? user.email.slice(0, 2).toUpperCase() : "U"}
             </div>
             <div className="text-left leading-tight hidden xs:block min-[360px]:block">
-              <p className="text-[10px] sm:text-[11px] font-bold text-slate-900 dark:text-white truncate max-w-[70px] sm:max-w-[110px] md:max-w-[150px]" title={user?.full_name || "User"}>
+              <p className="text-[11px] sm:text-xs font-bold text-slate-900 dark:text-white truncate max-w-[85px] sm:max-w-[130px] md:max-w-[180px]" title={user?.full_name || "User"}>
                 {user?.full_name || "Rustam"}
               </p>
-              <p className="text-[8px] sm:text-[9.5px] text-slate-500 dark:text-slate-400 font-mono truncate max-w-[70px] sm:max-w-[110px] md:max-w-[150px]" title={user?.email || ""}>
+              <p className="text-[9.5px] sm:text-[10.5px] text-slate-500 dark:text-slate-400 font-mono truncate max-w-[85px] sm:max-w-[130px] md:max-w-[180px]" title={user?.email || ""}>
                 {user?.email || "rustam@bytherix.com"}
               </p>
             </div>
@@ -1737,7 +1737,7 @@ const loadChatSessions = async () => {
 
             {/* Document Library Ledger */}
             <div className="card-depth-3d p-4 sm:p-6 space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-200/80 dark:border-white/[0.08]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/80 dark:border-white/[0.08]">
                 <div className="flex items-center gap-2.5">
                   <div className="w-7 h-7 rounded-lg bg-blue-500/10 dark:bg-indigo-500/10 border border-blue-500/20 dark:border-indigo-500/20 flex items-center justify-center text-blue-600 dark:text-indigo-400">
                     <FileText className="w-3.5 h-3.5" />
@@ -1746,12 +1746,12 @@ const loadChatSessions = async () => {
                     <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
                       Ingested Knowledge Assets
                     </h3>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-100 dark:bg-white/[0.06] text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-white/[0.06]">
+                    <span className="whitespace-nowrap shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] font-mono font-bold bg-slate-100 dark:bg-white/[0.06] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/[0.08]">
                       {documents.length} / 5
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {canUploadDocs && (
                     <button
                       type="button"
@@ -1878,8 +1878,8 @@ const loadChatSessions = async () => {
                           <span>Compare & Synthesize ({selectedDocsForCompare.length})</span>
                         </button>
                       ) : (
-                        <span className="text-[11px] text-slate-400 dark:text-slate-500 italic hidden sm:inline">
-                          Select 2+ documents to activate Multi-Doc Synthesis & Comparison
+                        <span className="text-[10.5px] sm:text-[11px] text-slate-500 dark:text-slate-400 italic">
+                          Select 2+ documents to compare & synthesize
                         </span>
                       )}
                     </div>
