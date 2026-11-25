@@ -430,7 +430,7 @@ def seed_demo_tenant(
         db.commit()
         print(f"[EXISTS] Admin User credentials refreshed: {admin_user.email}")
 
-    # Ensure Admin Membership (role: owner)
+    # Ensure Admin Membership (role: organization_owner)
     admin_mem = db.query(Membership).filter(
         Membership.user_id == admin_user.id,
         Membership.organization_id == org.id
@@ -439,12 +439,15 @@ def seed_demo_tenant(
         admin_mem = Membership(
             user_id=admin_user.id,
             organization_id=org.id,
-            role="owner",
+            role="organization_owner",
             status="active"
         )
         db.add(admin_mem)
         db.commit()
-        print(f"[OK] Granted {admin_user.email} -> 'owner' role in {org.name}")
+        print(f"[OK] Granted {admin_user.email} -> 'organization_owner' role in {org.name}")
+    else:
+        admin_mem.role = "organization_owner"
+        db.commit()
 
     # 4. Ensure Rustam Timalsina has access to demo org as owner
     rustam_user = db.query(User).filter(User.email == rustam_email).first()
@@ -457,12 +460,15 @@ def seed_demo_tenant(
             rustam_mem = Membership(
                 user_id=rustam_user.id,
                 organization_id=org.id,
-                role="owner",
+                role="organization_owner",
                 status="active"
             )
             db.add(rustam_mem)
             db.commit()
-            print(f"[OK] Granted {rustam_user.email} -> 'owner' role in demo org")
+            print(f"[OK] Granted {rustam_user.email} -> 'organization_owner' role in demo org")
+        else:
+            rustam_mem.role = "organization_owner"
+            db.commit()
 
     # 5. Provision Predictable Demo API Key
     demo_raw_key = "bx_live_demo_enterprise_master_9941a"

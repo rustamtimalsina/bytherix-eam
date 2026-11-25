@@ -235,7 +235,16 @@ def get_tenant_context(
             detail="Organization not found or inactive"
         )
     
-    role = Role(membership.role)
+    role_val = membership.role
+    if role_val in ("owner", Role.OWNER.value):
+        role = Role.OWNER
+    elif role_val in ("admin", Role.ADMIN.value):
+        role = Role.ADMIN
+    else:
+        try:
+            role = Role(role_val)
+        except ValueError:
+            role = Role.VIEWER
     perms = ROLE_PERMISSIONS.get(role, set())
     
     return TenantContext(

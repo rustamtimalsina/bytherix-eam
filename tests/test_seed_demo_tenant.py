@@ -53,7 +53,7 @@ def test_seed_demo_tenant_success(db: Session):
         Membership.organization_id == org.id
     ).first()
     assert mem is not None
-    assert mem.role == "owner"
+    assert mem.role in ("organization_owner", "owner")
     assert mem.status == "active"
 
     # 3. Master API Key assertions

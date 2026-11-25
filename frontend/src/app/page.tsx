@@ -2151,18 +2151,18 @@ const loadChatSessions = async () => {
 
             {/* Floating Multi-Doc Compare Action Bar */}
             {selectedDocsForCompare.length >= 2 && (
-              <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl bg-slate-900/95 dark:bg-[#0c1222]/95 border border-indigo-500/40 shadow-2xl backdrop-blur-xl animate-in slide-in-from-bottom-5 duration-200 text-white max-w-xl w-[92vw] sm:w-auto">
-                <div className="w-8 h-8 rounded-lg bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
+              <div className="fixed bottom-28 sm:bottom-32 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/95 dark:bg-[#0c1222]/95 border border-indigo-200/90 dark:border-indigo-500/40 shadow-[0_20px_60px_rgba(79,70,229,0.18)] dark:shadow-2xl backdrop-blur-2xl animate-in slide-in-from-bottom-5 duration-200 text-slate-900 dark:text-white max-w-xl w-[92vw] sm:w-auto">
+                <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-500/20 border border-indigo-200/80 dark:border-indigo-500/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
                   <GitCompare className="w-4 h-4 animate-pulse" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-xs font-bold flex items-center gap-2">
-                    <span>Multi-Document Synthesis Mode</span>
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-indigo-500/30 text-indigo-300 font-semibold shrink-0">
+                    <span className="text-slate-900 dark:text-white">Multi-Document Synthesis Mode</span>
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-indigo-100 dark:bg-indigo-500/30 text-indigo-700 dark:text-indigo-300 font-semibold border border-indigo-200/80 dark:border-indigo-500/30 shrink-0">
                       {selectedDocsForCompare.length} selected
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-400 truncate">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
                     Cross-correlate knowledge, spot architecture gaps & policy differences
                   </p>
                 </div>
@@ -2170,14 +2170,14 @@ const loadChatSessions = async () => {
                   <button
                     type="button"
                     onClick={() => setSelectedDocsForCompare([])}
-                    className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
+                    className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-white/[0.08] transition-colors cursor-pointer"
                   >
                     Clear
                   </button>
                   <button
                     type="button"
                     onClick={() => handleSynthesizeDocuments()}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-600 hover:from-indigo-400 hover:to-pink-500 text-white font-bold text-xs shadow-lg shadow-indigo-500/30 active:scale-95 transition-all cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white font-bold text-xs shadow-lg shadow-indigo-500/30 active:scale-95 transition-all cursor-pointer"
                   >
                     <Sparkles className="w-3.5 h-3.5" />
                     <span>Launch Synthesis</span>
