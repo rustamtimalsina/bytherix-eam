@@ -209,6 +209,8 @@ export default function DashboardPage() {
   const [isAgentExecuting, setIsAgentExecuting] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
   const [approvalReason, setApprovalReason] = useState("");
+  const [animatingStepNumber, setAnimatingStepNumber] = useState<number | null>(null);
+  const [activeSimulationStatus, setActiveSimulationStatus] = useState<string | null>(null);
 
   // Real-Time SSE Notification Alert state
   interface LiveAlertItem {
@@ -803,14 +805,47 @@ export default function DashboardPage() {
     e.preventDefault();
     if (!agentPrompt.trim() || isAgentExecuting) return;
     setIsAgentExecuting(true);
+    setActiveSimulationStatus("Initializing bounded execution sandbox...");
     try {
       const detail = await api.startAgentExecution(selectedWfName, agentPrompt.trim());
-      setSelectedExecution(detail);
       setAgentPrompt("");
+
+      // Live multi-step execution playback
+      if (detail.traces && detail.traces.length > 0) {
+        for (let i = 1; i <= detail.traces.length; i++) {
+          setAnimatingStepNumber(i);
+          const currentTrace = detail.traces[i - 1];
+          setActiveSimulationStatus(
+            currentTrace.requires_approval
+              ? `Pausing at Human Authorization Gate (${currentTrace.tool_name})...`
+              : `Executing Tool: ${currentTrace.tool_name || "Reasoning"}...`
+          );
+          setSelectedExecution({
+            ...detail,
+            traces: detail.traces.slice(0, i),
+            status: i < detail.traces.length ? "running" : detail.status,
+            final_output: i < detail.traces.length ? null : detail.final_output,
+          });
+          await new Promise((r) => setTimeout(r, 650));
+        }
+      } else {
+        setSelectedExecution(detail);
+      }
+
+      setAnimatingStepNumber(null);
+      setActiveSimulationStatus(null);
       await loadAgentData();
       await loadUsage();
+
+      if (detail.status === "pending_approval") {
+        showToast("Human Gate Required", `Workflow '${detail.workflow_name}' paused for administrator authorization.`, "warning");
+      } else {
+        showToast("Workflow Completed", `Governed execution finished in ${detail.total_steps} steps.`, "success");
+      }
     } catch (err) {
       showToast("Operation Notice", (err as Error).message || "Agent execution failed", "error");
+      setActiveSimulationStatus(null);
+      setAnimatingStepNumber(null);
     } finally {
       setIsAgentExecuting(false);
     }
@@ -828,13 +863,18 @@ export default function DashboardPage() {
   const handleProcessApproval = async (approve: boolean) => {
     if (!selectedExecution) return;
     setIsApproving(true);
+    setActiveSimulationStatus(approve ? "Admin authorized. Executing sensitive action..." : "Admin rejected. Aborting action...");
     try {
       const updated = await api.approveAgentAction(selectedExecution.id, approve, approvalReason || undefined);
+      await new Promise((r) => setTimeout(r, 550));
       setSelectedExecution(updated);
       setApprovalReason("");
+      setActiveSimulationStatus(null);
       await loadAgentData();
+      showToast(approve ? "Action Approved" : "Action Rejected", `Agent action was ${approve ? "approved and executed" : "rejected"} by administrator.`, approve ? "success" : "info");
     } catch (err) {
       showToast("Operation Notice", (err as Error).message || "Failed to process approval", "error");
+      setActiveSimulationStatus(null);
     } finally {
       setIsApproving(false);
     }
@@ -2915,6 +2955,43 @@ const loadChatSessions = async () => {
                   Step Budget: 5 Max
                 </span>
               </div>
+
+              {/* 1-Click Objective Presets */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider mr-1">
+                  Preset Objectives:
+                </span>
+                {[
+                  {
+                    label: "⚡ Audit Knowledge & Quotas",
+                    workflow: "Enterprise Knowledge Auditor",
+                    prompt: "Scan all ingested tenant documents, verify pgvector chunk indexes, and audit token quota headroom."
+                  },
+                  {
+                    label: "🔒 S3 Export (Human Gate)",
+                    workflow: "Governed Data Export & Integration",
+                    prompt: "Prepare full tenant compliance archive with SHA-256 seal. Request authorization at human gate before dispatch."
+                  },
+                  {
+                    label: "📊 Executive Intelligence Briefing",
+                    workflow: "Executive Briefing Synthesizer",
+                    prompt: "Cross-reference all tenant documents to generate an executive intelligence briefing for organization owners."
+                  }
+                ].map((preset, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      setSelectedWfName(preset.workflow);
+                      setAgentPrompt(preset.prompt);
+                    }}
+                    className="px-2.5 py-1 rounded-lg text-[10.5px] font-mono bg-slate-100 hover:bg-indigo-50 dark:bg-white/[0.04] dark:hover:bg-indigo-950/40 text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-300 border border-slate-200 dark:border-white/[0.08] transition-all cursor-pointer whitespace-nowrap active:scale-95"
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+
               <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="text"
@@ -3025,6 +3102,14 @@ const loadChatSessions = async () => {
                       <span className="text-xs font-mono text-slate-400">{selectedExecution.total_steps} steps executed</span>
                     </div>
 
+                    {/* Active Real-time Simulation Status Banner */}
+                    {activeSimulationStatus && (
+                      <div className="flex items-center gap-2.5 p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-700 dark:text-indigo-300 text-xs font-mono font-medium shadow-sm animate-pulse">
+                        <RefreshCw className="w-4 h-4 animate-spin text-indigo-500 shrink-0" />
+                        <span className="truncate">{activeSimulationStatus}</span>
+                      </div>
+                    )}
+
                     {/* Human-In-The-Loop Approval Gate Banner */}
                     {selectedExecution.status === "pending_approval" && (
                       <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-3 shadow-lg shadow-amber-500/5">
@@ -3084,14 +3169,20 @@ const loadChatSessions = async () => {
                       <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                         Agent Reasoning & Tool Step Log
                       </span>
-                      {selectedExecution.traces.map((trace) => (
-                        <div
-                          key={trace.id}
-                          className="p-3.5 rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-slate-50/70 dark:bg-white/[0.02] space-y-2 text-xs"
-                          style={{
-                            boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.04)",
-                          }}
-                        >
+                      {selectedExecution.traces.map((trace) => {
+                        const isCurrentActive = animatingStepNumber === trace.step_number;
+                        return (
+                          <div
+                            key={trace.id}
+                            className={`p-3.5 rounded-xl border space-y-2 text-xs transition-all duration-300 ${
+                              isCurrentActive
+                                ? "border-indigo-500 ring-2 ring-indigo-500/30 bg-indigo-50/70 dark:bg-indigo-950/30 shadow-md shadow-indigo-500/10 scale-[1.01]"
+                                : "border-slate-200/80 dark:border-white/[0.08] bg-slate-50/70 dark:bg-white/[0.02]"
+                            }`}
+                            style={{
+                              boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.04)",
+                            }}
+                          >
                           <div className="flex items-center justify-between font-mono text-[11px]">
                             <span className="font-bold text-indigo-600 dark:text-indigo-400">Step {trace.step_number}</span>
                             <span
@@ -3124,7 +3215,8 @@ const loadChatSessions = async () => {
                             </div>
                           )}
                         </div>
-                      ))}
+                      );
+                    })}
                     </div>
 
                     {/* Final Output Card */}
