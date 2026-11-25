@@ -508,7 +508,7 @@ export function CommandPaletteModal({
                 {/* Raycast-style category section pill */}
                 <div className="px-2.5 py-1 text-[10px] font-mono font-bold tracking-wider text-slate-400 dark:text-slate-500 uppercase flex items-center justify-between">
                   <span>{category}</span>
-                  <span className="text-[9px] opacity-60">{items.length}</span>
+                  <span className="text-[10px] font-mono opacity-70">{items.length}</span>
                 </div>
 
                 {/* Items in this category */}

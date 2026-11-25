@@ -123,7 +123,7 @@ export function TelemetrySparkline({
           ))}
         </svg>
 
-        <div className="flex items-center justify-between text-[9px] font-mono text-slate-400 pt-1 border-t border-slate-200/50 dark:border-white/[0.04]">
+        <div className="flex items-center justify-between text-[10px] font-mono text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-200/50 dark:border-white/[0.04]">
           <span>00:00 (Start of Day)</span>
           <span>12:00 (Peak Ingestion)</span>
           <span>Now (Live Window)</span>

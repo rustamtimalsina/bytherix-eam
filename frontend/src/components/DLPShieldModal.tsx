@@ -283,7 +283,7 @@ export function DLPShieldModal({ isOpen, onClose }: DLPShieldModalProps) {
                       <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
                         {rule.name}
                       </h4>
-                      <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md uppercase ${
+                      <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md uppercase whitespace-nowrap shrink-0 ${
                         rule.severity === "CRITICAL"
                           ? "bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-500/15 dark:text-rose-400 dark:border-rose-500/30"
                           : rule.severity === "HIGH"

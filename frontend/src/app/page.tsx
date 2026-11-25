@@ -1333,7 +1333,7 @@ const loadChatSessions = async () => {
           </div>
 
           {/* Role Badge - Compact & Clean */}
-          <div className="hidden min-[420px]:flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400">
+          <div className="hidden min-[420px]:flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 whitespace-nowrap shrink-0">
             <span className="relative flex h-2 w-2 shrink-0">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -1369,12 +1369,12 @@ const loadChatSessions = async () => {
                 {(usage.tokens_used).toLocaleString()} / {(usage.token_allowance).toLocaleString()}
               </span>
               {usage.is_quota_exceeded && (
-                <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-rose-600 text-white uppercase tracking-wider">
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-600 text-white uppercase tracking-wider whitespace-nowrap shrink-0">
                   Exceeded
                 </span>
               )}
               {!usage.is_quota_exceeded && (usage.is_quota_warning || (usage.percentage_used ?? 0) >= 80) && (
-                <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-amber-500 text-white uppercase tracking-wider">
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-white uppercase tracking-wider whitespace-nowrap shrink-0">
                   80%+
                 </span>
               )}
@@ -1405,7 +1405,7 @@ const loadChatSessions = async () => {
           >
             <Search className="w-3.5 h-3.5" />
             <span className="text-[11px] font-sans">Search</span>
-            <kbd className="text-[9px] bg-white dark:bg-white/10 px-1.5 py-0.5 rounded border border-slate-200 dark:border-white/10 font-bold">
+            <kbd className="text-[10px] bg-white dark:bg-white/10 px-1.5 py-0.5 rounded border border-slate-200 dark:border-white/10 font-bold">
               ⌘K
             </kbd>
           </button>
@@ -1468,7 +1468,7 @@ const loadChatSessions = async () => {
             <span className="font-bold truncate">
               {(usage.tokens_used).toLocaleString()} / {(usage.token_allowance).toLocaleString()}
             </span>
-            <span className={`text-[10px] font-semibold px-1.5 py-0.2 rounded-full border ${
+            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border whitespace-nowrap shrink-0 ${
               usage.is_quota_exceeded
                 ? "bg-rose-500 text-white border-rose-600"
                 : (usage.is_quota_warning || (usage.percentage_used ?? 0) >= 80)
@@ -1564,7 +1564,7 @@ const loadChatSessions = async () => {
               <div>
                 <h4 className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
                   {usage.is_quota_exceeded ? "Token Quota Exceeded (Inference Blocked)" : "Token Quota Alert (80%+ Consumed)"}
-                  <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono font-bold ${
+                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold whitespace-nowrap shrink-0 ${
                     usage.is_quota_exceeded ? "bg-rose-600 text-white" : "bg-amber-600 text-white"
                   }`}>
                     {usage.percentage_used}%
@@ -2561,15 +2561,15 @@ const loadChatSessions = async () => {
                                 <FileText className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
                                 Grounded Sources ({msg.sources.length})
                               </span>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 {msg.generationSpeed && (
-                                  <span className="text-[9px] font-mono text-cyan-600 dark:text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/20 flex items-center gap-1">
+                                  <span className="text-[10px] font-mono text-cyan-600 dark:text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/20 flex items-center gap-1 whitespace-nowrap shrink-0">
                                     <Zap className="w-2.5 h-2.5 text-cyan-500" />
                                     <span>{msg.generationSpeed.tokensPerSec} tok/s ({msg.generationSpeed.durationSec}s)</span>
                                   </span>
                                 )}
                                 {msg.model && (
-                                  <span className="text-[9px] font-mono text-slate-400 dark:text-slate-500">
+                                  <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500 whitespace-nowrap shrink-0">
                                     Model: {msg.model}
                                   </span>
                                 )}
@@ -2743,9 +2743,9 @@ const loadChatSessions = async () => {
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-1 mt-2 px-1 text-[10px] font-mono text-slate-400 dark:text-slate-500 select-none">
                   <span className="flex items-center gap-1">
-                    <kbd className="px-1 py-0.2 rounded bg-slate-200/80 dark:bg-white/10 font-bold text-slate-600 dark:text-slate-300">↵</kbd> send
+                    <kbd className="px-1 py-0.5 rounded bg-slate-200/80 dark:bg-white/10 font-bold text-slate-600 dark:text-slate-300">↵</kbd> send
                     <span className="mx-1">&bull;</span>
-                    <kbd className="px-1 py-0.2 rounded bg-slate-200/80 dark:bg-white/10 font-bold text-slate-600 dark:text-slate-300">Shift+↵</kbd> newline
+                    <kbd className="px-1 py-0.5 rounded bg-slate-200/80 dark:bg-white/10 font-bold text-slate-600 dark:text-slate-300">Shift+↵</kbd> newline
                   </span>
                   <span className="hidden md:inline text-indigo-600 dark:text-indigo-400 font-semibold">
                     Strictly grounded in enterprise documents
@@ -2845,7 +2845,7 @@ const loadChatSessions = async () => {
                             {wf.category}
                           </span>
                           {wf.has_approval_gate && (
-                            <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1 whitespace-nowrap shrink-0">
                               <AlertTriangle className="w-2.5 h-2.5" />
                               Human Gate
                             </span>
@@ -2879,7 +2879,7 @@ const loadChatSessions = async () => {
                       {wf.allowed_tools.map((t, tIdx) => (
                         <span
                           key={tIdx}
-                          className={`px-2 py-0.5 rounded-md text-[9px] font-mono border transition-colors ${
+                          className={`px-2 py-0.5 rounded-md text-[10px] font-mono border transition-colors whitespace-nowrap ${
                             isSelected
                               ? "bg-indigo-100/70 dark:bg-indigo-900/40 text-indigo-800 dark:text-indigo-200 border-indigo-200 dark:border-indigo-800/60"
                               : "bg-slate-100 dark:bg-white/[0.04] text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-white/[0.06]"
@@ -2971,7 +2971,7 @@ const loadChatSessions = async () => {
                           <div className="flex items-center justify-between gap-1 mb-1">
                             <span className="font-bold truncate text-[11px]">{e.workflow_name}</span>
                             <span
-                              className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 ${
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 whitespace-nowrap shrink-0 ${
                                 e.status === "completed"
                                   ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
                                   : e.status === "pending_approval"
@@ -3095,7 +3095,7 @@ const loadChatSessions = async () => {
                           <div className="flex items-center justify-between font-mono text-[11px]">
                             <span className="font-bold text-indigo-600 dark:text-indigo-400">Step {trace.step_number}</span>
                             <span
-                              className={`px-2 py-0.5 rounded text-[9px] font-mono font-bold uppercase tracking-wider ${
+                              className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider whitespace-nowrap shrink-0 ${
                                 trace.status === "completed"
                                   ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
                                   : trace.status === "pending_approval"
@@ -3551,7 +3551,7 @@ const loadChatSessions = async () => {
                                 {ver.version}
                               </span>
                               <span
-                                className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap shrink-0 ${
                                   isProd
                                     ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30"
                                     : isStaging
@@ -3947,7 +3947,7 @@ const loadChatSessions = async () => {
               </button>
             </div>
           ) : (
-          <div className="space-y-6 pb-20">
+          <div className="space-y-6 pb-32 sm:pb-36">
             <div className="text-center space-y-1">
               <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center justify-center gap-2">
                 <span>Enterprise Audit & Observability</span>
@@ -4003,7 +4003,7 @@ const loadChatSessions = async () => {
                   <AlertTriangle className={`w-3.5 h-3.5 ${dlqTotal > 0 ? "text-rose-500 animate-pulse" : "text-amber-500"}`} />
                   <span>Dead-Letter Queue (DLQ)</span>
                   {dlqTotal > 0 && (
-                    <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-rose-500/20 text-rose-600 dark:text-rose-300 font-bold border border-rose-500/30">
+                    <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-rose-500/20 text-rose-600 dark:text-rose-300 font-bold border border-rose-500/30 whitespace-nowrap shrink-0">
                       {dlqTotal}
                     </span>
                   )}
@@ -5353,7 +5353,7 @@ const loadChatSessions = async () => {
                               {m.user_full_name || "Invited User"}
                             </span>
                             {m.user_id === user?.id && (
-                              <span className="text-[9px] px-1.5 py-0.2 rounded bg-teal-500/10 text-teal-700 dark:text-teal-300 font-mono font-semibold">
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-teal-500/10 text-teal-700 dark:text-teal-300 font-mono font-semibold whitespace-nowrap shrink-0">
                                 You
                               </span>
                             )}

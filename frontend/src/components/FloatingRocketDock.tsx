@@ -118,7 +118,7 @@ export function FloatingRocketDock({
             {/* Dynamic Badge Counter with hover micro-pop */}
             {tab.badge !== null && (
               <span
-                className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono leading-none shrink-0 transition-transform duration-300 group-hover:scale-110 ${
+                className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono leading-none shrink-0 whitespace-nowrap transition-transform duration-300 group-hover:scale-110 ${
                   isActive
                     ? "bg-white/25 text-white"
                     : "bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-slate-300 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/40 group-hover:text-indigo-700 dark:group-hover:text-indigo-300"

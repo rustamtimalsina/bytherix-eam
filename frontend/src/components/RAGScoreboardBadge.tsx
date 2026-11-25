@@ -110,7 +110,7 @@ export function RAGScoreboardBadge({ evaluation }: RAGScoreboardBadgeProps) {
                   style={{ width: `${faithPercent}%` }}
                 />
               </div>
-              <span className="text-[9px] text-slate-400 dark:text-slate-500 block leading-tight">
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 block leading-tight font-medium">
                 Grounded in citations
               </span>
             </div>
@@ -127,7 +127,7 @@ export function RAGScoreboardBadge({ evaluation }: RAGScoreboardBadgeProps) {
                   style={{ width: `${contextPercent}%` }}
                 />
               </div>
-              <span className="text-[9px] text-slate-400 dark:text-slate-500 block leading-tight">
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 block leading-tight font-medium">
                 Document retrieval accuracy
               </span>
             </div>
@@ -144,7 +144,7 @@ export function RAGScoreboardBadge({ evaluation }: RAGScoreboardBadgeProps) {
                   style={{ width: `${answerPercent}%` }}
                 />
               </div>
-              <span className="text-[9px] text-slate-400 dark:text-slate-500 block leading-tight">
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 block leading-tight font-medium">
                 Directness to prompt
               </span>
             </div>
@@ -174,7 +174,7 @@ export function RAGScoreboardBadge({ evaluation }: RAGScoreboardBadgeProps) {
                     <span className="truncate text-slate-700 dark:text-slate-300">
                       &ldquo;{c.claim_text}&rdquo;
                     </span>
-                    <span className={`px-1.5 py-0.2 rounded text-[9px] font-mono font-bold shrink-0 ${
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold shrink-0 whitespace-nowrap ${
                       c.is_grounded
                         ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
                         : "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400"

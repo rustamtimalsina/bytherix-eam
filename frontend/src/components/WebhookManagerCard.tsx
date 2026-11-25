@@ -368,7 +368,7 @@ export const WebhookManagerCard: React.FC<WebhookManagerCardProps> = ({
                         <span className="font-mono text-xs font-bold text-slate-900 dark:text-white">
                           {ev.id}
                         </span>
-                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-semibold">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-semibold whitespace-nowrap shrink-0">
                           {ev.label}
                         </span>
                       </div>

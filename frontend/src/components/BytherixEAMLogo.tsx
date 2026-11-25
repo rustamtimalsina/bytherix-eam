@@ -67,7 +67,7 @@ export function BytherixEAMLogo({
               EAM
             </span>
           </div>
-          <span className="text-[9px] font-mono tracking-wider uppercase text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+          <span className="text-[10px] font-mono tracking-wider uppercase text-slate-500 dark:text-slate-400 font-medium mt-0.5">
             Enterprise AI Management
           </span>
         </div>

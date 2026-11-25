@@ -106,7 +106,7 @@ export const BillingLedger: React.FC<BillingLedgerProps> = ({
         {/* Quick KPI stats */}
         <div className="flex items-center gap-2">
           <div className="px-3 py-1.5 rounded-xl bg-slate-200/60 dark:bg-white/[0.04] border border-slate-300/60 dark:border-white/[0.08] text-right">
-            <span className="text-[9px] uppercase font-bold text-slate-400 block leading-tight">Payment Standing</span>
+            <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block leading-tight whitespace-nowrap">Payment Standing</span>
             <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 justify-end">
               <CheckCircle2 className="w-3 h-3" />
               <span>Good Standing</span>

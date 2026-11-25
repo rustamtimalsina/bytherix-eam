@@ -271,7 +271,7 @@ export function KnowledgeGraphViewer({
                   <text
                     y="55"
                     textAnchor="middle"
-                    className="fill-slate-400 font-mono text-[9px]"
+                    className="fill-slate-400 font-mono text-[10px]"
                   >
                     {node.chunkCount} chunks
                   </text>
@@ -306,7 +306,7 @@ export function KnowledgeGraphViewer({
 
               <div className="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/60 text-[11px] font-mono text-slate-300">
                 <div>
-                  <span className="text-slate-500 block text-[9px] uppercase">
+                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">
                     Vectors
                   </span>
                   <span className="font-bold text-white">
@@ -314,7 +314,7 @@ export function KnowledgeGraphViewer({
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-500 block text-[9px] uppercase">
+                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">
                     Dimension
                   </span>
                   <span className="font-bold text-cyan-400">1536 dims</span>

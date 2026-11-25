@@ -24,7 +24,7 @@ export function EnterpriseFooter({
               <span className="font-bold text-slate-900 dark:text-white tracking-tight">
                 BYTHERIX <span className="text-indigo-600 dark:text-indigo-400">EAM</span>
               </span>
-              <span className="px-1.5 py-0.2 rounded text-[10px] bg-slate-100 dark:bg-white/[0.06] text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-white/10 font-bold">
+              <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-100 dark:bg-white/[0.06] text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-white/10 font-bold whitespace-nowrap shrink-0">
                 v1.0.0
               </span>
             </div>
