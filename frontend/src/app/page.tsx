@@ -84,7 +84,6 @@ import { DocumentBriefingModal } from "@/components/DocumentBriefingModal";
 import { AIUsageCostModal } from "@/components/AIUsageCostModal";
 import { CommandPaletteModal } from "@/components/CommandPaletteModal";
 import { TelemetrySparkline } from "@/components/TelemetrySparkline";
-import { CitationInspectorDrawer } from "@/components/CitationInspectorDrawer";
 import { SplitCitationViewer } from "@/components/SplitCitationViewer";
 import { ModelArenaPlayground } from "@/components/ModelArenaPlayground";
 import { KnowledgeGraphViewer } from "@/components/KnowledgeGraphViewer";
@@ -2424,6 +2423,7 @@ const loadChatSessions = async () => {
                           }
                         } else {
                           setIsHistoryCollapsed(false);
+                          setSelectedCitation(null);
                         }
                         return next;
                       });
@@ -2805,10 +2805,12 @@ const loadChatSessions = async () => {
                 onClose={() => {
                   setIsSplitViewOpen(false);
                   setIsHistoryCollapsed(false);
+                  setSelectedCitation(null);
                 }}
                 onAskAboutChunk={(prompt) => {
                   setInputQuery(prompt);
                 }}
+                onInspectDocumentChunks={(id) => handleInspectChunks(id)}
                 onDownloadDoc={(id) => handleDownloadDocument(id)}
               />
             )}
@@ -5657,14 +5659,6 @@ const loadChatSessions = async () => {
         canAccessAudit={canViewAudit}
         canUpgradePlan={isOwnerOrAdmin}
         canSeedDemo={canUploadDocs}
-      />
-
-      {/* Perplexity-Style Citation Inspector Drawer */}
-      <CitationInspectorDrawer
-        citation={selectedCitation}
-        onClose={() => setSelectedCitation(null)}
-        onInspectDocumentChunks={(id) => handleInspectChunks(id)}
-        onDownloadDocument={(id) => handleDownloadDocument(id)}
       />
 
       {/* AI Executive Briefing & Instant Prompt Chips Modal */}

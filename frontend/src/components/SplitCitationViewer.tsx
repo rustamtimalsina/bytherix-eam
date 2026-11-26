@@ -14,7 +14,9 @@ import {
   Percent,
   Search,
   MessageSquarePlus,
-  ArrowRight
+  ArrowRight,
+  Layers,
+  Download,
 } from "lucide-react";
 import { SourceCitation } from "@/lib/api";
 
@@ -25,6 +27,7 @@ interface SplitCitationViewerProps {
   onClose: () => void;
   onAskAboutChunk?: (prompt: string) => void;
   onDownloadDoc?: (docId: string) => void;
+  onInspectDocumentChunks?: (docId: string) => void;
 }
 
 export function SplitCitationViewer({
@@ -34,6 +37,7 @@ export function SplitCitationViewer({
   onClose,
   onAskAboutChunk,
   onDownloadDoc,
+  onInspectDocumentChunks,
 }: SplitCitationViewerProps) {
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<"passage" | "metadata">("passage");
@@ -188,6 +192,39 @@ export function SplitCitationViewer({
                 <span>Ask</span>
                 <ArrowRight className="w-3 h-3" />
               </button>
+            </div>
+          )}
+
+          {/* Action Links */}
+          {(onInspectDocumentChunks || onDownloadDoc) && citation.document_id && (
+            <div className="space-y-1.5 pt-1 border-t border-slate-200/60 dark:border-white/[0.06]">
+              {onInspectDocumentChunks && (
+                <button
+                  type="button"
+                  onClick={() => onInspectDocumentChunks(citation.document_id)}
+                  className="w-full flex items-center justify-between p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-white/[0.02] dark:hover:bg-white/[0.05] border border-slate-200/80 dark:border-white/[0.06] text-xs font-semibold text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <Layers className="w-3.5 h-3.5 text-indigo-500" />
+                    <span>Inspect All Document Chunks</span>
+                  </div>
+                  <ExternalLink className="w-3 h-3 text-slate-400" />
+                </button>
+              )}
+
+              {onDownloadDoc && (
+                <button
+                  type="button"
+                  onClick={() => onDownloadDoc(citation.document_id)}
+                  className="w-full flex items-center justify-between p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-white/[0.02] dark:hover:bg-white/[0.05] border border-slate-200/80 dark:border-white/[0.06] text-xs font-semibold text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <Download className="w-3.5 h-3.5 text-blue-500" />
+                    <span>Download Original PDF File</span>
+                  </div>
+                  <ExternalLink className="w-3 h-3 text-slate-400" />
+                </button>
+              )}
             </div>
           )}
         </div>
