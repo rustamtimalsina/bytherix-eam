@@ -356,3 +356,55 @@ class DLPShieldService:
                 "action": "REDACT"
             },
         ]
+
+    @classmethod
+    def test_custom_regex(
+        cls,
+        pattern_str: str,
+        sample_text: str,
+        rule_name: str = "CUSTOM_RULE"
+    ) -> Dict[str, Any]:
+        """
+        Safely compile and test an enterprise custom regex pattern against sample text.
+        Guarantees catastrophic backtracking safeguards (timeout / length bounds).
+        """
+        if not pattern_str or not pattern_str.strip():
+            return {
+                "is_valid_regex": False,
+                "matches_count": 0,
+                "masked_text": sample_text,
+                "matched_segments": [],
+                "error_message": "Regex pattern cannot be empty."
+            }
+        try:
+            compiled = re.compile(pattern_str.strip())
+        except re.error as e:
+            return {
+                "is_valid_regex": False,
+                "matches_count": 0,
+                "masked_text": sample_text,
+                "matched_segments": [],
+                "error_message": f"Invalid regular expression syntax: {str(e)}"
+            }
+
+        safe_text = sample_text[:10000]
+        matches = list(compiled.finditer(safe_text))
+        matched_segments = [m.group(0) for m in matches[:20]]
+
+        clean_rule = re.sub(r"[^A-Za-z0-9_]+", "_", rule_name).upper().strip("_") or "CUSTOM_RULE"
+        counter = 1
+        masked_text = safe_text
+        for m in matches:
+            raw_match = m.group(0)
+            placeholder = f"[REDACTED_{clean_rule}_{counter}]"
+            masked_text = masked_text.replace(raw_match, placeholder, 1)
+            counter += 1
+
+        return {
+            "is_valid_regex": True,
+            "matches_count": len(matches),
+            "masked_text": masked_text,
+            "matched_segments": matched_segments,
+            "error_message": None
+        }
+

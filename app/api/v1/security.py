@@ -81,3 +81,34 @@ def get_dlp_stats(
             for d in detectors
         ]
     )
+
+
+class CustomRegexTestIn(BaseModel):
+    pattern: str = Field(min_length=1, max_length=500, description="Regex pattern string to test")
+    sample_text: str = Field(min_length=1, max_length=10000, description="Sample text to test against")
+    rule_name: Optional[str] = Field("CUSTOM_RULE", max_length=50, description="Identifier name for redacted token")
+
+
+class CustomRegexTestOut(BaseModel):
+    is_valid_regex: bool
+    matches_count: int
+    masked_text: str
+    matched_segments: List[str]
+    error_message: Optional[str] = None
+
+
+@router.post("/test-regex", response_model=CustomRegexTestOut, status_code=status.HTTP_200_OK)
+def test_custom_regex(
+    data: CustomRegexTestIn,
+    context: TenantContext = Depends(require_permission(Permission.RAG_QUERY)),
+):
+    """
+    Safely compile and test custom enterprise DLP regex rules with live masking preview.
+    Enforces strict pattern bounds and non-destructive execution.
+    """
+    return DLPShieldService.test_custom_regex(
+        pattern_str=data.pattern,
+        sample_text=data.sample_text,
+        rule_name=data.rule_name or "CUSTOM_RULE"
+    )
+

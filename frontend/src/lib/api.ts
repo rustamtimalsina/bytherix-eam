@@ -81,6 +81,20 @@ export interface SynthesisExportRequest {
   format?: "pdf" | "markdown";
 }
 
+export interface CustomRegexTestRequest {
+  pattern: string;
+  sample_text: string;
+  rule_name?: string;
+}
+
+export interface CustomRegexTestResponse {
+  is_valid_regex: boolean;
+  matches_count: number;
+  masked_text: string;
+  matched_segments: string[];
+  error_message: string | null;
+}
+
 export interface SourceCitation {
   document_id: string;
   document_title: string;
@@ -868,6 +882,13 @@ class ApiClient {
     return this.request<DLPResultResponse>("/security/dlp/scan", {
       method: "POST",
       body: JSON.stringify({ text }),
+    });
+  }
+
+  async testCustomRegexDlp(req: CustomRegexTestRequest): Promise<CustomRegexTestResponse> {
+    return this.request<CustomRegexTestResponse>("/security/dlp/test-regex", {
+      method: "POST",
+      body: JSON.stringify(req),
     });
   }
 
