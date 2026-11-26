@@ -33,6 +33,7 @@ import {
   XCircle,
   Terminal,
   Download,
+  FileDown,
   Search,
   Eye,
   ShieldCheck,
@@ -291,6 +292,81 @@ export default function DashboardPage() {
       `Targeted ${chosenDocs.length} documents for multi-document synthesis in Chat.`,
       "info"
     );
+  };
+
+  const [isExportingSynthesis, setIsExportingSynthesis] = useState(false);
+  const [exportingMessageIdx, setExportingMessageIdx] = useState<number | null>(null);
+
+  const handleExportSynthesis = async (
+    format: "pdf" | "markdown" = "pdf",
+    docIds?: string[],
+    synthesisContent?: string
+  ) => {
+    const ids = docIds || selectedDocsForCompare;
+    if (ids.length === 0) {
+      showToast("Select Documents", "Please select at least one document to export.", "warning");
+      return;
+    }
+    try {
+      setIsExportingSynthesis(true);
+      const chosenDocs = documents.filter((d) => ids.includes(d.id));
+      const title =
+        chosenDocs.length > 1
+          ? `Strategic Synthesis: ${chosenDocs.slice(0, 2).map((d) => d.title || d.filename).join(" & ")}${chosenDocs.length > 2 ? " & more" : ""}`
+          : `${chosenDocs[0]?.title || chosenDocs[0]?.filename || "Document"} Executive Intelligence Dossier`;
+
+      const blob = await api.exportSynthesisDossier({
+        document_ids: ids,
+        title,
+        synthesis_text: synthesisContent,
+        format,
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+      a.download = `Bytherix_Synthesis_Dossier_${timestamp}.${format === "markdown" ? "md" : "pdf"}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      showToast(
+        "Dossier Exported",
+        `Successfully downloaded strategic synthesis ${format.toUpperCase()} dossier.`,
+        "success"
+      );
+    } catch (err: unknown) {
+      showToast(
+        "Export Failed",
+        (err as Error)?.message || "Failed to export synthesis dossier.",
+        "error"
+      );
+    } finally {
+      setIsExportingSynthesis(false);
+    }
+  };
+
+  const handleExportMessageSynthesis = async (
+    msg: (typeof chatMessages)[number],
+    format: "pdf" | "markdown"
+  ) => {
+    const docIds = Array.from(new Set((msg.sources || []).map((s) => s.document_id).filter(Boolean)));
+    if (docIds.length === 0) {
+      if (selectedDocsForCompare.length > 0) {
+        docIds.push(...selectedDocsForCompare);
+      } else if (documents.length > 0) {
+        docIds.push(documents[0].id);
+      }
+    }
+    try {
+      const msgIdx = chatMessages.indexOf(msg);
+      if (msgIdx !== -1) setExportingMessageIdx(msgIdx);
+      await handleExportSynthesis(format, docIds, msg.text);
+    } finally {
+      setExportingMessageIdx(null);
+    }
   };
 
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
@@ -1908,14 +1984,38 @@ const loadChatSessions = async () => {
                       </div>
 
                       {selectedDocsForCompare.length >= 2 ? (
-                        <button
-                          type="button"
-                          onClick={() => handleSynthesizeDocuments()}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white font-semibold text-xs shadow-md shadow-indigo-500/25 active:scale-95 transition-all cursor-pointer"
-                        >
-                          <GitCompare className="w-3.5 h-3.5" />
-                          <span>Compare & Synthesize ({selectedDocsForCompare.length})</span>
-                        </button>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => handleSynthesizeDocuments()}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white font-semibold text-xs shadow-md shadow-indigo-500/25 active:scale-95 transition-all cursor-pointer"
+                          >
+                            <GitCompare className="w-3.5 h-3.5" />
+                            <span>Compare & Synthesize ({selectedDocsForCompare.length})</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleExportSynthesis("pdf")}
+                            disabled={isExportingSynthesis}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-indigo-600 dark:text-indigo-400 font-semibold text-xs border border-indigo-200/80 dark:border-white/[0.08] active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                            title="Download multi-document synthesis briefing as authentic ReportLab PDF"
+                          >
+                            <FileDown className="w-3.5 h-3.5" />
+                            <span>{isExportingSynthesis ? "Exporting..." : "Export PDF Dossier"}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleExportSynthesis("markdown")}
+                            disabled={isExportingSynthesis}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 dark:bg-white/[0.03] dark:hover:bg-white/[0.06] text-slate-700 dark:text-slate-300 font-semibold text-xs border border-slate-200/80 dark:border-white/[0.06] active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                            title="Download multi-document synthesis briefing as Markdown (.md)"
+                          >
+                            <FileText className="w-3.5 h-3.5 text-slate-500" />
+                            <span>Export MD</span>
+                          </button>
+                        </div>
                       ) : (
                         <span className="text-[10.5px] sm:text-[11px] text-slate-500 dark:text-slate-400 italic">
                           Select 2+ documents to compare & synthesize
@@ -2671,6 +2771,30 @@ const loadChatSessions = async () => {
                             </button>
 
                             <div className="flex items-center gap-2">
+                              {msg.sources && msg.sources.length >= 1 && (
+                                <div className="flex items-center gap-1 mr-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleExportMessageSynthesis(msg, "pdf")}
+                                    disabled={exportingMessageIdx === idx}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-white/[0.04] hover:bg-indigo-100 dark:hover:bg-white/[0.08] text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 transition-colors cursor-pointer border border-indigo-200/60 dark:border-white/[0.06] text-[10px]"
+                                    title="Download strategic intelligence briefing as authentic ReportLab PDF"
+                                  >
+                                    <FileDown className="w-2.5 h-2.5" />
+                                    <span>{exportingMessageIdx === idx ? "Exporting..." : "Export PDF"}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleExportMessageSynthesis(msg, "markdown")}
+                                    disabled={exportingMessageIdx === idx}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md hover:bg-slate-100 dark:hover:bg-white/[0.06] text-slate-500 dark:text-slate-400 hover:text-slate-700 transition-colors cursor-pointer text-[10px]"
+                                    title="Download briefing as Markdown (.md)"
+                                  >
+                                    <FileText className="w-2.5 h-2.5" />
+                                    <span>MD</span>
+                                  </button>
+                                </div>
+                              )}
                               <span className="flex items-center gap-1">
                                 <Cpu className="w-3 h-3 text-indigo-500" />
                                 <span>{msg.model || "gpt-4o-mini"}</span>

@@ -73,3 +73,12 @@ class DocumentInsightOut(BaseModel):
     reading_time_minutes: int
     sentiment: str
     status: str
+
+
+class SynthesisExportRequest(BaseModel):
+    """Multi-document strategic intelligence synthesis export request contract."""
+    document_ids: List[str]
+    title: Optional[str] = "Multi-Document Intelligence Synthesis Dossier"
+    synthesis_text: Optional[str] = None
+    format: str = "pdf"  # "pdf" or "markdown"
+

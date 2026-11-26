@@ -1,6 +1,6 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
@@ -18,12 +18,14 @@ from app.schemas.document import (
     DocumentInsightOut,
     DocumentOut,
     DocumentStatusOut,
+    SynthesisExportRequest,
 )
 from app.services.document_service import (
     delete_document,
     get_document_insights,
     seed_demo_document,
     upload_document,
+    generate_synthesis_export,
 )
 from app.services.audit_service import AuditService
 from app.integrations.object_storage.s3 import storage_service
@@ -349,3 +351,39 @@ def document_insights(
         organization_id=context.organization.id,
         db=db
     )
+
+
+@router.post("/synthesis/export", status_code=status.HTTP_200_OK)
+def export_synthesis(
+    request: SynthesisExportRequest,
+    context: TenantContext = Depends(require_permission(Permission.DOCUMENTS_READ)),
+    db: Session = Depends(get_db)
+):
+    """
+    Generate and download an official multi-document synthesis briefing dossier
+    in authentic ReportLab PDF or GitHub-Flavored Markdown format.
+    Enforces strict multi-tenant boundary and logs an immutable audit event.
+    """
+    actor_id = context.user.id if context.user else "system"
+    actor_email = context.user.email if context.user else "system"
+
+    file_bytes, media_type, filename = generate_synthesis_export(
+        organization_id=context.organization.id,
+        document_ids=request.document_ids,
+        db=db,
+        title=request.title,
+        synthesis_text=request.synthesis_text,
+        export_format=request.format,
+        actor_id=actor_id,
+        actor_email=actor_email
+    )
+
+    return Response(
+        content=file_bytes,
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Type": media_type
+        }
+    )
+

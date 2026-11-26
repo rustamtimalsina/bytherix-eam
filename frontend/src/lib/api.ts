@@ -74,6 +74,13 @@ export interface DocumentDownloadUrlResponse {
   expires_in_seconds: number;
 }
 
+export interface SynthesisExportRequest {
+  document_ids: string[];
+  title?: string;
+  synthesis_text?: string;
+  format?: "pdf" | "markdown";
+}
+
 export interface SourceCitation {
   document_id: string;
   document_title: string;
@@ -817,6 +824,29 @@ class ApiClient {
   // Automated Executive Briefing & Instant Prompt Chips (Upgrade Feature)
   async getDocumentInsights(documentId: string): Promise<DocumentInsightResponse> {
     return this.request<DocumentInsightResponse>(`/documents/${documentId}/insights`);
+  }
+
+  // Multi-Document Strategic Intelligence Synthesis Export (PDF / Markdown)
+  async exportSynthesisDossier(req: SynthesisExportRequest): Promise<Blob> {
+    const token = this.getToken();
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+    const response = await fetch(`${this.getApiBaseUrl()}/documents/synthesis/export`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(req),
+    });
+    if (!response.ok) {
+      let errMsg = "Failed to export synthesis dossier";
+      try {
+        const errData = await response.json();
+        errMsg = errData?.error?.message || errData?.detail || errMsg;
+      } catch {}
+      throw new Error(errMsg);
+    }
+    return await response.blob();
   }
 
   // Real-time SSE Notification Stream
