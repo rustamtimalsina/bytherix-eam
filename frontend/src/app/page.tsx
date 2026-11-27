@@ -100,6 +100,8 @@ import { ModelPromotionModal } from "@/components/ModelPromotionModal";
 import { WebhookManagerCard } from "@/components/WebhookManagerCard";
 import { ApiKeyUsageCard } from "@/components/ApiKeyUsageCard";
 import { ModelDriftMonitorCard } from "@/components/ModelDriftMonitorCard";
+import { EnterpriseRoiCard } from "@/components/EnterpriseRoiCard";
+import { RoleSimulatorBar, SimulatedRoleType } from "@/components/RoleSimulatorBar";
 import { RAGEvalData } from "@/lib/api";
 
 const TASK_TYPE_OPTIONS = [
@@ -112,29 +114,31 @@ const TASK_TYPE_OPTIONS = [
 export default function DashboardPage() {
   const router = useRouter();
   const { user, token, organizationId, role, isLoading: authLoading, logout } = useAuth();
+  const [simulatedRole, setSimulatedRole] = useState<SimulatedRoleType | null>(null);
+  const effectiveRole = simulatedRole || role || "organization_owner";
 
   // Role-Aware Access Control (Section 3.1 & 10.2)
   const isOwnerOrAdmin =
-    role === "organization_owner" ||
-    role === "organization_administrator" ||
-    Boolean(user?.is_platform_operator);
+    effectiveRole === "organization_owner" ||
+    effectiveRole === "organization_administrator" ||
+    Boolean(user?.is_platform_operator && !simulatedRole);
 
   const canManageModels =
-    isOwnerOrAdmin || role === "ai_ml_engineer";
+    isOwnerOrAdmin || effectiveRole === "ai_ml_engineer";
 
   const canUploadDocs =
-    isOwnerOrAdmin || role === "developer" || role === "ai_ml_engineer";
+    isOwnerOrAdmin || effectiveRole === "developer" || effectiveRole === "ai_ml_engineer";
 
   const canCreateApiKeys =
-    isOwnerOrAdmin || role === "developer";
+    isOwnerOrAdmin || effectiveRole === "developer";
 
-  const canViewAudit = isOwnerOrAdmin;
+  const canViewAudit = isOwnerOrAdmin || effectiveRole === "compliance_auditor";
 
   const canRegisterModels =
-    isOwnerOrAdmin || role === "developer" || role === "ai_ml_engineer";
+    isOwnerOrAdmin || effectiveRole === "developer" || effectiveRole === "ai_ml_engineer";
 
   const canAccessModels =
-    isOwnerOrAdmin || role === "developer" || role === "ai_ml_engineer";
+    isOwnerOrAdmin || effectiveRole === "developer" || effectiveRole === "ai_ml_engineer";
   const [activeTab, setActiveTab] = useState<ActiveTab>("documents");
 
   // MLOps Model Registry state (Section 9 & 14)
@@ -1528,6 +1532,13 @@ const loadChatSessions = async () => {
 
         {/* Right Nav Actions - Profile Visible Everywhere */}
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          {/* Interactive Enterprise Role Simulator */}
+          <RoleSimulatorBar
+            realRole={role || "organization_owner"}
+            simulatedRole={simulatedRole}
+            onSelectRole={setSimulatedRole}
+          />
+
           {/* Global Command Palette Trigger (Ctrl+K / ⌘K) */}
           <button
             type="button"
@@ -1739,6 +1750,15 @@ const loadChatSessions = async () => {
                 Grounded PDF ingestion with 1536-dimensional pgvector embeddings and cryptographic SHA-256 deduplication.
               </p>
             </div>
+
+            {/* Enterprise ROI & Financial Impact Valuation */}
+            <EnterpriseRoiCard
+              documentCount={documents.length}
+              totalChunks={documents.reduce((acc, d) => acc + ((d.page_count || 3) * 4), 0)}
+              queriesCount={usage?.queries_count || chatMessages.length || 18}
+              tokensUsed={usage?.tokens_used || 0}
+              onOpenUpgradeModal={() => setIsUpgradeModalOpen(true)}
+            />
 
             {/* Precision Ingestion Dropzone */}
             {canUploadDocs ? (
