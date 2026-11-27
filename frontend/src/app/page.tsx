@@ -51,6 +51,7 @@ import {
   Square,
   Network,
   GitCompare,
+  Mail,
 } from "lucide-react";
 import {
   api,
@@ -86,6 +87,7 @@ import { AIUsageCostModal } from "@/components/AIUsageCostModal";
 import { CommandPaletteModal } from "@/components/CommandPaletteModal";
 import { TelemetrySparkline } from "@/components/TelemetrySparkline";
 import { SplitCitationViewer } from "@/components/SplitCitationViewer";
+import { EmailSynthesisModal } from "@/components/EmailSynthesisModal";
 import { ModelArenaPlayground } from "@/components/ModelArenaPlayground";
 import { KnowledgeGraphViewer } from "@/components/KnowledgeGraphViewer";
 import { DocumentScopeSelector } from "@/components/DocumentScopeSelector";
@@ -367,6 +369,21 @@ export default function DashboardPage() {
     } finally {
       setExportingMessageIdx(null);
     }
+  };
+
+  const [isEmailSynthesisModalOpen, setIsEmailSynthesisModalOpen] = useState(false);
+  const [emailSynthesisDocIds, setEmailSynthesisDocIds] = useState<string[]>([]);
+  const [emailSynthesisContent, setEmailSynthesisContent] = useState<string | undefined>(undefined);
+
+  const handleOpenEmailSynthesis = (docIds?: string[], content?: string) => {
+    const ids = docIds || selectedDocsForCompare;
+    if (ids.length === 0) {
+      showToast("Select Documents", "Please select at least one document to dispatch via email.", "warning");
+      return;
+    }
+    setEmailSynthesisDocIds(ids);
+    setEmailSynthesisContent(content);
+    setIsEmailSynthesisModalOpen(true);
   };
 
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
@@ -2015,6 +2032,17 @@ const loadChatSessions = async () => {
                             <FileText className="w-3.5 h-3.5 text-slate-500" />
                             <span>Export MD</span>
                           </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEmailSynthesis()}
+                            disabled={isExportingSynthesis}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 font-semibold text-xs border border-indigo-200 dark:border-indigo-500/30 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                            title="Email synthesized PDF dossier directly to stakeholder inboxes"
+                          >
+                            <Mail className="w-3.5 h-3.5" />
+                            <span>Email Dossier</span>
+                          </button>
                         </div>
                       ) : (
                         <span className="text-[10.5px] sm:text-[11px] text-slate-500 dark:text-slate-400 italic">
@@ -2792,6 +2820,19 @@ const loadChatSessions = async () => {
                                   >
                                     <FileText className="w-2.5 h-2.5" />
                                     <span>MD</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const docIds = Array.from(new Set((msg.sources || []).map((s) => s.document_id).filter(Boolean)));
+                                      if (docIds.length === 0 && documents.length > 0) docIds.push(documents[0].id);
+                                      handleOpenEmailSynthesis(docIds, msg.text);
+                                    }}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md hover:bg-slate-100 dark:hover:bg-white/[0.06] text-slate-500 dark:text-slate-400 hover:text-slate-700 transition-colors cursor-pointer text-[10px]"
+                                    title="Email this synthesized briefing as attached ReportLab PDF"
+                                  >
+                                    <Mail className="w-2.5 h-2.5" />
+                                    <span>Email</span>
                                   </button>
                                 </div>
                               )}
@@ -5830,6 +5871,22 @@ const loadChatSessions = async () => {
       <DLPShieldModal
         isOpen={isDlpModalOpen}
         onClose={() => setIsDlpModalOpen(false)}
+      />
+
+      {/* Multi-Document Synthesis Email Modal */}
+      <EmailSynthesisModal
+        isOpen={isEmailSynthesisModalOpen}
+        onClose={() => setIsEmailSynthesisModalOpen(false)}
+        documentIds={emailSynthesisDocIds}
+        documents={documents}
+        synthesisText={emailSynthesisContent}
+        onSuccess={(count) => {
+          showToast(
+            "Dossier Emailed",
+            `Successfully dispatched signed synthesis PDF to ${count} recipient(s).`,
+            "success"
+          );
+        }}
       />
 
       {/* MLOps Model Promotion Safety Gate & Benchmark Modal */}

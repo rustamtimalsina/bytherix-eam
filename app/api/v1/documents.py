@@ -19,6 +19,8 @@ from app.schemas.document import (
     DocumentOut,
     DocumentStatusOut,
     SynthesisExportRequest,
+    SynthesisEmailRequest,
+    SynthesisEmailResponse,
 )
 from app.services.document_service import (
     delete_document,
@@ -27,6 +29,7 @@ from app.services.document_service import (
     upload_document,
     generate_synthesis_export,
 )
+from app.services.email_service import EmailService
 from app.services.audit_service import AuditService
 from app.integrations.object_storage.s3 import storage_service
 
@@ -385,5 +388,82 @@ def export_synthesis(
             "Content-Disposition": f'attachment; filename="{filename}"',
             "Content-Type": media_type
         }
+    )
+
+
+@router.post("/synthesis/email", response_model=SynthesisEmailResponse, status_code=status.HTTP_200_OK)
+def email_synthesis(
+    request: SynthesisEmailRequest,
+    context: TenantContext = Depends(require_permission(Permission.DOCUMENTS_READ)),
+    db: Session = Depends(get_db)
+):
+    """
+    Generate and email an official multi-document synthesis briefing dossier
+    with attached ReportLab PDF to stakeholder recipient list.
+    Enforces strict multi-tenant boundary and logs an immutable audit event.
+    """
+    if not request.recipients:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="At least one recipient email address is required."
+        )
+
+    actor_id = context.user.id if context.user else "system"
+    actor_email = context.user.email if context.user else "system"
+    sender_name = getattr(context.user, "name", None) or actor_email
+
+    pdf_bytes, media_type, filename = generate_synthesis_export(
+        organization_id=context.organization.id,
+        document_ids=request.document_ids,
+        db=db,
+        title=request.title,
+        synthesis_text=request.synthesis_text,
+        export_format="pdf",
+        actor_id=actor_id,
+        actor_email=actor_email
+    )
+
+    clean_recipients = [str(r).strip() for r in request.recipients if str(r).strip()]
+    dossier_title = request.title or "Multi-Document Intelligence Synthesis Dossier"
+    org_name = context.organization.name if context.organization else "Bytherix Enterprise"
+
+    sent_count = EmailService.send_synthesis_dossier_email(
+        recipient_emails=clean_recipients,
+        organization_name=org_name,
+        dossier_title=dossier_title,
+        pdf_bytes=pdf_bytes,
+        filename=filename,
+        sender_name=sender_name,
+        notes=request.notes,
+        document_count=len(request.document_ids)
+    )
+
+    audit_entry = AuditService.record_event(
+        db=db,
+        organization_id=context.organization.id,
+        action="document.synthesis_emailed",
+        resource_type="document_synthesis",
+        resource_id=f"syn_{context.organization.id[:8]}",
+        actor_email=actor_email,
+        actor_id=actor_id,
+        severity="info",
+        details={
+            "document_ids": request.document_ids,
+            "document_count": len(request.document_ids),
+            "recipients": clean_recipients,
+            "recipients_count": sent_count,
+            "filename": filename,
+            "title": dossier_title
+        }
+    )
+
+    return SynthesisEmailResponse(
+        success=True,
+        message=f"Synthesis dossier dispatched to {sent_count} recipient(s).",
+        recipients_count=sent_count,
+        recipients=clean_recipients,
+        filename=filename,
+        dossier_title=dossier_title,
+        audit_event_id=audit_entry.id if audit_entry else None
     )
 

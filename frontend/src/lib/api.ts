@@ -81,6 +81,24 @@ export interface SynthesisExportRequest {
   format?: "pdf" | "markdown";
 }
 
+export interface SynthesisEmailRequest {
+  document_ids: string[];
+  recipients: string[];
+  title?: string;
+  synthesis_text?: string;
+  notes?: string;
+}
+
+export interface SynthesisEmailResponse {
+  success: boolean;
+  message: string;
+  recipients_count: number;
+  recipients: string[];
+  filename: string;
+  dossier_title: string;
+  audit_event_id?: string | null;
+}
+
 export interface CustomRegexTestRequest {
   pattern: string;
   sample_text: string;
@@ -861,6 +879,13 @@ class ApiClient {
       throw new Error(errMsg);
     }
     return await response.blob();
+  }
+
+  async emailSynthesisDossier(req: SynthesisEmailRequest): Promise<SynthesisEmailResponse> {
+    return this.request<SynthesisEmailResponse>("/documents/synthesis/email", {
+      method: "POST",
+      body: JSON.stringify(req),
+    });
   }
 
   // Real-time SSE Notification Stream

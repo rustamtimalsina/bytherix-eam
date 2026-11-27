@@ -1,10 +1,11 @@
 import email.utils
+from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import logging
 import smtplib
 import threading
-from typing import Optional
+from typing import Optional, List, Tuple
 
 from app.core.config import settings
 
@@ -17,32 +18,47 @@ class EmailService:
         to_email: str,
         subject: str,
         html_content: str,
-        text_content: Optional[str] = None
+        text_content: Optional[str] = None,
+        attachments: Optional[List[Tuple[str, bytes, str]]] = None
     ) -> bool:
         """Synchronously dispatch email through configured SMTP gateway or fallback simulator."""
         if settings.APP_ENV == "test" or not settings.SMTP_HOST:
             # Safe local fallback simulation
+            att_info = f" with {len(attachments)} attachment(s)" if attachments else ""
             logger.info(
-                f"[EMAIL SIMULATION] To: {to_email} | Subject: '{subject}' | SMTP not configured; logged locally."
+                f"[EMAIL SIMULATION] To: {to_email} | Subject: '{subject}'{att_info} | SMTP not configured; logged locally."
             )
             return True
 
         try:
-            msg = MIMEMultipart("alternative")
+            if attachments:
+                msg = MIMEMultipart("mixed")
+                body_part = MIMEMultipart("alternative")
+                if text_content:
+                    body_part.attach(MIMEText(text_content, "plain", "utf-8"))
+                else:
+                    body_part.attach(MIMEText("Please view this email in an HTML-compatible client.", "plain", "utf-8"))
+                body_part.attach(MIMEText(html_content, "html", "utf-8"))
+                msg.attach(body_part)
+
+                for att_name, att_bytes, att_mime in attachments:
+                    subtype = "pdf" if "pdf" in att_mime.lower() else "octet-stream"
+                    part = MIMEApplication(att_bytes, _subtype=subtype)
+                    part.add_header("Content-Disposition", "attachment", filename=att_name)
+                    msg.attach(part)
+            else:
+                msg = MIMEMultipart("alternative")
+                if text_content:
+                    msg.attach(MIMEText(text_content, "plain", "utf-8"))
+                else:
+                    msg.attach(MIMEText("Please view this email in an HTML-compatible client.", "plain", "utf-8"))
+                msg.attach(MIMEText(html_content, "html", "utf-8"))
+
             msg["Subject"] = subject
             msg["From"] = email.utils.formataddr((settings.SMTP_FROM_NAME, settings.SMTP_FROM_EMAIL))
             msg["To"] = to_email
             msg["Date"] = email.utils.formatdate(localtime=True)
             msg["Message-ID"] = email.utils.make_msgid(domain="bytherix.com")
-
-            # Attach plain text fallback
-            if text_content:
-                msg.attach(MIMEText(text_content, "plain", "utf-8"))
-            else:
-                msg.attach(MIMEText("Please view this email in an HTML-compatible client.", "plain", "utf-8"))
-
-            # Attach styled HTML
-            msg.attach(MIMEText(html_content, "html", "utf-8"))
 
             port = settings.SMTP_PORT
             if port == 465:
@@ -70,16 +86,17 @@ class EmailService:
         to_email: str,
         subject: str,
         html_content: str,
-        text_content: Optional[str] = None
+        text_content: Optional[str] = None,
+        attachments: Optional[List[Tuple[str, bytes, str]]] = None
     ) -> None:
         """Dispatches email in a background daemon thread to eliminate HTTP latency."""
         if settings.APP_ENV == "test":
-            EmailService._send_smtp_sync(to_email, subject, html_content, text_content)
+            EmailService._send_smtp_sync(to_email, subject, html_content, text_content, attachments)
             return
 
         thread = threading.Thread(
             target=EmailService._send_smtp_sync,
-            args=(to_email, subject, html_content, text_content),
+            args=(to_email, subject, html_content, text_content, attachments),
             daemon=True
         )
         thread.start()
@@ -270,3 +287,86 @@ class EmailService:
         )
 
         return invite_url
+
+    @staticmethod
+    def send_synthesis_dossier_email(
+        recipient_emails: List[str],
+        organization_name: str,
+        dossier_title: str,
+        pdf_bytes: bytes,
+        filename: str,
+        sender_name: str = "A Workspace Team Member",
+        notes: Optional[str] = None,
+        document_count: int = 2
+    ) -> int:
+        """
+        Builds and dispatches branded HTML email attaching the synthesized intelligence PDF dossier.
+        Returns the number of recipients queued.
+        """
+        subject = f"[Bytherix Intelligence] {dossier_title} — {organization_name}"
+
+        notes_html = ""
+        if notes and notes.strip():
+            notes_html = f"""
+            <div style="background: #1e293b; border-left: 3px solid #6366f1; padding: 12px 16px; border-radius: 6px; margin-bottom: 24px;">
+              <p style="margin: 0 0 6px 0; font-size: 11px; font-weight: 700; color: #a5b4fc; text-transform: uppercase; letter-spacing: 0.5px;">Message from Sender:</p>
+              <p style="margin: 0; font-size: 13px; color: #f1f5f9; line-height: 1.5;">{notes.strip()}</p>
+            </div>
+            """
+
+        html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{dossier_title}</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0b101e; color: #e2e8f0; margin: 0; padding: 30px 15px;">
+  <div style="max-width: 600px; margin: 0 auto; background-color: #111827; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; padding: 32px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);">
+    <div style="font-size: 18px; font-weight: 800; color: #ffffff; margin-bottom: 16px;">BYTHERIX <span style="color: #6366f1;">EAM</span></div>
+    <div style="display: inline-block; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.3); color: #a5b4fc; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 4px 10px; border-radius: 20px; margin-bottom: 16px;">
+      Multi-Document Intelligence Dossier
+    </div>
+    <h1 style="font-size: 20px; font-weight: 700; color: #ffffff; margin: 0 0 12px 0;">{dossier_title}</h1>
+    <p style="font-size: 13px; line-height: 1.6; color: #94a3b8; margin: 0 0 20px 0;">
+      <strong>{sender_name}</strong> from <strong>{organization_name}</strong> has generated an enterprise comparative intelligence briefing analyzing <strong>{document_count}</strong> ingested knowledge assets. The official signed dossier is attached as a PDF.
+    </p>
+    {notes_html}
+    <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 14px 18px; margin-bottom: 24px;">
+      <div style="font-size: 12px; font-weight: 600; color: #f1f5f9; margin-bottom: 4px;">📎 Attached Dossier: <span style="font-family: monospace; color: #38bdf8;">{filename}</span></div>
+      <div style="font-size: 11px; color: #94a3b8;">Format: ReportLab Vector PDF &bull; SHA-256 Tamper-Evident Integrity Sealed</div>
+    </div>
+    <div style="border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 16px; font-size: 11px; color: #64748b; line-height: 1.5;">
+      &copy; Bytherix Technology Pvt. Ltd. &bull; Enterprise AI Management Platform<br>
+      Confidential tenant intelligence report. Intended solely for authorized recipients.
+    </div>
+  </div>
+</body>
+</html>"""
+
+        text_content = (
+            f"Bytherix EAM — Multi-Document Intelligence Dossier\n\n"
+            f"Title: {dossier_title}\n"
+            f"Organization: {organization_name}\n"
+            f"From: {sender_name}\n"
+            f"Analyzed Documents: {document_count}\n\n"
+            f"Please find the official generated intelligence briefing attached ({filename}).\n\n"
+            f"{'Notes: ' + notes if notes else ''}\n\n"
+            f"— The Bytherix Team"
+        )
+
+        attachments = [(filename, pdf_bytes, "application/pdf")]
+
+        sent_count = 0
+        for email_addr in recipient_emails:
+            clean_email = email_addr.strip()
+            if clean_email:
+                EmailService.send_email_async(
+                    to_email=clean_email,
+                    subject=subject,
+                    html_content=html_content,
+                    text_content=text_content,
+                    attachments=attachments
+                )
+                sent_count += 1
+
+        return sent_count

@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List, Optional
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 
 class DocumentOut(BaseModel):
@@ -81,4 +81,24 @@ class SynthesisExportRequest(BaseModel):
     title: Optional[str] = "Multi-Document Intelligence Synthesis Dossier"
     synthesis_text: Optional[str] = None
     format: str = "pdf"  # "pdf" or "markdown"
+
+
+class SynthesisEmailRequest(BaseModel):
+    """Multi-document strategic intelligence synthesis email dispatch request."""
+    document_ids: List[str]
+    recipients: List[EmailStr]
+    title: Optional[str] = "Multi-Document Intelligence Synthesis Dossier"
+    synthesis_text: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class SynthesisEmailResponse(BaseModel):
+    """Multi-document strategic intelligence synthesis email dispatch response."""
+    success: bool
+    message: str
+    recipients_count: int
+    recipients: List[str]
+    filename: str
+    dossier_title: str
+    audit_event_id: Optional[str] = None
 
