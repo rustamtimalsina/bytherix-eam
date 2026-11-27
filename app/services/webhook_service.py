@@ -227,23 +227,55 @@ class WebhookService:
     def test_ping(
         cls,
         db: Session,
-        subscription: WebhookSubscription
-    ) -> Tuple[WebhookDelivery, str]:
-        """Send a test ping event and return the delivery record with signature."""
-        test_payload = {
-            "ping": True,
-            "message": "Bytherix EAM Webhook verification ping successful.",
-            "test_timestamp": datetime.now(timezone.utc).isoformat()
-        }
+        subscription: WebhookSubscription,
+        event_type: str = "ping"
+    ) -> Tuple[WebhookDelivery, str, Optional[Dict[str, Any]]]:
+        """Send a test event (ping, dlp.violation, model.promoted) and return delivery record with signature and formatted card."""
+        evt = (event_type or "ping").strip()
+        if "dlp" in evt:
+            test_payload = {
+                "summary": "Tenant prompt contained unmasked Nepal Citizenship and Credit Card numbers.",
+                "categories": ["NEPAL_CITIZENSHIP", "CREDIT_CARD"],
+                "entity_count": 2,
+                "session_id": "sess_live_dlp_test",
+                "severity": "CRITICAL",
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+        elif "model" in evt:
+            test_payload = {
+                "model_id": "bytherix-llama3-enterprise",
+                "current_latency_ms": 1420,
+                "drift_percent": 35.8,
+                "severity": "warning",
+                "recommendation": "Model transitioned to Staging. Verification latency tests recommended.",
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+        else:
+            evt = "ping"
+            test_payload = {
+                "ping": True,
+                "message": "Bytherix EAM Webhook verification ping successful.",
+                "test_timestamp": datetime.now(timezone.utc).isoformat()
+            }
+
         envelope = {
-            "event": "ping",
+            "event": evt,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "subscription_id": subscription.id,
             "organization_id": subscription.organization_id,
             "data": test_payload
         }
-        payload_bytes = json.dumps(envelope, separators=(",", ":")).encode("utf-8")
+
+        url_lower = subscription.url.lower()
+        if "hooks.slack.com" in url_lower:
+            formatted_card = cls._format_slack_card(evt, envelope)
+        elif "discord.com/api/webhooks" in url_lower:
+            formatted_card = cls._format_discord_card(evt, envelope)
+        else:
+            formatted_card = envelope
+
+        payload_bytes = json.dumps(formatted_card, separators=(",", ":")).encode("utf-8")
         signature = cls.sign_payload(payload_bytes, subscription.secret)
 
-        delivery = cls.deliver_event(db, subscription, "ping", test_payload)
-        return delivery, signature
+        delivery = cls.deliver_event(db, subscription, evt, test_payload)
+        return delivery, signature, formatted_card

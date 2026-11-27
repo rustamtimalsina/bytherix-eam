@@ -48,7 +48,7 @@ class LocalWebhookReceiver(BaseHTTPRequestHandler):
         pass  # Quiet logging
 
 
-def start_local_listener(port: int = 8765):
+def start_local_listener(port: int = 0):
     server = HTTPServer(("127.0.0.1", port), LocalWebhookReceiver)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -60,10 +60,10 @@ def run_webhook_verification(custom_discord_url: str = None, custom_slack_url: s
     print("BYTHERIX EAM - LIVE WEBHOOK SUBSYSTEM & ALERT VERIFICATION")
     print("=" * 70)
 
-    # 1. Start local receiver for guaranteed zero-dependency network verification
-    port = 8765
-    local_url = f"http://127.0.0.1:{port}/webhook"
-    start_local_listener(port)
+    # 1. Start local receiver on dynamic port for guaranteed isolated verification
+    server = start_local_listener(0)
+    actual_port = server.server_address[1]
+    local_url = f"http://127.0.0.1:{actual_port}/webhook"
     print(f"\n[1] Local Webhook Receiver active on: {local_url}")
 
     db: Session = SessionLocal()

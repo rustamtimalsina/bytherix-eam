@@ -18,7 +18,12 @@ import {
   FileCode,
   CheckCircle2,
   XCircle,
-  X
+  X,
+  ChevronDown,
+  ChevronUp,
+  Sparkles,
+  Terminal,
+  Eye,
 } from "lucide-react";
 import {
   api,
@@ -70,9 +75,11 @@ export const WebhookManagerCard: React.FC<WebhookManagerCardProps> = ({
   const [revealedSecret, setRevealedSecret] = useState<WebhookCreatedResponse | null>(null);
   const [copiedSecret, setCopiedSecret] = useState(false);
 
-  // Test Ping state
+  // Test Ping & Event state
   const [testingId, setTestingId] = useState<string | null>(null);
+  const [testingEvent, setTestingEvent] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<WebhookTestResponse & { webhookId: string } | null>(null);
+  const [showCardPreview, setShowCardPreview] = useState(false);
 
   // Delivery logs drawer
   const [deliveryDrawerWebhook, setDeliveryDrawerWebhook] = useState<WebhookItem | null>(null);
@@ -154,16 +161,19 @@ export const WebhookManagerCard: React.FC<WebhookManagerCardProps> = ({
     }
   };
 
-  const handleTestPing = async (webhook: WebhookItem) => {
+  const handleTestEvent = async (webhook: WebhookItem, eventType: string = "ping") => {
     try {
       setTestingId(webhook.id);
+      setTestingEvent(eventType);
       setTestResult(null);
-      const res = await api.testWebhook(webhook.id);
-      setTestResult({ ...res, webhookId: webhook.id });
+      setShowCardPreview(false);
+      const res = await api.testWebhook(webhook.id, eventType);
+      setTestResult({ ...res, webhookId: webhook.id, event_type: eventType });
     } catch (err: unknown) {
-      setErrorMessage((err as Error).message || "Failed to dispatch test ping.");
+      setErrorMessage((err as Error).message || "Failed to dispatch test event.");
     } finally {
       setTestingId(null);
+      setTestingEvent(null);
     }
   };
 
@@ -300,6 +310,47 @@ export const WebhookManagerCard: React.FC<WebhookManagerCardProps> = ({
             <span>Register New Webhook Endpoint</span>
           </div>
 
+          {/* Quick Presets for Slack / Discord / Local */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] uppercase font-bold text-slate-500 flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-indigo-500" />
+              Presets:
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setUrl("https://hooks.slack.com/services/YOUR_WORKSPACE/YOUR_CHANNEL/YOUR_SLACK_TOKEN");
+                setDescription("Slack Security & Incident Channel");
+                setSelectedEvents(["model.promoted", "dlp.violation"]);
+              }}
+              className="px-2 py-0.5 rounded-md bg-white dark:bg-white/[0.05] border border-slate-200 dark:border-white/10 text-[10.5px] font-medium text-slate-700 dark:text-slate-300 hover:border-indigo-500 transition-colors"
+            >
+              Slack Webhook
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setUrl("https://discord.com/api/webhooks/YOUR_CHANNEL_ID/YOUR_DISCORD_TOKEN");
+                setDescription("Discord Security Bot Alerts");
+                setSelectedEvents(["model.promoted", "dlp.violation"]);
+              }}
+              className="px-2 py-0.5 rounded-md bg-white dark:bg-white/[0.05] border border-slate-200 dark:border-white/10 text-[10.5px] font-medium text-slate-700 dark:text-slate-300 hover:border-indigo-500 transition-colors"
+            >
+              Discord Webhook
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setUrl("http://127.0.0.1:8765/webhook");
+                setDescription("Local Automated Receiver (Port 8765)");
+                setSelectedEvents(["model.promoted", "dlp.violation"]);
+              }}
+              className="px-2 py-0.5 rounded-md bg-white dark:bg-white/[0.05] border border-slate-200 dark:border-white/10 text-[10.5px] font-medium text-slate-700 dark:text-slate-300 hover:border-indigo-500 transition-colors"
+            >
+              Local Test (Port 8765)
+            </button>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
@@ -413,15 +464,20 @@ export const WebhookManagerCard: React.FC<WebhookManagerCardProps> = ({
 
       {/* Live Test Result Toast/Callout */}
       {testResult && (
-        <div className="p-4 rounded-xl bg-slate-900 text-white border border-indigo-500/40 shadow-xl space-y-2.5 animate-fadeIn">
+        <div className="p-4 rounded-xl bg-slate-900 text-white border border-indigo-500/40 shadow-xl space-y-3 animate-fadeIn">
           <div className="flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2 font-bold">
+            <div className="flex items-center gap-2 font-bold flex-wrap">
               {testResult.status === "delivered" ? (
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
               ) : (
                 <XCircle className="w-4 h-4 text-amber-400" />
               )}
-              <span>Live Test Ping: {testResult.status.toUpperCase()}</span>
+              <span>Live Test: {testResult.status.toUpperCase()}</span>
+              {testResult.event_type && (
+                <span className="font-mono px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 text-[10px]">
+                  {testResult.event_type}
+                </span>
+              )}
               {testResult.status_code && (
                 <span className="font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px]">
                   HTTP {testResult.status_code}
@@ -448,6 +504,34 @@ export const WebhookManagerCard: React.FC<WebhookManagerCardProps> = ({
               X-Bytherix-Signature: {testResult.signature_preview}
             </div>
           </div>
+
+          {testResult.formatted_card && (
+            <div className="space-y-1.5 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowCardPreview(!showCardPreview)}
+                className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-indigo-400 hover:text-indigo-300"
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span>
+                  {showCardPreview ? "Hide" : "View"} Formatted Card Payload (
+                  {Object.keys(testResult.formatted_card).includes("attachments")
+                    ? "Slack Block Kit"
+                    : Object.keys(testResult.formatted_card).includes("embeds")
+                    ? "Discord Embed"
+                    : "JSON Envelope"}
+                  )
+                </span>
+                {showCardPreview ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              </button>
+
+              {showCardPreview && (
+                <pre className="p-3 rounded-lg bg-black/80 border border-white/10 text-[10.5px] font-mono text-emerald-300 overflow-x-auto max-h-56 leading-relaxed">
+                  {JSON.stringify(testResult.formatted_card, null, 2)}
+                </pre>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -533,30 +617,62 @@ export const WebhookManagerCard: React.FC<WebhookManagerCardProps> = ({
                 </div>
 
                 {/* Right: Actions */}
-                <div className="flex items-center gap-2 self-end md:self-center flex-shrink-0">
+                <div className="flex items-center gap-1.5 self-end md:self-center flex-shrink-0 flex-wrap">
                   {/* Test Ping Button */}
                   <button
                     type="button"
                     disabled={testingId === w.id}
-                    onClick={() => handleTestPing(w)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-indigo-500/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 disabled:opacity-50 text-xs font-semibold transition-all shadow-sm"
-                    title="Send a live test event with HMAC signature"
+                    onClick={() => handleTestEvent(w, "ping")}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-indigo-500/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 disabled:opacity-50 text-[11px] font-semibold transition-all shadow-xs"
+                    title="Send a basic ping connectivity check"
                   >
-                    {testingId === w.id ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    {testingId === w.id && testingEvent === "ping" ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
                     ) : (
-                      <Send className="w-3.5 h-3.5" />
+                      <Send className="w-3 h-3" />
                     )}
-                    <span>Test Ping</span>
+                    <span>Ping</span>
+                  </button>
+
+                  {/* Test DLP Alert */}
+                  <button
+                    type="button"
+                    disabled={testingId === w.id}
+                    onClick={() => handleTestEvent(w, "dlp.violation")}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-rose-500/40 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 disabled:opacity-50 text-[11px] font-semibold transition-all shadow-xs"
+                    title="Simulate a real DLP violation alert card (Slack Block Kit or Discord Embed)"
+                  >
+                    {testingId === w.id && testingEvent === "dlp.violation" ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <ShieldAlert className="w-3 h-3 text-rose-500" />
+                    )}
+                    <span>DLP Alert 🚨</span>
+                  </button>
+
+                  {/* Test MLOps Alert */}
+                  <button
+                    type="button"
+                    disabled={testingId === w.id}
+                    onClick={() => handleTestEvent(w, "model.promoted")}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-amber-500/40 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 disabled:opacity-50 text-[11px] font-semibold transition-all shadow-xs"
+                    title="Simulate a real MLOps model promotion / SLA alert card"
+                  >
+                    {testingId === w.id && testingEvent === "model.promoted" ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <Activity className="w-3 h-3 text-amber-500" />
+                    )}
+                    <span>MLOps SLA ⚠️</span>
                   </button>
 
                   {/* View Deliveries */}
                   <button
                     type="button"
                     onClick={() => handleOpenDeliveries(w)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 text-xs font-medium transition-colors"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 text-[11px] font-medium transition-colors"
                   >
-                    <Activity className="w-3.5 h-3.5 text-slate-500" />
+                    <Activity className="w-3 h-3 text-slate-500" />
                     <span>Logs</span>
                   </button>
 

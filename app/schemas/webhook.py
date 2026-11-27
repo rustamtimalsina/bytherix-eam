@@ -106,9 +106,15 @@ class WebhookDeliveryOut(BaseModel):
     created_at: datetime
 
 
+class WebhookTestIn(BaseModel):
+    event_type: Optional[str] = Field("ping", description="Event type to simulate: ping, dlp.violation, model.promoted")
+
+
 class WebhookTestResponse(BaseModel):
     status: str
     status_code: Optional[int] = None
     delivery_id: str
     signature_preview: str
     message: str
+    event_type: Optional[str] = "ping"
+    formatted_card: Optional[Dict[str, Any]] = None

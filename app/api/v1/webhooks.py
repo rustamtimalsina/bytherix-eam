@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -12,7 +12,8 @@ from app.schemas.webhook import (
     WebhookOut,
     WebhookCreatedResponse,
     WebhookDeliveryOut,
-    WebhookTestResponse
+    WebhookTestResponse,
+    WebhookTestIn,
 )
 from app.services.audit_service import AuditService
 from app.services.webhook_service import WebhookService
@@ -205,10 +206,11 @@ def delete_webhook(
 @router.post("/{webhook_id}/test", response_model=WebhookTestResponse)
 def test_webhook(
     webhook_id: str,
+    payload: Optional[WebhookTestIn] = None,
     context: TenantContext = Depends(require_permission(Permission.WEBHOOKS_CREATE)),
     db: Session = Depends(get_db)
 ):
-    """Dispatch an immediate signed HMAC test ping to verify endpoint connectivity."""
+    """Dispatch an immediate signed HMAC test ping or alert event to verify endpoint connectivity."""
     sub = db.query(WebhookSubscription).filter(
         WebhookSubscription.id == webhook_id,
         WebhookSubscription.organization_id == context.organization.id
@@ -220,7 +222,8 @@ def test_webhook(
             detail=f"Webhook subscription '{webhook_id}' not found."
         )
 
-    delivery, signature = WebhookService.test_ping(db, sub)
+    evt_type = payload.event_type if payload and payload.event_type else "ping"
+    delivery, signature, formatted_card = WebhookService.test_ping(db, sub, event_type=evt_type)
 
     AuditService.record_event(
         db=db,
@@ -231,6 +234,7 @@ def test_webhook(
         actor_id=context.user.id if context.user else None,
         actor_email=context.user.email if context.user else "system@bytherix.com",
         details={
+            "event_type": evt_type,
             "status": delivery.status,
             "status_code": delivery.status_code,
             "delivery_id": delivery.id
@@ -242,7 +246,9 @@ def test_webhook(
         status_code=delivery.status_code,
         delivery_id=delivery.id,
         signature_preview=signature[:25] + "...",
-        message=f"Ping dispatched with status '{delivery.status}' (HTTP {delivery.status_code or 'N/A'})."
+        event_type=evt_type,
+        formatted_card=formatted_card,
+        message=f"Event '{evt_type}' dispatched with status '{delivery.status}' (HTTP {delivery.status_code or 'N/A'})."
     )
 
 

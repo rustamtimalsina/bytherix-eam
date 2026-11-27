@@ -985,9 +985,10 @@ class ApiClient {
     });
   }
 
-  async testWebhook(id: string): Promise<WebhookTestResponse> {
+  async testWebhook(id: string, eventType: string = "ping"): Promise<WebhookTestResponse> {
     return this.request<WebhookTestResponse>(`/webhooks/${id}/test`, {
       method: "POST",
+      body: JSON.stringify({ event_type: eventType }),
     });
   }
 
@@ -1230,4 +1231,6 @@ export interface WebhookTestResponse {
   delivery_id: string;
   signature_preview: string;
   message: string;
+  event_type?: string;
+  formatted_card?: Record<string, unknown> | null;
 }
